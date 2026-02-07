@@ -19,6 +19,7 @@
 | 💰 | `docs/08_SALARY_CALCULATION.md` | Salary formula, overtime, advance deduction, edge function | You're building salary calculation logic |
 | 📱 | `docs/09_MOBILE_APP.md` | App screens, background GPS, offline support, notifications | You're building the Expo mobile app |
 | 💳 | `docs/10_STRIPE_BILLING.md` | Stripe setup, webhooks, billing page (DO LAST!) | You're in Phase 10 and everything else is done |
+| 🎨 | `docs/11_THEMING_AND_COLORS.md` | All CSS variables, color usage rules, dark mode, attendance state colors | You need to use a color, status badge, or want to change the theme |
 
 ---
 
@@ -44,6 +45,7 @@
 7. **Lucide icons ONLY** — `lucide-react` (web) + `lucide-react-native` (mobile). No other icon library.
 8. **All UI components in `packages/ui/`** — shadcn/ui pattern (Radix + CVA + cn). Never in `apps/`.
 9. **Supabase DB types auto-generated** — `supabase gen types` → `packages/types/src/database.types.ts`
+10. **No direct colors** — always use CSS variables from `globals.css`. See `docs/11_THEMING_AND_COLORS.md`
 
 ---
 

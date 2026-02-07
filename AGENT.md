@@ -19,6 +19,7 @@
 11. **All UI components live in `packages/ui/`** — shadcn/ui style (Radix primitives + CVA + cn). Never create base components inside `apps/`. Import from `@punchless/ui`.
 12. **Supabase DB types are auto-generated.** Run `pnpm db:gen-types` and keep them in `packages/types/src/database.types.ts`. Never hand-write DB types.
 13. **`.env` files are NEVER committed.** Always update `.env.example` when adding/changing env variables. Every `.env` has a matching `.env.example`.
+14. **NEVER use direct/random colors.** All colors come from CSS variables defined in `globals.css`. Use `text-primary`, `bg-destructive`, `text-muted-foreground`, etc. NEVER use `text-blue-400`, `bg-red-500`, `text-gray-600`, etc. See `docs/11_THEMING_AND_COLORS.md` for the full list.
 
 ---
 
@@ -467,6 +468,9 @@ import { Users, MapPin, Clock } from 'lucide-react-native';
 - Don't use any icon library other than Lucide
 - Don't use Redux, MobX, or Context API for global state — use Zustand
 - Don't mix multiple features in one Zustand store — one store per feature
+- Don't use direct Tailwind colors (text-blue-400, bg-red-500, bg-gray-800, etc.)
+- Always use CSS variable colors (text-primary, bg-destructive, text-muted-foreground, etc.)
+- Don't add new colors without defining them in `globals.css` first
 
 ---
 

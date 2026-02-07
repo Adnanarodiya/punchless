@@ -3,16 +3,16 @@ import { Button } from "@punchless/ui/components/button";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-950 to-gray-900 text-white">
+    <div className="dark min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-gray-800">
+      <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">⚡ Punchless</h1>
-          <nav className="flex gap-4">
+          <nav className="flex items-center gap-3">
             <Button variant="ghost" asChild>
               <a href="/login">Login</a>
             </Button>
-            <Button variant="tertiary" asChild>
+            <Button asChild>
               <a href="/signup">Get Started</a>
             </Button>
           </nav>
@@ -25,9 +25,9 @@ export default function Home() {
           <h2 className="text-5xl font-bold tracking-tight leading-tight">
             Attendance that works
             <br />
-            <span className="text-blue-400">without the punch.</span>
+            <span className="text-primary">without the punch.</span>
           </h2>
-          <p className="mt-6 text-lg text-gray-400 leading-relaxed">
+          <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
             GPS-based automatic attendance, job tracking, travel time logging,
             and salary calculation — built for workshops and service businesses.
           </p>
@@ -47,22 +47,22 @@ export default function Home() {
           className="mt-32 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
         >
           <FeatureCard
-            icon={<MapPin className="w-8 h-8 text-blue-400" />}
+            icon={<MapPin className="w-8 h-8 text-info" />}
             title="Auto Attendance"
             description="GPS geofencing marks employees present automatically when they enter the workshop."
           />
           <FeatureCard
-            icon={<Clock className="w-8 h-8 text-green-400" />}
+            icon={<Clock className="w-8 h-8 text-success" />}
             title="Travel & Job Tracking"
             description="Track travel time, on-site repair time, and job completion — all automatically."
           />
           <FeatureCard
-            icon={<DollarSign className="w-8 h-8 text-yellow-400" />}
+            icon={<DollarSign className="w-8 h-8 text-warning" />}
             title="Fair Salary"
             description="Salary calculated from actual tracked hours. Overtime, advances — all handled."
           />
           <FeatureCard
-            icon={<Users className="w-8 h-8 text-purple-400" />}
+            icon={<Users className="w-8 h-8 text-primary" />}
             title="Multi-Workshop"
             description="Manage multiple workshops, employees, and jobs from one dashboard."
           />
@@ -70,8 +70,8 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 mt-32">
-        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-gray-500">
+      <footer className="border-t border-border mt-32">
+        <div className="max-w-6xl mx-auto px-6 py-8 text-center text-sm text-muted-foreground">
           © 2026 Punchless. Built for workshops that move.
         </div>
       </footer>
@@ -89,10 +89,12 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-6 hover:border-gray-600 transition">
+    <div className="bg-card/50 border border-border/50 rounded-xl p-6 hover:border-border transition">
       <div className="mb-4">{icon}</div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        {description}
+      </p>
     </div>
   );
 }

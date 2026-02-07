@@ -2,6 +2,11 @@
 // Punchless — Shared TypeScript Types
 // ============================================
 
+// Auto-generated Supabase Database types
+// Regenerate with: npx supabase gen types typescript --project-id lwjnkyaihiclbfnukrvn > packages/types/src/database.types.ts
+export type { Database } from "./database.types";
+export type { Tables, TablesInsert, TablesUpdate, Enums } from "./database.types";
+
 // --- Enums / Literal Types ---
 
 export type UserRole = "owner" | "admin" | "employee";

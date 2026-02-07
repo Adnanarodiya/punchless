@@ -17,7 +17,70 @@
 9. **Zustand for state management.** Use Zustand whenever state management is needed. No Redux, no Context API for global state.
 10. **Lucide icons ONLY.** All icons must come from the `lucide-react` (web) or `lucide-react-native` (mobile) package. Do NOT use any other icon library (no Heroicons, no FontAwesome, no React Icons, etc.).
 11. **All UI components live in `packages/ui/`** — shadcn/ui style (Radix primitives + CVA + cn). Never create base components inside `apps/`. Import from `@punchless/ui`.
-12. **Supabase DB types are auto-generated.** Run `supabase gen types` and keep them in `packages/types/src/database.types.ts`. Never hand-write DB types.
+12. **Supabase DB types are auto-generated.** Run `pnpm db:gen-types` and keep them in `packages/types/src/database.types.ts`. Never hand-write DB types.
+13. **`.env` files are NEVER committed.** Always update `.env.example` when adding/changing env variables. Every `.env` has a matching `.env.example`.
+
+---
+
+## 🔐 Environment Variables Rules (CRITICAL!)
+
+### Rule: `.env` files are NEVER pushed to GitHub. `.env.example` files are ALWAYS pushed and kept in sync.
+
+### Env File Locations
+
+| File | Purpose | Git? |
+|------|---------|------|
+| `.env` | Root env (Supabase project ID, keys) | ❌ NEVER |
+| `.env.example` | Root env template (no real values) | ✅ ALWAYS |
+| `apps/web/.env.local` | Web dashboard env (NEXT_PUBLIC_* + server keys) | ❌ NEVER |
+| `apps/web/.env.example` | Web env template | ✅ ALWAYS |
+| `apps/mobile/.env` | Mobile app env (EXPO_PUBLIC_*) | ❌ NEVER |
+| `apps/mobile/.env.example` | Mobile env template | ✅ ALWAYS |
+
+### When Adding a New Env Variable
+
+1. Add the real value to the `.env` file
+2. Add a placeholder to the matching `.env.example` file
+3. **BOTH files must always have the same keys** (different values)
+
+### Naming Convention
+
+| App | Prefix | Example |
+|-----|--------|---------|
+| Next.js (browser-safe) | `NEXT_PUBLIC_` | `NEXT_PUBLIC_SUPABASE_URL` |
+| Next.js (server-only) | No prefix | `SUPABASE_SERVICE_ROLE_KEY` |
+| Expo (public) | `EXPO_PUBLIC_` | `EXPO_PUBLIC_SUPABASE_URL` |
+| Root | No prefix | `SUPABASE_PROJECT_ID` |
+
+### ❌ NEVER: Commit `.env`, `.env.local`, or any file with real API keys
+### ✅ ALWAYS: Update `.env.example` when adding/changing env variables
+
+---
+
+## 📜 Useful Scripts (package.json)
+
+All Supabase and build commands are saved in the root `package.json`:
+
+```bash
+# Development
+pnpm dev                    # Run all apps (web + mobile)
+pnpm build                  # Build all apps
+pnpm lint                   # Lint all apps
+
+# Database
+pnpm db:gen-types           # Regenerate Supabase DB types → packages/types/
+pnpm db:push                # Push local migrations to remote Supabase
+pnpm db:pull                # Pull remote schema to local migrations
+pnpm db:reset               # Reset local DB (runs migrations + seed)
+pnpm db:migration:new       # Create a new migration file
+pnpm db:diff                # Diff local vs remote schema
+pnpm db:status              # List migration status
+
+# Supabase Local
+pnpm supabase:start         # Start local Supabase (Docker)
+pnpm supabase:stop          # Stop local Supabase
+pnpm supabase:status        # Check local Supabase status
+```
 
 ---
 

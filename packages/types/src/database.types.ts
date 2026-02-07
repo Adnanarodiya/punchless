@@ -14,13 +14,351 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance_sessions: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          duration_minutes: number | null
+          employee_id: string
+          end_time: string | null
+          id: string
+          job_id: string | null
+          start_time: string
+          state: string
+          workshop_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          employee_id: string
+          end_time?: string | null
+          id?: string
+          job_id?: string | null
+          start_time?: string
+          state: string
+          workshop_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          duration_minutes?: number | null
+          employee_id?: string
+          end_time?: string | null
+          id?: string
+          job_id?: string | null
+          start_time?: string
+          state?: string
+          workshop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_sessions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_sessions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_sessions_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          trial_ends_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      jobs: {
+        Row: {
+          assigned_to: string | null
+          company_id: string
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          radius: number | null
+          status: string | null
+          title: string
+          updated_at: string | null
+          workshop_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          company_id: string
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          radius?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+          workshop_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          company_id?: string
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          radius?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+          workshop_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_advances: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string
+          created_at: string | null
+          employee_id: string
+          id: string
+          notes: string | null
+          reason: string | null
+          requested_at: string | null
+          salary_month: string | null
+          status: string | null
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id: string
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          requested_at?: string | null
+          salary_month?: string | null
+          status?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          requested_at?: string | null
+          salary_month?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_advances_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_advances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_advances_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          daily_shift_hours: number | null
+          email: string
+          full_name: string
+          hourly_rate: number | null
+          id: string
+          is_active: boolean | null
+          phone: string | null
+          role: string
+          travel_rate: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          daily_shift_hours?: number | null
+          email: string
+          full_name: string
+          hourly_rate?: number | null
+          id: string
+          is_active?: boolean | null
+          phone?: string | null
+          role: string
+          travel_rate?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          daily_shift_hours?: number | null
+          email?: string
+          full_name?: string
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          role?: string
+          travel_rate?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workshops: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          lat: number
+          lng: number
+          name: string
+          radius: number | null
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          lat: number
+          lng: number
+          name: string
+          radius?: number | null
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          lat?: number
+          lng?: number
+          name?: string
+          radius?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workshops_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_my_company_id: { Args: never; Returns: string }
+      get_my_role: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

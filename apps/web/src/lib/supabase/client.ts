@@ -1,4 +1,11 @@
-// Browser-side Supabase client
-// Will be configured in Phase 2 (Auth & Company Setup)
+"use client";
 
-export {};
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "@punchless/types/database.types";
+
+export function createClient() {
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}

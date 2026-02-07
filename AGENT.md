@@ -6,8 +6,10 @@
 
 ## 📌 Golden Rules
 
-1. **Never skip reading relevant docs** before working on any feature. Always check `docs/` folder first.
-2. **Stripe/Billing is the LAST thing we build.** Do not touch payments until everything else works.
+1.  **STOP & ASK BEFORE PUSHING.** Do NOT push code to GitHub unless the user explicitly says "push now" or "you can push". Even if a phase is done, wait for confirmation.
+2.  **Always update `PROJECT_TRACKER.md`** after creating, modifying, or deleting ANY file.
+3.  **Never skip reading relevant docs** before working on any feature.
+4.  **Stripe/Billing is the LAST thing we build.**
 3. **One feature at a time.** Finish, test, then move to next.
 4. **Monorepo discipline** — shared code goes in `packages/`, app-specific code stays in `apps/`.
 5. **Database first** — always write migrations before building UI for any feature.
@@ -21,6 +23,7 @@
 13. **`.env` files are NEVER committed.** Always update `.env.example` when adding/changing env variables. Every `.env` has a matching `.env.example`.
 14. **Always update `PROJECT_TRACKER.md`** after creating, modifying, or deleting ANY file. This file tracks the full project structure, file descriptions, and phase progress. Never skip this step.
 15. **NEVER use direct/random colors.** All colors come from CSS variables defined in `globals.css`. Use `text-primary`, `bg-destructive`, `text-muted-foreground`, etc. NEVER use `text-blue-400`, `bg-red-500`, `text-gray-600`, etc. See `docs/11_THEMING_AND_COLORS.md` for the full list.
+16. **Use Tailwind CSS v4.** All styling must use Tailwind v4 conventions. Configuration is loaded via `@config` in `globals.css`. Ensure compatibility with v4 features like `@theme` and `@import "tailwindcss"`.
 
 ---
 

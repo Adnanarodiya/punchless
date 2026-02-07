@@ -19,7 +19,8 @@
 11. **All UI components live in `packages/ui/`** — shadcn/ui style (Radix primitives + CVA + cn). Never create base components inside `apps/`. Import from `@punchless/ui`.
 12. **Supabase DB types are auto-generated.** Run `pnpm db:gen-types` and keep them in `packages/types/src/database.types.ts`. Never hand-write DB types.
 13. **`.env` files are NEVER committed.** Always update `.env.example` when adding/changing env variables. Every `.env` has a matching `.env.example`.
-14. **NEVER use direct/random colors.** All colors come from CSS variables defined in `globals.css`. Use `text-primary`, `bg-destructive`, `text-muted-foreground`, etc. NEVER use `text-blue-400`, `bg-red-500`, `text-gray-600`, etc. See `docs/11_THEMING_AND_COLORS.md` for the full list.
+14. **Always update `PROJECT_TRACKER.md`** after creating, modifying, or deleting ANY file. This file tracks the full project structure, file descriptions, and phase progress. Never skip this step.
+15. **NEVER use direct/random colors.** All colors come from CSS variables defined in `globals.css`. Use `text-primary`, `bg-destructive`, `text-muted-foreground`, etc. NEVER use `text-blue-400`, `bg-red-500`, `text-gray-600`, etc. See `docs/11_THEMING_AND_COLORS.md` for the full list.
 
 ---
 

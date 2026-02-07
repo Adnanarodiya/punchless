@@ -3,14 +3,24 @@ import type { Database } from "@punchless/types/database.types";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
-export async function getEmployees(): Promise<UserRow[]> {
+export type EmployeeWithWorkshop = UserRow & {
+  workshop_name: string | null;
+};
+
+export async function getEmployees(): Promise<EmployeeWithWorkshop[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("users")
-    .select("*")
+    .select("*, workshops(name)")
     .eq("role", "employee")
     .order("created_at", { ascending: false });
 
-  return (data as UserRow[]) ?? [];
+  // Flatten the join
+  const employees = ((data as unknown as Array<UserRow & { workshops: { name: string } | null }>) ?? []).map((emp) => ({
+    ...emp,
+    workshop_name: emp.workshops?.name ?? null,
+  }));
+
+  return employees;
 }

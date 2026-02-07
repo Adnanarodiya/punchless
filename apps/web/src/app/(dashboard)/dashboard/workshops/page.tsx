@@ -1,12 +1,13 @@
-export default function WorkshopsPage() {
+import { getWorkshops } from "@/lib/queries/workshop.queries";
+import { WorkshopManager } from "./workshop-manager";
+
+export default async function WorkshopsPage() {
+  const workshops = await getWorkshops();
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Workshops</h1>
-      <div className="bg-card border border-border rounded-xl p-6">
-        <p className="text-muted-foreground">
-          Workshops management will be built in upcoming phases.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Workshops</h1>
+      <WorkshopManager workshops={workshops} />
     </div>
   );
 }

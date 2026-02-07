@@ -29,6 +29,7 @@
     "lucide-react-native": "^0.469.0",
     "zustand": "^5.0.0",
     "@react-native-async-storage/async-storage": "^2.1.0",
+    "react-native-url-polyfill": "^2.0.0",
     "@supabase/supabase-js": "^2.47.0",
     "@punchless/types": "workspace:*",
     "@punchless/config": "workspace:*"

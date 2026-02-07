@@ -269,6 +269,7 @@ export type Database = {
           role: string
           travel_rate: number | null
           updated_at: string | null
+          workshop_id: string | null
         }
         Insert: {
           company_id: string
@@ -283,6 +284,7 @@ export type Database = {
           role: string
           travel_rate?: number | null
           updated_at?: string | null
+          workshop_id?: string | null
         }
         Update: {
           company_id?: string
@@ -297,6 +299,7 @@ export type Database = {
           role?: string
           travel_rate?: number | null
           updated_at?: string | null
+          workshop_id?: string | null
         }
         Relationships: [
           {
@@ -304,6 +307,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_workshop_id_fkey"
+            columns: ["workshop_id"]
+            isOneToOne: false
+            referencedRelation: "workshops"
             referencedColumns: ["id"]
           },
         ]

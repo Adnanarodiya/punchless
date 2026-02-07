@@ -1,12 +1,17 @@
-export default function JobsPage() {
+import { getJobs } from "@/lib/queries/job.queries";
+import { getEmployees } from "@/lib/queries/employee.queries";
+import { JobManager } from "./job-manager";
+
+export default async function JobsPage() {
+  const [jobs, employees] = await Promise.all([
+    getJobs(),
+    getEmployees(),
+  ]);
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Jobs</h1>
-      <div className="bg-card border border-border rounded-xl p-6">
-        <p className="text-muted-foreground">
-          Jobs management will be built in upcoming phases.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Jobs</h1>
+      <JobManager jobs={jobs} employees={employees} />
     </div>
   );
 }

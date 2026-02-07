@@ -32,6 +32,63 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
     throw new Error("Employee and start time are required");
   }
 
+  // ============================================
+  // Check for overlapping sessions
+  // ============================================
+  const startISO = new Date(startTime).toISOString();
+  const endISO = endTime ? new Date(endTime).toISOString() : null;
+
+  // 1. Check if employee is currently active (end_time is null)
+  const { data: activeSession } = await supabase
+    .from("attendance_sessions")
+    .select("state, workshops(name), jobs(title)")
+    .eq("employee_id", employeeId)
+    .is("end_time", null)
+    .maybeSingle();
+
+  // Type assertion for activeSession since joins return complex objects
+  type ActiveSessionWithRelations = {
+    state: string;
+    workshops: { name: string } | null;
+    jobs: { title: string } | null;
+  };
+
+  if (activeSession) {
+    const session = activeSession as unknown as ActiveSessionWithRelations;
+    const location = session.workshops?.name || session.jobs?.title || session.state;
+    throw new Error(`Employee is already active at ${location}. Please close that session first.`);
+  }
+
+  // 2. Check for time overlaps with past sessions
+  // If new session has end_time: (StartA <= EndB) and (EndA >= StartB)
+  if (endISO) {
+    const { data: overlap } = await supabase
+      .from("attendance_sessions")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .lte("start_time", endISO)
+      .gte("end_time", startISO)
+      .limit(1);
+
+    if (overlap && overlap.length > 0) {
+      throw new Error("Time range overlaps with an existing session.");
+    }
+  } else {
+    // New session is "Active" (Open ended).
+    // Ensure start_time isn't during a past completed session
+    const { data: overlap } = await supabase
+      .from("attendance_sessions")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .lte("start_time", startISO)
+      .gte("end_time", startISO)
+      .limit(1);
+
+    if (overlap && overlap.length > 0) {
+      throw new Error("Start time falls within an existing completed session.");
+    }
+  }
+
   // Calculate duration if end time provided
   let durationMinutes: number | null = null;
   if (endTime) {
@@ -46,8 +103,8 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
     employee_id: employeeId,
     state,
     workshop_id: workshopId,
-    start_time: new Date(startTime).toISOString(),
-    end_time: endTime ? new Date(endTime).toISOString() : null,
+    start_time: startISO,
+    end_time: endISO,
     duration_minutes: durationMinutes,
   };
 

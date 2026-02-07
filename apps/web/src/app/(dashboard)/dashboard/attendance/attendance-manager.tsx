@@ -25,10 +25,18 @@ interface Props {
 export function AttendanceManager({ todaySessions, activeSessions, employees, workshops }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [tab, setTab] = useState<"live" | "today">("live");
+  const [showEndTime, setShowEndTime] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(formData: FormData) {
-    await createAttendanceSession(formData);
-    setShowAddForm(false);
+    try {
+      setError(null);
+      await createAttendanceSession(formData);
+      setShowAddForm(false);
+      setShowEndTime(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create session");
+    }
   }
 
   const inputClass = "w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm";
@@ -89,6 +97,14 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
       {showAddForm && (
         <div className="bg-card border border-border rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-3">Add Manual Session</h3>
+
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-2">
+              <span className="shrink-0 mt-0.5">⚠️</span>
+              <p>{error}</p>
+            </div>
+          )}
+
           <form action={handleCreate} className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-muted-foreground block mb-1">Employee</label>
@@ -129,8 +145,28 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
             </div>
 
             <div>
-              <label className="text-xs text-muted-foreground block mb-1">End Time (optional)</label>
-              <input name="endTime" type="datetime-local" className={inputClass} />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-muted-foreground">End Time</label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    id="showEndTime"
+                    checked={showEndTime}
+                    onChange={(e) => setShowEndTime(e.target.checked)}
+                    className="size-3 rounded border-input bg-background"
+                  />
+                  <label htmlFor="showEndTime" className="text-[10px] text-muted-foreground cursor-pointer select-none">
+                    Set End Time?
+                  </label>
+                </div>
+              </div>
+              {showEndTime ? (
+                <input name="endTime" type="datetime-local" required className={inputClass} />
+              ) : (
+                <div className="h-10 px-3 rounded-lg border border-border bg-muted/50 text-muted-foreground text-sm flex items-center select-none">
+                  <span className="text-success text-xs font-medium animate-pulse">● Live Session (Auto)</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-end">
@@ -139,9 +175,6 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
               </Button>
             </div>
           </form>
-          <p className="text-xs text-muted-foreground mt-2">
-            Leave end time empty to create an active (open) session. Duration is auto-calculated.
-          </p>
         </div>
       )}
 

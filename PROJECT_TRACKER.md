@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-02-07 (Phase 3 complete, Phase 4 in progress)
+> **Last updated:** 2026-02-07 (Phase 6 complete, Phase 7 in progress)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -15,8 +15,8 @@
 | 2 | Auth & Company | ✅ Done | Supabase DB, auth, signup/login, dashboard layout |
 | 3 | Workshops & Employees | ✅ Done | Full CRUD for workshops (map picker) + employees (workshop assignment) |
 | 4 | Attendance Engine (Web) | ✅ Done | Live attendance dashboard, manual sessions, close/delete sessions, stats, date-range queries |
-| 5 | Job & Travel Tracking | ⏳ Pending | Job CRUD, assign to employees, travel detection |
-| 6 | Salary Calculation | ⏳ Pending | Auto-calculate from attendance, per-workshop breakdown |
+| 5 | Job & Travel Tracking | ✅ Done | Job CRUD, map location, assignment, status workflow |
+| 6 | Salary Calculation | ✅ Done | Monthly salary report, hourly/travel rate calculations, breakdown by state |
 | 7 | Salary Advances | ⏳ Pending | Request, approve/reject advances |
 | 8 | Mobile App | ⏳ Pending | Login, GPS tracking, auto clock-in/out |
 | 9 | Settings & Polish | ⏳ Pending | Company settings, profile, notifications |
@@ -39,7 +39,7 @@
 | `AGENT.md` | 1 | AI agent rules — 14 rules for code style, conventions |
 | `DOCS_INDEX.md` | 1 | Index of all documentation files |
 | `README.md` | 1 | Project overview and setup instructions |
-| `PROJECT_TRACKER.md` | 3 | **This file** — tracks all files and progress |
+| `PROJECT_TRACKER.md` | 6 | **This file** — tracks all files and progress |
 
 ### Documentation (`/docs/`)
 
@@ -149,8 +149,10 @@
 | `dashboard/workshops/workshop-manager.tsx` | 3 | **Client component**: Full CRUD — add/edit/delete workshops with map picker, toggle active/inactive |
 | `dashboard/attendance/page.tsx` | 4 | Server component: fetches today's sessions + active sessions + employees + workshops, renders `AttendanceManager` |
 | `dashboard/attendance/attendance-manager.tsx` | 4 | **Client component**: Live/Today tabs, stats row (active/workshop/travel/on-site counts), add manual session form, session table with close/delete actions, live duration for open sessions |
-| `dashboard/jobs/page.tsx` | 2 | ⏳ Placeholder — Phase 5 |
-| `dashboard/salary/page.tsx` | 2 | ⏳ Placeholder — Phase 6 |
+| `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
+| `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
+| `dashboard/salary/page.tsx` | 6 | Server component: fetches salary report for selected month, renders `SalaryManager` |
+| `dashboard/salary/salary-manager.tsx` | 6 | **Client component**: Monthly report table, breakdown by hours/type, total salary stats, search & filter |
 | `dashboard/advances/page.tsx` | 2 | ⏳ Placeholder — Phase 7 |
 | `dashboard/settings/page.tsx` | 2 | ⏳ Placeholder — Phase 9 |
 | `dashboard/billing/page.tsx` | 2 | ⏳ Placeholder — Phase 10 |
@@ -167,7 +169,7 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes |
+| `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes; `formatCurrency()` — INR formatting |
 
 #### Server Actions (`src/lib/actions/`)
 
@@ -177,6 +179,7 @@
 | `employee.actions.ts` | 3 | `createEmployee()` — admin API + profile insert + workshop assignment; `updateEmployee()` — name/phone/rates/workshop; `toggleEmployeeStatus()`; `deleteEmployee()` — removes auth + profile |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4 | `createAttendanceSession()` — manual session with auto duration calc; `closeAttendanceSession()` — end open session (set end_time to now); `deleteAttendanceSession()` — remove session |
+| `job.actions.ts` | 5 | `createJob()` — create job with location/assignment; `updateJob()` — update details/status; `deleteJob()` |
 
 #### Server Queries (`src/lib/queries/`)
 
@@ -186,6 +189,8 @@
 | `employee.queries.ts` | 3 | `getEmployees()` — all employees with workshop name join |
 | `workshop.queries.ts` | 3 | `getWorkshops()` — all workshops ordered by created_at |
 | `attendance.queries.ts` | 4 | `getTodayAttendance()` — today's sessions with employee/workshop/job joins; `getActiveSessions()` — open sessions (no end_time); `getAttendanceByDateRange()` — date-filtered; `getAttendanceSummary()` — grouped by employee+workshop+state with total minutes |
+| `job.queries.ts` | 5 | `getJobs()` — list all jobs with assigned user details; `getJobById()` — get single job details |
+| `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month |
 
 #### Supabase Clients (`src/lib/supabase/`)
 
@@ -260,6 +265,8 @@ Employee Create: employee-manager.tsx → employee.actions.ts → admin.ts → a
 Workshop Create: workshop-manager.tsx → workshop.actions.ts → server.ts → workshops table
 Map Picker:      workshop-manager.tsx → map-picker.tsx (Leaflet) → lat/lng → workshop.actions.ts
 Workshop Assign: employee-manager.tsx → dropdown (if >1) or auto-assign (if 1) → employee.actions.ts
+Job Create:      job-manager.tsx → map-picker.tsx → job.actions.ts → jobs table
+Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum → display
 ```
 
 ---

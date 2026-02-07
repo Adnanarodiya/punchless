@@ -10,8 +10,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@punchless/ui/components/alert-dialog";
-import { cn } from "@punchless/ui/lib/utils";
+} from "./alert-dialog";
+import { cn } from "../lib/utils";
 
 interface ConfirmModalProps {
   open: boolean;

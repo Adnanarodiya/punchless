@@ -7,9 +7,9 @@ import {
   DialogHeader,
   DialogOverlay,
   DialogTitle,
-} from "@punchless/ui/components/dialog";
-import { VisuallyHidden } from "@punchless/ui/components/visually-hidden";
-import { cn } from "@punchless/ui/lib/utils";
+} from "./dialog";
+import { VisuallyHidden } from "./visually-hidden";
+import { cn } from "../lib/utils";
 
 interface ModalProps {
   open: boolean;

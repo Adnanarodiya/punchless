@@ -1,0 +1,5 @@
+-- ============================================
+-- Punchless — Seed Data (for development)
+-- ============================================
+-- This file will be populated when we build the database schema in Phase 2.
+-- Run with: npx supabase db reset

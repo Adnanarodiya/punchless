@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Punchless",
+    "slug": "punchless",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "punchless",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.punchless.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Punchless needs your location to automatically mark attendance when you arrive at the workshop.",
+        "NSLocationAlwaysUsageDescription": "Punchless needs background location access to track attendance and travel time even when the app is in the background.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Punchless needs location access to automatically track your attendance, travel, and on-site work time.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.punchless.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Punchless needs your location to track attendance and travel time.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
+    ]
+  }
+}

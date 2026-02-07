@@ -1,0 +1,16 @@
+{
+  "name": "punchless",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Workshop Attendance SaaS — Automatic GPS-based attendance, job tracking & salary management",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  },
+  "packageManager": "pnpm@10.28.2"
+}

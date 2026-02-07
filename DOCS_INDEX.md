@@ -42,6 +42,8 @@
 5. **Database first** — write migrations before UI
 6. **Zustand** for state management — no Redux, no Context API for global state
 7. **Lucide icons ONLY** — `lucide-react` (web) + `lucide-react-native` (mobile). No other icon library.
+8. **All UI components in `packages/ui/`** — shadcn/ui pattern (Radix + CVA + cn). Never in `apps/`.
+9. **Supabase DB types auto-generated** — `supabase gen types` → `packages/types/src/database.types.ts`
 
 ---
 

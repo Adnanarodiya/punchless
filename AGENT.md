@@ -16,6 +16,8 @@
 8. **Mobile-first thinking** — the employee experience on mobile is the core product.
 9. **Zustand for state management.** Use Zustand whenever state management is needed. No Redux, no Context API for global state.
 10. **Lucide icons ONLY.** All icons must come from the `lucide-react` (web) or `lucide-react-native` (mobile) package. Do NOT use any other icon library (no Heroicons, no FontAwesome, no React Icons, etc.).
+11. **All UI components live in `packages/ui/`** — shadcn/ui style (Radix primitives + CVA + cn). Never create base components inside `apps/`. Import from `@punchless/ui`.
+12. **Supabase DB types are auto-generated.** Run `supabase gen types` and keep them in `packages/types/src/database.types.ts`. Never hand-write DB types.
 
 ---
 
@@ -173,6 +175,135 @@ Phase 10: Stripe Billing (LAST!)
 5. Build frontend (web or mobile)
 6. Test
 7. Commit with proper message
+
+---
+
+## 🧩 UI Components — shadcn/ui Pattern (Mandatory)
+
+All reusable UI components live in **`packages/ui/`** using the **shadcn/ui pattern**: Radix UI primitives + CVA (class-variance-authority) + Tailwind + `cn()` utility.
+
+### Package Structure
+
+```
+packages/ui/
+├── src/
+│   ├── components/
+│   │   ├── button.tsx          ← Radix Slot + CVA variants
+│   │   ├── dialog.tsx          ← Radix Dialog primitive
+│   │   ├── alert-dialog.tsx    ← Radix AlertDialog primitive
+│   │   ├── modal.tsx           ← Composed: wraps Dialog for easy use
+│   │   ├── confirm-modal.tsx   ← Composed: wraps AlertDialog for confirmations
+│   │   ├── visually-hidden.tsx ← Radix VisuallyHidden
+│   │   ├── input.tsx           ← (add as needed)
+│   │   ├── badge.tsx           ← (add as needed)
+│   │   ├── card.tsx            ← (add as needed)
+│   │   └── ... more as needed
+│   │
+│   ├── lib/
+│   │   └── utils.ts            ← cn() = clsx + tailwind-merge
+│   │
+│   └── index.ts                ← Barrel exports
+```
+
+### Two Levels of Components
+
+#### Level 1: Primitives (low-level, max flexibility)
+These are thin wrappers around Radix UI. They give full control.
+```tsx
+// Example: Dialog, AlertDialog, Button
+import { Dialog, DialogContent, DialogTitle } from "@punchless/ui/components/dialog";
+import { Button } from "@punchless/ui/components/button";
+```
+
+#### Level 2: Composed (high-level, easy to use)
+These wrap Level 1 primitives into ready-to-use components with sensible defaults.
+```tsx
+// Example: Modal wraps Dialog, ConfirmModal wraps AlertDialog
+import { Modal } from "@punchless/ui/components/modal";
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
+
+// Usage — just pass props, no assembly needed:
+<Modal open={open} onOpenChange={setOpen} title="Add Employee">
+  <form>...</form>
+</Modal>
+
+<ConfirmModal
+  open={open}
+  onOpenChange={setOpen}
+  title="Delete Employee?"
+  description="This action cannot be undone."
+  variant="destructive"
+  onConfirm={handleDelete}
+/>
+```
+
+### How to Import
+
+```tsx
+// ✅ Direct import (recommended — tree-shakeable)
+import { Button } from "@punchless/ui/components/button";
+import { Modal } from "@punchless/ui/components/modal";
+import { cn } from "@punchless/ui/lib/utils";
+
+// ✅ Barrel import (also works)
+import { Button, Modal, cn } from "@punchless/ui";
+```
+
+### Rules for Creating New Components
+
+1. **Primitive first** — create the Radix-based primitive in `packages/ui/src/components/`
+2. **Compose if needed** — if a component is used in a repetitive pattern, create a composed version
+3. **Use CVA** for variant-based styling (like Button sizes/variants)
+4. **Always use `cn()`** for className merging
+5. **Always use `data-slot`** attribute for component identification
+6. **Export from index.ts** — add every new component to the barrel export
+7. **Icons from Lucide only** — inside components, import from `lucide-react`
+
+### ❌ NEVER
+- Don't create base UI components inside `apps/web/src/components/` or `apps/mobile/`
+- Don't use raw HTML buttons/dialogs when a `packages/ui` component exists
+- Don't install a separate component library (no MUI, no Chakra, no Ant Design)
+- Don't duplicate component code between web and mobile
+
+### ✅ ALWAYS
+- All base components → `packages/ui/src/components/`
+- App-specific composed layouts (like Sidebar, DashboardHeader) → `apps/web/src/components/`
+- App-specific mobile layouts → `apps/mobile/components/`
+
+---
+
+## 🗃️ Supabase Types — Auto-Generated (Mandatory)
+
+### Rule: Never hand-write database types. Always auto-generate.
+
+After creating/changing any database table or migration, run:
+
+```bash
+npx supabase gen types typescript --project-id YOUR_PROJECT_ID > packages/types/src/database.types.ts
+```
+
+This generates the full `Database` type with `Row`, `Insert`, `Update` for every table.
+
+### How to Use
+
+```ts
+// Import auto-generated types
+import { Database, Tables, TablesInsert, TablesUpdate } from "@punchless/types/database.types";
+
+// Use in Supabase client
+import { createClient } from "@supabase/supabase-js";
+const supabase = createClient<Database>(url, key);
+
+// Use table row types directly
+type User = Tables<"users">;
+type NewUser = TablesInsert<"users">;
+type UpdateUser = TablesUpdate<"users">;
+```
+
+### When to Regenerate Types
+- After running any migration (`supabase db push` or `supabase migration up`)
+- After adding/changing tables, columns, or RLS policies
+- Before committing if DB schema changed
 
 ---
 

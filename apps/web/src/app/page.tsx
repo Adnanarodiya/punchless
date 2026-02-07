@@ -1,4 +1,5 @@
 import { MapPin, Clock, DollarSign, Users } from "lucide-react";
+import { Button } from "@punchless/ui/components/button";
 
 export default function Home() {
   return (
@@ -6,22 +7,14 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">
-            ⚡ Punchless
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">⚡ Punchless</h1>
           <nav className="flex gap-4">
-            <a
-              href="/login"
-              className="text-sm text-gray-400 hover:text-white transition"
-            >
-              Login
-            </a>
-            <a
-              href="/signup"
-              className="text-sm bg-white text-black px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition"
-            >
-              Get Started
-            </a>
+            <Button variant="ghost" asChild>
+              <a href="/login">Login</a>
+            </Button>
+            <Button variant="tertiary" asChild>
+              <a href="/signup">Get Started</a>
+            </Button>
           </nav>
         </div>
       </header>
@@ -39,23 +32,20 @@ export default function Home() {
             and salary calculation — built for workshops and service businesses.
           </p>
           <div className="mt-10 flex gap-4 justify-center">
-            <a
-              href="/signup"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium text-lg transition"
-            >
-              Start Free Trial
-            </a>
-            <a
-              href="#features"
-              className="border border-gray-700 hover:border-gray-500 text-gray-300 px-8 py-3 rounded-lg font-medium text-lg transition"
-            >
-              Learn More
-            </a>
+            <Button size="xl" asChild>
+              <a href="/signup">Start Free Trial</a>
+            </Button>
+            <Button variant="outline" size="xl" asChild>
+              <a href="#features">Learn More</a>
+            </Button>
           </div>
         </div>
 
         {/* Features */}
-        <div id="features" className="mt-32 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div
+          id="features"
+          className="mt-32 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+        >
           <FeatureCard
             icon={<MapPin className="w-8 h-8 text-blue-400" />}
             title="Auto Attendance"

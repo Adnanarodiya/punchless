@@ -84,7 +84,7 @@
 
 - [ ] Supabase Edge Function: Calculate daily/monthly salary
 - [ ] Sum workshop time + travel time + job time
-- [ ] Apply hourly_rate and travel_rate
+- [ ] Apply hourly_rate (single rate for workshop/travel/on-site)
 - [ ] Calculate overtime (time beyond daily shift)
 - [ ] Dashboard: Salary report per employee
 - [ ] Dashboard: Monthly salary summary

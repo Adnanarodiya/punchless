@@ -1,12 +1,20 @@
-export default function AdvancesPage() {
+import { getAdvances } from "@/lib/queries/advance.queries";
+import { getEmployees } from "@/lib/queries/employee.queries";
+import { AdvanceManager } from "./advance-manager";
+
+export default async function AdvancesPage() {
+  const [advances, employees] = await Promise.all([
+    getAdvances(),
+    getEmployees(),
+  ]);
+
+  // Only active employees for the "create advance" form
+  const activeEmployees = employees.filter((e) => e.is_active);
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Advances</h1>
-      <div className="bg-card border border-border rounded-xl p-6">
-        <p className="text-muted-foreground">
-          Advances management will be built in upcoming phases.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Salary Advances</h1>
+      <AdvanceManager advances={advances} employees={activeEmployees} />
     </div>
   );
 }

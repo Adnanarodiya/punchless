@@ -7,6 +7,7 @@ import { Plus, X, Pencil, MapPin, User, CheckCircle, AlertCircle, Clock } from "
 import { createJob, updateJob } from "@/lib/actions/job.actions";
 import type { JobWithDetails } from "@/lib/queries/job.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
+import { useAction } from "@/hooks/use-action";
 
 const MapPicker = dynamic(() => import("@/components/map-picker").then((m) => m.MapPicker), {
   ssr: false,
@@ -48,12 +49,21 @@ export function JobManager({ jobs, employees }: Props) {
     setEditingJob(null);
   }
 
+  const { execute: execCreate } = useAction(createJob, {
+    successMessage: "Job created!",
+    onSuccess: () => setMode("list"),
+  });
+
+  const { execute: execUpdate } = useAction(updateJob, {
+    successMessage: "Job updated!",
+    onSuccess: () => { setMode("list"); setEditingJob(null); },
+  });
+
   async function handleCreate(formData: FormData) {
     formData.set("lat", String(lat));
     formData.set("lng", String(lng));
     formData.set("radius", String(radius));
-    await createJob(formData);
-    setMode("list");
+    await execCreate(formData);
   }
 
   async function handleUpdate(formData: FormData) {
@@ -62,9 +72,7 @@ export function JobManager({ jobs, employees }: Props) {
     formData.set("lat", String(lat));
     formData.set("lng", String(lng));
     formData.set("radius", String(radius));
-    await updateJob(formData);
-    setMode("list");
-    setEditingJob(null);
+    await execUpdate(formData);
   }
 
   const inputClass = "w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm";

@@ -1,51 +1,54 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@punchless/types/database.types";
+import { protectedAction } from "@/lib/server/protected-action";
+import { createEmployeeSchema, updateEmployeeSchema } from "@/lib/validations/employee.schema";
+import type { ActionResult } from "@/lib/utils/action-result";
 
-type UserRow = Database["public"]["Tables"]["users"]["Row"];
-
-async function getMe() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  const { data } = await supabase.from("users").select("*").eq("id", user.id).single();
-  const me = data as UserRow | null;
-  if (!me || !["owner", "admin"].includes(me.role)) throw new Error("Only owner/admin allowed");
-  return { supabase, me };
+function calcHourlyRate(
+  monthlySalary: number,
+  dailyWorkHours: number,
+  workingDaysPerMonth: number
+): number {
+  const totalMonthlyHours = dailyWorkHours * workingDaysPerMonth;
+  if (totalMonthlyHours <= 0) return 0;
+  return Math.round((monthlySalary / totalMonthlyHours) * 100) / 100;
 }
 
-// ============================================
-// CREATE EMPLOYEE
-// ============================================
-export async function createEmployee(formData: FormData): Promise<void> {
-  const { me } = await getMe();
-  const admin = createAdminClient();
+export const createEmployee = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { me }) => {
+  const parsed = createEmployeeSchema.safeParse({
+    fullName: formData.get("fullName"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    phone: formData.get("phone"),
+    monthlySalary: formData.get("monthlySalary"),
+    workshopId: formData.get("workshopId"),
+  });
 
-  const fullName = String(formData.get("fullName") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const password = String(formData.get("password") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
-  const hourlyRate = Number(formData.get("hourlyRate") || 0);
-  const travelRate = Number(formData.get("travelRate") || 0);
-  const dailyShiftHours = Number(formData.get("dailyShiftHours") || 8);
-  const workshopId = String(formData.get("workshopId") || "").trim() || null;
-
-  if (!fullName || !email || password.length < 6) {
-    throw new Error("Full name, email and password (min 6) are required");
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
   }
 
+  const { fullName, email, password, phone, monthlySalary, workshopId } = parsed.data;
+  const dailyWorkHours = Number(formData.get("dailyWorkHours") || 8);
+  const workingDaysPerMonth = Number(formData.get("workingDaysPerMonth") || 26);
+  const hourlyRate = calcHourlyRate(monthlySalary, dailyWorkHours, workingDaysPerMonth);
+
+  const admin = createAdminClient();
+
   const { data: createdAuth, error: authError } = await admin.auth.admin.createUser({
-    email,
+    email: email.toLowerCase(),
     password,
     email_confirm: true,
     user_metadata: { full_name: fullName, role: "employee" },
   });
 
   if (authError || !createdAuth.user) {
-    throw new Error(authError?.message || "Failed to create auth user");
+    return { success: false, error: authError?.message || "Failed to create auth user" };
   }
 
   const { error: profileError } = await admin.from("users").insert({
@@ -53,88 +56,94 @@ export async function createEmployee(formData: FormData): Promise<void> {
     company_id: me.company_id,
     role: "employee",
     full_name: fullName,
-    email,
+    email: email.toLowerCase(),
     phone: phone || null,
+    monthly_salary: monthlySalary,
     hourly_rate: hourlyRate,
-    travel_rate: travelRate,
-    daily_shift_hours: dailyShiftHours,
-    workshop_id: workshopId,
+    daily_shift_hours: dailyWorkHours,
+    workshop_id: workshopId || null,
     is_active: true,
   });
 
   if (profileError) {
     await admin.auth.admin.deleteUser(createdAuth.user.id);
-    throw new Error(profileError.message);
+    return { success: false, error: profileError.message };
   }
 
   revalidatePath("/dashboard/employees");
-}
+  return { success: true };
+});
 
-// ============================================
-// UPDATE EMPLOYEE (name, phone, rates, shift hours)
-// ============================================
-export async function updateEmployee(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const updateEmployee = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const employeeId = String(formData.get("employeeId") || "");
-  const fullName = String(formData.get("fullName") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
-  const hourlyRate = Number(formData.get("hourlyRate") || 0);
-  const travelRate = Number(formData.get("travelRate") || 0);
-  const dailyShiftHours = Number(formData.get("dailyShiftHours") || 8);
-  const workshopId = String(formData.get("workshopId") || "").trim() || null;
+  if (!employeeId) return { success: false, error: "Employee ID missing" };
 
-  if (!employeeId || !fullName) throw new Error("Employee ID and name required");
+  const parsed = updateEmployeeSchema.safeParse({
+    fullName: formData.get("fullName"),
+    phone: formData.get("phone"),
+    monthlySalary: formData.get("monthlySalary"),
+    workshopId: formData.get("workshopId"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { fullName, phone, monthlySalary, workshopId } = parsed.data;
+  const dailyWorkHours = Number(formData.get("dailyWorkHours") || 8);
+  const workingDaysPerMonth = Number(formData.get("workingDaysPerMonth") || 26);
+  const hourlyRate = calcHourlyRate(monthlySalary, dailyWorkHours, workingDaysPerMonth);
 
   const { error } = await supabase
     .from("users")
     .update({
       full_name: fullName,
       phone: phone || null,
+      monthly_salary: monthlySalary,
       hourly_rate: hourlyRate,
-      travel_rate: travelRate,
-      daily_shift_hours: dailyShiftHours,
-      workshop_id: workshopId,
+      daily_shift_hours: dailyWorkHours,
+      workshop_id: workshopId || null,
     } as unknown as never)
     .eq("id", employeeId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/employees");
-}
+  return { success: true };
+});
 
-// ============================================
-// TOGGLE EMPLOYEE ACTIVE STATUS
-// ============================================
-export async function toggleEmployeeStatus(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const toggleEmployeeStatus = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const employeeId = String(formData.get("employeeId") || "");
   const nextStatus = String(formData.get("nextStatus") || "false") === "true";
 
-  if (!employeeId) throw new Error("Employee ID missing");
+  if (!employeeId) return { success: false, error: "Employee ID missing" };
 
   const { error } = await supabase
     .from("users")
     .update({ is_active: nextStatus } as unknown as never)
     .eq("id", employeeId);
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/dashboard/employees");
-}
+  if (error) return { success: false, error: error.message };
 
-// ============================================
-// DELETE EMPLOYEE (removes auth user + profile)
-// ============================================
-export async function deleteEmployee(formData: FormData): Promise<void> {
-  await getMe();
+  revalidatePath("/dashboard/employees");
+  return { success: true };
+});
+
+export const deleteEmployee = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData) => {
   const admin = createAdminClient();
-
   const employeeId = String(formData.get("employeeId") || "");
-  if (!employeeId) throw new Error("Employee ID missing");
+  if (!employeeId) return { success: false, error: "Employee ID missing" };
 
-  // Delete auth user (cascade will delete profile via FK)
   const { error } = await admin.auth.admin.deleteUser(employeeId);
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
 
   revalidatePath("/dashboard/employees");
-}
+  return { success: true };
+});

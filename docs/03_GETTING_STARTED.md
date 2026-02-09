@@ -102,8 +102,7 @@ export interface User {
   role: UserRole;
   full_name: string;
   email: string;
-  hourly_rate: number;
-  travel_rate: number;
+  hourly_rate: number; // single rate for workshop, travel, on-site
   is_active: boolean;
 }
 

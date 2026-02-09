@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@punchless/ui/components/button";
 import { Download, Calendar } from "lucide-react";
 import type { SalaryReport } from "@/lib/queries/salary.queries";
@@ -8,21 +9,24 @@ import { formatCurrency } from "@/lib/utils/formatting";
 
 interface Props {
   report: SalaryReport[];
+  currentMonth: string;
 }
 
-export function SalaryManager({ report }: Props) {
-  const [month, setMonth] = useState(() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  });
-
+export function SalaryManager({ report, currentMonth }: Props) {
+  const router = useRouter();
   const [filterText, setFilterText] = useState("");
 
   const filteredReport = report.filter((r) =>
     r.employee_name.toLowerCase().includes(filterText.toLowerCase())
   );
 
-  const totalSalary = filteredReport.reduce((acc, curr) => acc + curr.total_salary, 0);
+  const totalGross = filteredReport.reduce((acc, curr) => acc + curr.gross_salary, 0);
+  const totalDeductions = filteredReport.reduce((acc, curr) => acc + curr.advance_deduction, 0);
+  const totalNet = filteredReport.reduce((acc, curr) => acc + curr.net_salary, 0);
+
+  function handleMonthChange(newMonth: string) {
+    router.push(`/dashboard/salary?month=${newMonth}`);
+  }
 
   return (
     <div className="space-y-6">
@@ -32,12 +36,8 @@ export function SalaryManager({ report }: Props) {
           <Calendar className="size-5 text-muted-foreground" />
           <input
             type="month"
-            value={month}
-            onChange={(e) => {
-              setMonth(e.target.value);
-              // In a real app, this would trigger a re-fetch (server action or router refresh)
-              // For now, it's just local state for UI demo
-            }}
+            value={currentMonth}
+            onChange={(e) => handleMonthChange(e.target.value)}
             className="h-10 px-3 rounded-lg border border-input bg-background text-sm"
           />
         </div>
@@ -56,23 +56,25 @@ export function SalaryManager({ report }: Props) {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-sm text-muted-foreground">Total Salary ({month})</p>
-          <p className="text-2xl font-bold text-primary">{formatCurrency(totalSalary)}</p>
+          <p className="text-sm text-muted-foreground">Gross Salary ({currentMonth})</p>
+          <p className="text-2xl font-bold text-primary">{formatCurrency(totalGross)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <p className="text-sm text-muted-foreground">Advance Deductions</p>
+          <p className="text-2xl font-bold text-destructive">
+            {totalDeductions > 0 ? `−${formatCurrency(totalDeductions)}` : formatCurrency(0)}
+          </p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-5">
+          <p className="text-sm text-muted-foreground">Net Salary</p>
+          <p className="text-2xl font-bold text-success">{formatCurrency(totalNet)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-sm text-muted-foreground">Total Hours</p>
           <p className="text-2xl font-bold">
             {filteredReport.reduce((acc, curr) => acc + curr.total_hours, 0).toFixed(1)}h
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-5">
-          <p className="text-sm text-muted-foreground">Avg. Salary / Emp</p>
-          <p className="text-2xl font-bold">
-            {filteredReport.length > 0
-              ? formatCurrency(totalSalary / filteredReport.length)
-              : formatCurrency(0)}
           </p>
         </div>
       </div>
@@ -84,18 +86,20 @@ export function SalaryManager({ report }: Props) {
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground bg-muted/50">
                 <th className="p-4 font-medium">Employee</th>
-                <th className="p-4 font-medium text-right">Rate (₹/hr)</th>
+                <th className="p-4 font-medium text-right">₹/hr</th>
                 <th className="p-4 font-medium text-right">Workshop (h)</th>
                 <th className="p-4 font-medium text-right">On-Site (h)</th>
                 <th className="p-4 font-medium text-right">Travel (h)</th>
                 <th className="p-4 font-medium text-right">Total Hours</th>
-                <th className="p-4 font-medium text-right text-primary">Est. Salary</th>
+                <th className="p-4 font-medium text-right">Gross</th>
+                <th className="p-4 font-medium text-right text-destructive">Advances</th>
+                <th className="p-4 font-medium text-right text-success">Net Salary</th>
               </tr>
             </thead>
             <tbody>
               {filteredReport.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     No salary data found for this month.
                   </td>
                 </tr>
@@ -112,8 +116,16 @@ export function SalaryManager({ report }: Props) {
                       {r.travel_hours.toFixed(1)}
                     </td>
                     <td className="p-4 text-right font-medium">{r.total_hours.toFixed(1)}</td>
-                    <td className="p-4 text-right font-bold text-primary">
-                      {formatCurrency(r.total_salary)}
+                    <td className="p-4 text-right">
+                      {formatCurrency(r.gross_salary)}
+                    </td>
+                    <td className="p-4 text-right text-destructive">
+                      {r.advance_deduction > 0
+                        ? `−${formatCurrency(r.advance_deduction)}`
+                        : "—"}
+                    </td>
+                    <td className="p-4 text-right font-bold text-success">
+                      {formatCurrency(r.net_salary)}
                     </td>
                   </tr>
                 ))

@@ -1,44 +1,31 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@punchless/types/database.types";
+import { protectedAction } from "@/lib/server/protected-action";
+import { createAttendanceSchema } from "@/lib/validations/attendance.schema";
 
-type UserRow = Database["public"]["Tables"]["users"]["Row"];
+export const createAttendanceSession = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase, me }) => {
+  const parsed = createAttendanceSchema.safeParse({
+    employeeId: String(formData.get("employeeId") || ""),
+    state: String(formData.get("state") || "workshop"),
+    workshopId: String(formData.get("workshopId") || ""),
+    startTime: String(formData.get("startTime") || ""),
+    endTime: String(formData.get("endTime") || ""),
+  });
 
-async function getMe() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  const { data } = await supabase.from("users").select("*").eq("id", user.id).single();
-  const me = data as UserRow | null;
-  if (!me || !["owner", "admin"].includes(me.role)) throw new Error("Only owner/admin allowed");
-  return { supabase, me };
-}
-
-/**
- * Manually create an attendance session (for testing / corrections)
- */
-export async function createAttendanceSession(formData: FormData): Promise<void> {
-  const { supabase, me } = await getMe();
-
-  const employeeId = String(formData.get("employeeId") || "");
-  const state = String(formData.get("state") || "workshop");
-  const workshopId = String(formData.get("workshopId") || "") || null;
-  const startTime = String(formData.get("startTime") || "");
-  const endTime = String(formData.get("endTime") || "") || null;
-
-  if (!employeeId || !startTime) {
-    throw new Error("Employee and start time are required");
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  // ============================================
-  // Check for overlapping sessions
-  // ============================================
+  const { employeeId, state, workshopId, startTime, endTime } = parsed.data;
+
   const startISO = new Date(startTime).toISOString();
   const endISO = endTime ? new Date(endTime).toISOString() : null;
 
-  // 1. Check if employee is currently active (end_time is null)
+  // Check if employee is currently active
   const { data: activeSession } = await supabase
     .from("attendance_sessions")
     .select("state, workshops(name), jobs(title)")
@@ -46,7 +33,6 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
     .is("end_time", null)
     .maybeSingle();
 
-  // Type assertion for activeSession since joins return complex objects
   type ActiveSessionWithRelations = {
     state: string;
     workshops: { name: string } | null;
@@ -56,11 +42,10 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
   if (activeSession) {
     const session = activeSession as unknown as ActiveSessionWithRelations;
     const location = session.workshops?.name || session.jobs?.title || session.state;
-    throw new Error(`Employee is already active at ${location}. Please close that session first.`);
+    return { success: false, error: `Employee is already active at ${location}. Please close that session first.` };
   }
 
-  // 2. Check for time overlaps with past sessions
-  // If new session has end_time: (StartA <= EndB) and (EndA >= StartB)
+  // Check for time overlaps
   if (endISO) {
     const { data: overlap } = await supabase
       .from("attendance_sessions")
@@ -71,11 +56,9 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
       .limit(1);
 
     if (overlap && overlap.length > 0) {
-      throw new Error("Time range overlaps with an existing session.");
+      return { success: false, error: "Time range overlaps with an existing session." };
     }
   } else {
-    // New session is "Active" (Open ended).
-    // Ensure start_time isn't during a past completed session
     const { data: overlap } = await supabase
       .from("attendance_sessions")
       .select("id")
@@ -85,7 +68,7 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
       .limit(1);
 
     if (overlap && overlap.length > 0) {
-      throw new Error("Start time falls within an existing completed session.");
+      return { success: false, error: "Start time falls within an existing completed session." };
     }
   }
 
@@ -95,44 +78,40 @@ export async function createAttendanceSession(formData: FormData): Promise<void>
     const start = new Date(startTime);
     const end = new Date(endTime);
     durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
-    if (durationMinutes < 0) throw new Error("End time must be after start time");
+    if (durationMinutes < 0) return { success: false, error: "End time must be after start time" };
   }
-
-  const payload = {
-    company_id: me.company_id,
-    employee_id: employeeId,
-    state,
-    workshop_id: workshopId,
-    start_time: startISO,
-    end_time: endISO,
-    duration_minutes: durationMinutes,
-  };
 
   const { error } = await supabase
     .from("attendance_sessions")
-    .insert(payload as unknown as never);
+    .insert({
+      company_id: me.company_id,
+      employee_id: employeeId,
+      state,
+      workshop_id: workshopId || null,
+      start_time: startISO,
+      end_time: endISO,
+      duration_minutes: durationMinutes,
+    } as unknown as never);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/attendance");
-}
+  return { success: true };
+});
 
-/**
- * Manually close an open session (set end_time to now)
- */
-export async function closeAttendanceSession(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const closeAttendanceSession = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const sessionId = String(formData.get("sessionId") || "");
-  if (!sessionId) throw new Error("Session ID required");
+  if (!sessionId) return { success: false, error: "Session ID required" };
 
-  // Fetch the session to get start_time
   const { data: session } = await supabase
     .from("attendance_sessions")
     .select("start_time")
     .eq("id", sessionId)
     .single();
 
-  if (!session) throw new Error("Session not found");
+  if (!session) return { success: false, error: "Session not found" };
 
   const startTime = new Date((session as { start_time: string }).start_time);
   const endTime = new Date();
@@ -146,24 +125,25 @@ export async function closeAttendanceSession(formData: FormData): Promise<void> 
     } as unknown as never)
     .eq("id", sessionId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/attendance");
-}
+  return { success: true };
+});
 
-/**
- * Delete an attendance session (for corrections)
- */
-export async function deleteAttendanceSession(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const deleteAttendanceSession = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const sessionId = String(formData.get("sessionId") || "");
-  if (!sessionId) throw new Error("Session ID required");
+  if (!sessionId) return { success: false, error: "Session ID required" };
 
   const { error } = await supabase
     .from("attendance_sessions")
     .delete()
     .eq("id", sessionId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/attendance");
-}
+  return { success: true };
+});

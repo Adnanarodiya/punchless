@@ -4,6 +4,7 @@ export default function JobsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.empty}>No jobs assigned yet.</Text>
+      <Text style={styles.sub}>Job sync will be added in the next mobile step.</Text>
     </View>
   );
 }
@@ -11,13 +12,18 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0a",
+    backgroundColor: "#f8fafc",
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
   },
   empty: {
-    color: "#666",
-    fontSize: 16,
+    color: "#0f172a",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  sub: {
+    marginTop: 8,
+    color: "#64748b",
   },
 });

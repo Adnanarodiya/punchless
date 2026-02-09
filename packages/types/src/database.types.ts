@@ -85,6 +85,8 @@ export type Database = {
       companies: {
         Row: {
           created_at: string | null
+          daily_work_hours: number | null
+          grace_period_minutes: number | null
           id: string
           name: string
           stripe_customer_id: string | null
@@ -92,9 +94,13 @@ export type Database = {
           subscription_status: string | null
           trial_ends_at: string | null
           updated_at: string | null
+          work_start_time: string | null
+          working_days_per_month: number | null
         }
         Insert: {
           created_at?: string | null
+          daily_work_hours?: number | null
+          grace_period_minutes?: number | null
           id?: string
           name: string
           stripe_customer_id?: string | null
@@ -102,9 +108,13 @@ export type Database = {
           subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
+          work_start_time?: string | null
+          working_days_per_month?: number | null
         }
         Update: {
           created_at?: string | null
+          daily_work_hours?: number | null
+          grace_period_minutes?: number | null
           id?: string
           name?: string
           stripe_customer_id?: string | null
@@ -112,6 +122,8 @@ export type Database = {
           subscription_status?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
+          work_start_time?: string | null
+          working_days_per_month?: number | null
         }
         Relationships: []
       }
@@ -265,9 +277,9 @@ export type Database = {
           hourly_rate: number | null
           id: string
           is_active: boolean | null
+          monthly_salary: number | null
           phone: string | null
           role: string
-          travel_rate: number | null
           updated_at: string | null
           workshop_id: string | null
         }
@@ -280,9 +292,9 @@ export type Database = {
           hourly_rate?: number | null
           id: string
           is_active?: boolean | null
+          monthly_salary?: number | null
           phone?: string | null
           role: string
-          travel_rate?: number | null
           updated_at?: string | null
           workshop_id?: string | null
         }
@@ -295,9 +307,9 @@ export type Database = {
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          monthly_salary?: number | null
           phone?: string | null
           role?: string
-          travel_rate?: number | null
           updated_at?: string | null
           workshop_id?: string | null
         }

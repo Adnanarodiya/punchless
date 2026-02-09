@@ -40,7 +40,6 @@ export interface User {
   email: string;
   phone: string | null;
   hourly_rate: number;
-  travel_rate: number;
   daily_shift_hours: number;
   is_active: boolean;
   created_at: string;

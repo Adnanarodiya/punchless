@@ -11,6 +11,7 @@ import {
   deleteWorkshop,
 } from "@/lib/actions/workshop.actions";
 import type { Database } from "@punchless/types/database.types";
+import { useAction, toastAction } from "@/hooks/use-action";
 
 type WorkshopRow = Database["public"]["Tables"]["workshops"]["Row"];
 
@@ -47,12 +48,21 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
     setEditingWorkshop(null);
   }
 
+  const { execute: execCreate } = useAction(createWorkshop, {
+    successMessage: "Workshop created!",
+    onSuccess: () => setMode("list"),
+  });
+
+  const { execute: execUpdate } = useAction(updateWorkshop, {
+    successMessage: "Workshop updated!",
+    onSuccess: () => { setMode("list"); setEditingWorkshop(null); },
+  });
+
   async function handleCreate(formData: FormData) {
     formData.set("lat", String(lat));
     formData.set("lng", String(lng));
     formData.set("radius", String(radius));
-    await createWorkshop(formData);
-    setMode("list");
+    await execCreate(formData);
   }
 
   async function handleUpdate(formData: FormData) {
@@ -61,9 +71,7 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
     formData.set("lat", String(lat));
     formData.set("lng", String(lng));
     formData.set("radius", String(radius));
-    await updateWorkshop(formData);
-    setMode("list");
-    setEditingWorkshop(null);
+    await execUpdate(formData);
   }
 
   return (
@@ -183,14 +191,14 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
                   <Button variant="ghost" size="icon" onClick={() => startEdit(w)} title="Edit">
                     <Pencil className="size-4" />
                   </Button>
-                  <form action={toggleWorkshopStatus}>
+                  <form action={toastAction(toggleWorkshopStatus, "Workshop status updated")}>
                     <input type="hidden" name="workshopId" value={w.id} />
                     <input type="hidden" name="nextStatus" value={String(!w.is_active)} />
                     <Button variant="ghost" size="icon" type="submit" title={w.is_active ? "Deactivate" : "Activate"}>
                       <Power className={`size-4 ${w.is_active ? "text-success" : "text-state-offduty"}`} />
                     </Button>
                   </form>
-                  <form action={deleteWorkshop}>
+                  <form action={toastAction(deleteWorkshop, "Workshop deleted")}>
                     <input type="hidden" name="workshopId" value={w.id} />
                     <Button variant="ghost" size="icon" type="submit" title="Delete">
                       <Trash2 className="size-4 text-destructive" />

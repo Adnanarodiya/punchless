@@ -8,7 +8,6 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "clean": "turbo clean",
-
     "db:gen-types": "npx supabase gen types typescript --project-id lwjnkyaihiclbfnukrvn > packages/types/src/database.types.ts",
     "db:push": "npx supabase db push",
     "db:pull": "npx supabase db pull",
@@ -16,7 +15,6 @@
     "db:migration:new": "npx supabase migration new",
     "db:diff": "npx supabase db diff",
     "db:status": "npx supabase migration list --project-id lwjnkyaihiclbfnukrvn",
-
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status"
@@ -24,5 +22,8 @@
   "devDependencies": {
     "turbo": "^2.4.0"
   },
-  "packageManager": "pnpm@10.28.2"
+  "packageManager": "pnpm@10.28.2",
+  "dependencies": {
+    "metro-runtime": "^0.83.3"
+  }
 }

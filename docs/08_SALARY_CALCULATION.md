@@ -10,7 +10,7 @@ Salary is calculated **automatically** from attendance session data. No manual e
 
 ```
 Workshop Pay   = SUM(workshop session hours) × hourly_rate
-Travel Pay     = SUM(travel session hours) × travel_rate
+Travel Pay     = SUM(travel session hours) × hourly_rate
 On-Site Pay    = SUM(on_site_job session hours) × hourly_rate
 ─────────────────────────────────────────────────────────
 Gross Pay      = Workshop Pay + Travel Pay + On-Site Pay
@@ -29,8 +29,7 @@ Net Pay = Gross Pay + Overtime Pay - Advance Deduction
 ## Example Calculation
 
 ### Employee: Ravi
-- `hourly_rate`: ₹150/hr
-- `travel_rate`: ₹100/hr
+- `hourly_rate`: ₹150/hr (same for workshop, travel, on-site)
 - `daily_shift_hours`: 8 hrs
 - Working days in month: 26
 
@@ -45,10 +44,10 @@ Net Pay = Gross Pay + Overtime Pay - Advance Deduction
 ### Calculation
 ```
 Workshop Pay   = 160 × ₹150 = ₹24,000
-Travel Pay     = 20 × ₹100  = ₹2,000
+Travel Pay     = 20 × ₹150  = ₹3,000
 On-Site Pay    = 30 × ₹150  = ₹4,500
 ──────────────────────────────────────
-Gross Pay      = ₹30,500
+Gross Pay      = ₹31,500
 
 Standard Hours = 8 × 26 = 208 hrs
 Overtime       = 210 - 208 = 2 hrs
@@ -56,7 +55,7 @@ Overtime Pay   = 2 × ₹150 × 1.5 = ₹450
 
 Advance Deduction = ₹5,000 (one approved advance)
 
-Net Pay = ₹30,500 + ₹450 - ₹5,000 = ₹25,950
+Net Pay = ₹31,500 + ₹450 - ₹5,000 = ₹26,950
 ```
 
 ---
@@ -92,7 +91,7 @@ Response: {
 
 ### Logic (Pseudocode)
 ```
-1. Fetch employee record (hourly_rate, travel_rate, daily_shift_hours)
+1. Fetch employee record (hourly_rate, daily_shift_hours)
 2. Fetch all attendance_sessions for employee in given month
 3. Group by state, sum duration_minutes
 4. Convert to hours

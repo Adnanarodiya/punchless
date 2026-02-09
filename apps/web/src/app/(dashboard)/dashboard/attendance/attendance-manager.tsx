@@ -12,6 +12,7 @@ import type { AttendanceWithDetails } from "@/lib/queries/attendance.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { Database } from "@punchless/types/database.types";
 import { formatDuration, formatTime, getLiveDurationMinutes, STATE_CONFIG } from "@/lib/utils/formatting";
+import { useAction, toastAction } from "@/hooks/use-action";
 
 type WorkshopRow = Database["public"]["Tables"]["workshops"]["Row"];
 
@@ -28,15 +29,15 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
   const [showEndTime, setShowEndTime] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { execute: execCreate } = useAction(createAttendanceSession, {
+    successMessage: "Session created!",
+    onSuccess: () => { setShowAddForm(false); setShowEndTime(false); },
+    onError: (err) => setError(err),
+  });
+
   async function handleCreate(formData: FormData) {
-    try {
-      setError(null);
-      await createAttendanceSession(formData);
-      setShowAddForm(false);
-      setShowEndTime(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create session");
-    }
+    setError(null);
+    await execCreate(formData);
   }
 
   const inputClass = "w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm";
@@ -275,14 +276,14 @@ function SessionTable({
                 <td className="p-3">
                   <div className="flex gap-1">
                     {isOpen && (
-                      <form action={closeAttendanceSession}>
+                      <form action={toastAction(closeAttendanceSession, "Session closed")}>
                         <input type="hidden" name="sessionId" value={s.id} />
                         <Button variant="ghost" size="icon" type="submit" title="Close session">
                           <StopCircle className="size-4 text-warning" />
                         </Button>
                       </form>
                     )}
-                    <form action={deleteAttendanceSession}>
+                    <form action={toastAction(deleteAttendanceSession, "Session deleted")}>
                       <input type="hidden" name="sessionId" value={s.id} />
                       <Button variant="ghost" size="icon" type="submit" title="Delete session">
                         <Trash2 className="size-4 text-destructive" />

@@ -1,37 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@punchless/types/database.types";
+import { protectedAction } from "@/lib/server/protected-action";
+import { jobSchema } from "@/lib/validations/job.schema";
 
-type UserRow = Database["public"]["Tables"]["users"]["Row"];
+export const createJob = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase, me }) => {
+  const parsed = jobSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    customerName: formData.get("customerName"),
+    customerPhone: formData.get("customerPhone"),
+    assignedTo: formData.get("assignedTo"),
+    lat: formData.get("lat"),
+    lng: formData.get("lng"),
+  });
 
-async function getMe() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
-  const { data } = await supabase.from("users").select("*").eq("id", user.id).single();
-  const me = data as UserRow | null;
-  if (!me || !["owner", "admin"].includes(me.role)) throw new Error("Only owner/admin allowed");
-  return { supabase, me };
-}
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
 
-export async function createJob(formData: FormData): Promise<void> {
-  const { supabase, me } = await getMe();
-
-  const title = String(formData.get("title") || "").trim();
-  const description = String(formData.get("description") || "").trim();
-  const customerName = String(formData.get("customerName") || "").trim();
-  const customerPhone = String(formData.get("customerPhone") || "").trim();
-  const assignedTo = String(formData.get("assignedTo") || "") || null;
-  const lat = Number(formData.get("lat") || 0);
-  const lng = Number(formData.get("lng") || 0);
-  const radius = Number(formData.get("radius") || 50);
-
-  if (!title) throw new Error("Job title is required");
-
-  // If assignedTo is provided, status is 'assigned', else 'pending'
-  const status = assignedTo ? "assigned" : "pending";
+  const { title, description, customerName, customerPhone, assignedTo, lat, lng } = parsed.data;
 
   const { error } = await supabase.from("jobs").insert({
     company_id: me.company_id,
@@ -39,32 +30,41 @@ export async function createJob(formData: FormData): Promise<void> {
     description: description || null,
     customer_name: customerName || null,
     customer_phone: customerPhone || null,
-    assigned_to: assignedTo,
-    lat,
-    lng,
-    radius,
-    status,
+    assigned_to: assignedTo || null,
+    lat: lat || null,
+    lng: lng || null,
+    status: assignedTo ? "assigned" : "pending",
   } as unknown as never);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/jobs");
-}
+  return { success: true };
+});
 
-export async function updateJob(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const updateJob = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
-  const title = String(formData.get("title") || "").trim();
-  const description = String(formData.get("description") || "").trim();
-  const customerName = String(formData.get("customerName") || "").trim();
-  const customerPhone = String(formData.get("customerPhone") || "").trim();
-  const assignedTo = String(formData.get("assignedTo") || "") || null;
-  const lat = Number(formData.get("lat") || 0);
-  const lng = Number(formData.get("lng") || 0);
-  const radius = Number(formData.get("radius") || 50);
-  const status = String(formData.get("status") || "pending");
+  if (!jobId) return { success: false, error: "Job ID missing" };
 
-  if (!jobId || !title) throw new Error("Job ID and title required");
+  const parsed = jobSchema.safeParse({
+    title: formData.get("title"),
+    description: formData.get("description"),
+    customerName: formData.get("customerName"),
+    customerPhone: formData.get("customerPhone"),
+    assignedTo: formData.get("assignedTo"),
+    status: formData.get("status"),
+    lat: formData.get("lat"),
+    lng: formData.get("lng"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { title, description, customerName, customerPhone, assignedTo, status, lat, lng } = parsed.data;
 
   const { error } = await supabase
     .from("jobs")
@@ -73,26 +73,29 @@ export async function updateJob(formData: FormData): Promise<void> {
       description: description || null,
       customer_name: customerName || null,
       customer_phone: customerPhone || null,
-      assigned_to: assignedTo,
-      lat,
-      lng,
-      radius,
-      status,
+      assigned_to: assignedTo || null,
+      status: status || "pending",
+      lat: lat || null,
+      lng: lng || null,
     } as unknown as never)
     .eq("id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/jobs");
-}
+  return { success: true };
+});
 
-export async function deleteJob(formData: FormData): Promise<void> {
-  const { supabase } = await getMe();
-
+export const deleteJob = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
-  if (!jobId) throw new Error("Job ID required");
+  if (!jobId) return { success: false, error: "Job ID missing" };
 
   const { error } = await supabase.from("jobs").delete().eq("id", jobId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { success: false, error: error.message };
+
   revalidatePath("/dashboard/jobs");
-}
+  return { success: true };
+});

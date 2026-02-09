@@ -1,17 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@punchless/types/database.types";
-
-// type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
 export type SalaryReport = {
   employee_id: string;
   employee_name: string;
   hourly_rate: number;
-  travel_rate: number;
   workshop_hours: number;
   travel_hours: number;
   onsite_hours: number;
   total_hours: number;
+  gross_salary: number;
+  advance_deduction: number;
+  net_salary: number;
+  /** @deprecated use net_salary instead */
   total_salary: number;
 };
 
@@ -28,7 +28,7 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
   // 1. Fetch all employees
   const { data: employeesData } = await supabase
     .from("users")
-    .select("id, full_name, hourly_rate, travel_rate")
+    .select("id, full_name, hourly_rate")
     .eq("role", "employee")
     .eq("is_active", true);
 
@@ -38,7 +38,6 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
     id: string;
     full_name: string;
     hourly_rate: number | null;
-    travel_rate: number | null;
   };
 
   const employees = employeesData as unknown as EmpRow[];
@@ -61,8 +60,29 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
 
   const sessions = sessionsData as unknown as SessionRow[];
 
-  // 3. Aggregate data per employee
-  const reportMap = new Map<string, SalaryReport>();
+  // 3. Fetch approved advances for this month
+  const { data: advancesData } = await supabase
+    .from("salary_advances")
+    .select("employee_id, amount")
+    .eq("status", "approved")
+    .eq("salary_month", monthStr);
+
+  // Build a map of employee_id → total advance amount
+  const advanceMap = new Map<string, number>();
+  if (advancesData) {
+    for (const adv of advancesData) {
+      const empId = (adv as { employee_id: string }).employee_id;
+      const amt = (adv as { amount: number }).amount ?? 0;
+      advanceMap.set(empId, (advanceMap.get(empId) ?? 0) + amt);
+    }
+  }
+
+  // 4. Aggregate data per employee
+  const reportMap = new Map<
+    string,
+    Omit<SalaryReport, "gross_salary" | "advance_deduction" | "net_salary" | "total_salary" | "total_hours">
+    & { workshop_hours: number; travel_hours: number; onsite_hours: number }
+  >();
 
   // Initialize report for all employees (even those with 0 hours)
   for (const emp of employees) {
@@ -70,12 +90,9 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
       employee_id: emp.id,
       employee_name: emp.full_name,
       hourly_rate: emp.hourly_rate ?? 0,
-      travel_rate: emp.travel_rate ?? 0,
       workshop_hours: 0,
       travel_hours: 0,
       onsite_hours: 0,
-      total_hours: 0,
-      total_salary: 0,
     });
   }
 
@@ -96,17 +113,25 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
   }
 
   // Calculate totals
-  const reports = Array.from(reportMap.values()).map((r) => {
+  const reports: SalaryReport[] = Array.from(reportMap.values()).map((r) => {
+    // Same hourly_rate applies to all states (workshop, travel, on-site)
     const workshopPay = r.workshop_hours * r.hourly_rate;
-    const onsitePay = r.onsite_hours * r.hourly_rate; // Assuming same rate for now
-    const travelPay = r.travel_hours * r.travel_rate;
+    const onsitePay = r.onsite_hours * r.hourly_rate;
+    const travelPay = r.travel_hours * r.hourly_rate;
+    const grossSalary = Math.round(workshopPay + onsitePay + travelPay);
+    const advanceDeduction = advanceMap.get(r.employee_id) ?? 0;
+    const netSalary = Math.round(grossSalary - advanceDeduction);
+    const totalHours = r.workshop_hours + r.travel_hours + r.onsite_hours;
 
     return {
       ...r,
-      total_hours: r.workshop_hours + r.travel_hours + r.onsite_hours,
-      total_salary: Math.round(workshopPay + onsitePay + travelPay),
+      total_hours: totalHours,
+      gross_salary: grossSalary,
+      advance_deduction: advanceDeduction,
+      net_salary: netSalary,
+      total_salary: netSalary, // backward compat
     };
   });
 
-  return reports.sort((a, b) => b.total_salary - a.total_salary);
+  return reports.sort((a, b) => b.net_salary - a.net_salary);
 }

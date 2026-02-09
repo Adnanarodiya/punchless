@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-02-07 (Phase 6 complete, Phase 7 in progress)
+> **Last updated:** 2026-02-08 (Phase 8 started: mobile auth + live summary + salary + advance request/history, light theme, Expo SDK 54 upgrade)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -16,9 +16,9 @@
 | 3 | Workshops & Employees | ✅ Done | Full CRUD for workshops (map picker) + employees (workshop assignment) |
 | 4 | Attendance Engine (Web) | ✅ Done | Live attendance dashboard, manual sessions, close/delete sessions, stats, date-range queries |
 | 5 | Job & Travel Tracking | ✅ Done | Job CRUD, map location, assignment, status workflow |
-| 6 | Salary Calculation | ✅ Done | Monthly salary report, hourly/travel rate calculations, breakdown by state |
-| 7 | Salary Advances | ⏳ Pending | Request, approve/reject advances |
-| 8 | Mobile App | ⏳ Pending | Login, GPS tracking, auto clock-in/out |
+| 6 | Salary Calculation | ✅ Done | Monthly salary report, single hourly rate calculations across all states, breakdown by state, advance deductions |
+| 7 | Salary Advances | ✅ Done | Full CRUD, approve/reject with notes, salary deduction integration, status filters |
+| 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history (GPS auto clock-in pending) |
 | 9 | Settings & Polish | ⏳ Pending | Company settings, profile, notifications |
 | 10 | Stripe Billing | ⏳ Pending | Subscription, usage-based billing |
 
@@ -67,6 +67,9 @@
 | `migrations/20260207112531_initial_schema.sql` | 2 | **Main schema**: companies, users, workshops, jobs, attendance_sessions, salary_advances + RLS + indexes + trigger |
 | `migrations/20260207154949_fix_signup_trigger_schema_qualified.sql` | 2 | Fix: schema-qualified `public.companies`/`public.users` in signup trigger |
 | `migrations/20260207165535_add_workshop_id_to_users.sql` | 3 | Added `workshop_id` FK to users table for employee→workshop assignment |
+| `migrations/20260208061234_fix_advance_insert_policy.sql` | 7 | Fix: owner/admin can insert advances on behalf of employees + add delete policy |
+| `migrations/20260208062002_company_settings_and_monthly_salary.sql` | 7 | Added company settings columns (work_start_time, grace_period, daily_work_hours, working_days) + monthly_salary on users |
+| `migrations/20260208070315_drop_users_travel_rate.sql` | 7 | Removed redundant `travel_rate` column from users (single `hourly_rate` now used for workshop/travel/on-site) |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -151,10 +154,12 @@
 | `dashboard/attendance/attendance-manager.tsx` | 4 | **Client component**: Live/Today tabs, stats row (active/workshop/travel/on-site counts), add manual session form, session table with close/delete actions, live duration for open sessions |
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
-| `dashboard/salary/page.tsx` | 6 | Server component: fetches salary report for selected month, renders `SalaryManager` |
-| `dashboard/salary/salary-manager.tsx` | 6 | **Client component**: Monthly report table, breakdown by hours/type, total salary stats, search & filter |
-| `dashboard/advances/page.tsx` | 2 | ⏳ Placeholder — Phase 7 |
-| `dashboard/settings/page.tsx` | 2 | ⏳ Placeholder — Phase 9 |
+| `dashboard/salary/page.tsx` | 6 | Server component: reads `?month=` search param, fetches salary report, renders `SalaryManager` |
+| `dashboard/salary/salary-manager.tsx` | 6 | **Client component**: Monthly report table, breakdown by hours/type, gross/advance deductions/net salary, month selector via URL params, search & filter |
+| `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
+| `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
+| `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
+| `dashboard/settings/settings-manager.tsx` | 7 | **Client component**: Work schedule settings — punch-in time, grace period, daily work hours, working days/month. Saves & recalculates all employee hourly rates |
 | `dashboard/billing/page.tsx` | 2 | ⏳ Placeholder — Phase 10 |
 
 #### Shared Components (`src/components/`)
@@ -171,6 +176,35 @@
 |------|-------|-------------|
 | `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes; `formatCurrency()` — INR formatting |
 
+#### Server Utilities (`src/lib/server/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `protected-action.ts` | 7 | `protectedAction()` HOF — wraps server actions with auth check, role-based permissions, try/catch error handling |
+
+#### Validation Schemas (`src/lib/validations/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `employee.schema.ts` | 7 | Zod schemas: `createEmployeeSchema`, `updateEmployeeSchema` |
+| `workshop.schema.ts` | 7 | Zod schema: `workshopSchema` (name, lat, lng, radius) |
+| `attendance.schema.ts` | 7 | Zod schema: `createAttendanceSchema` |
+| `job.schema.ts` | 7 | Zod schema: `jobSchema` |
+| `advance.schema.ts` | 7 | Zod schema: `createAdvanceSchema` |
+| `settings.schema.ts` | 7 | Zod schema: `companySettingsSchema` |
+
+#### Hooks (`src/hooks/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `use-action.ts` | 7 | `useAction()` — hook for calling server actions with auto toast notifications + loading state; `toastAction()` — wrapper for inline form actions |
+
+#### Action Result (`src/lib/utils/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `action-result.ts` | 7 | `ActionResult` type + `formAction()` wrapper for void-returning form compatibility |
+
 #### Server Actions (`src/lib/actions/`)
 
 | File | Phase | Description |
@@ -180,6 +214,8 @@
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4 | `createAttendanceSession()` — manual session with auto duration calc; `closeAttendanceSession()` — end open session (set end_time to now); `deleteAttendanceSession()` — remove session |
 | `job.actions.ts` | 5 | `createJob()` — create job with location/assignment; `updateJob()` — update details/status; `deleteJob()` |
+| `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
+| `settings.actions.ts` | 7 | `updateCompanySettings()` — update work schedule + recalculate all employee hourly rates from monthly salary |
 
 #### Server Queries (`src/lib/queries/`)
 
@@ -190,7 +226,9 @@
 | `workshop.queries.ts` | 3 | `getWorkshops()` — all workshops ordered by created_at |
 | `attendance.queries.ts` | 4 | `getTodayAttendance()` — today's sessions with employee/workshop/job joins; `getActiveSessions()` — open sessions (no end_time); `getAttendanceByDateRange()` — date-filtered; `getAttendanceSummary()` — grouped by employee+workshop+state with total minutes |
 | `job.queries.ts` | 5 | `getJobs()` — list all jobs with assigned user details; `getJobById()` — get single job details |
-| `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month |
+| `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
+| `settings.queries.ts` | 7 | `getCompanySettings()` — work_start_time, grace_period, daily_work_hours, working_days_per_month |
+| `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
 
 #### Supabase Clients (`src/lib/supabase/`)
 
@@ -208,37 +246,44 @@
 
 ---
 
-### Mobile App (`apps/mobile/`) — ⚠️ Mostly Placeholder
+### Mobile App (`apps/mobile/`) — 🚧 Core Connected (Phase 8 in progress)
 
 #### Config
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `package.json` | 1 | Expo app, deps: expo-router, expo-location, Supabase, Zustand, Lucide RN |
+| `package.json` | 8 | Expo SDK 54 app (iOS Expo Go compatible), deps: expo-router, expo-location, Supabase, Zustand, Lucide RN |
 | `tsconfig.json` | 1 | TypeScript config |
-| `app.json` | 1 | Expo config: scheme, plugins (expo-router, expo-location) |
+| `app.json` | 8 | Expo config: light UI mode, scheme, plugins (expo-router, expo-location), iOS/Android location permissions |
 | `.env` | 1 | Mobile env vars — NOT committed |
 | `.env.example` | 1 | Template for `.env` |
 
-#### Screens (All placeholder UI — not functional yet)
+#### Screens
 
 | File | Phase | Status | Description |
 |------|-------|--------|-------------|
-| `app/_layout.tsx` | 1 | 🎨 UI only | Root layout: Stack navigator, dark theme |
-| `app/(auth)/_layout.tsx` | 1 | 🎨 UI only | Auth stack layout |
-| `app/(auth)/login.tsx` | 1 | 🎨 UI only | Login screen — **buttons don't work yet** |
-| `app/(tabs)/_layout.tsx` | 1 | 🎨 UI only | Tab navigator: Home, Jobs, Salary, Profile |
-| `app/(tabs)/home.tsx` | 1 | 🎨 UI only | Home screen — static "OFF DUTY" + "0h 0m" |
-| `app/(tabs)/jobs.tsx` | 1 | 🎨 UI only | Jobs list placeholder |
-| `app/(tabs)/salary.tsx` | 1 | 🎨 UI only | Salary view placeholder |
-| `app/(tabs)/profile.tsx` | 1 | 🎨 UI only | Profile placeholder |
+| `app/_layout.tsx` | 8 | ✅ Functional | Root layout with session guard/redirect (`/(auth)` ↔ `/(tabs)`), light theme stack |
+| `app/(auth)/_layout.tsx` | 1 | ✅ Functional | Auth stack layout |
+| `app/(auth)/login.tsx` | 8 | ✅ Functional | Real Supabase email/password login, error message, loading state |
+| `app/(tabs)/_layout.tsx` | 8 | ✅ Functional | Light theme tab navigator with Lucide icons |
+| `app/(tabs)/home.tsx` | 8 | ✅ Functional | Live current state + today's attendance summary from DB |
+| `app/(tabs)/jobs.tsx` | 8 | 🟡 Placeholder | Light UI placeholder (job sync pending) |
+| `app/(tabs)/salary.tsx` | 8 | ✅ Functional | Monthly salary breakdown + advance request form + advance history |
+| `app/(tabs)/profile.tsx` | 8 | ✅ Functional | Logged-in employee profile + logout |
 
-#### Libraries (Ready but not connected to screens)
+#### Libraries, Services & Stores
 
 | File | Phase | Description |
 |------|-------|-------------|
 | `lib/supabase.ts` | 3 | Supabase client configured for React Native (AsyncStorage, no URL detection) |
-| `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers ready for Phase 8 |
+| `lib/services/auth.service.ts` | 8 | `signInWithEmail()`, `signOutUser()`, `getSessionUserProfile()` |
+| `lib/services/attendance.service.ts` | 8 | `getTodayAttendanceSummary()` — current state + workshop/travel/on-site minutes |
+| `lib/services/salary.service.ts` | 8 | `getMySalaryReport()` — gross, advances, net for selected month |
+| `lib/services/advance.service.ts` | 8 | `requestAdvance()` + `getMyAdvances()` |
+| `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers for next step |
+| `lib/stores/auth.store.ts` | 8 | Zustand auth/session store with initialize, login, logout, refresh |
+| `lib/stores/attendance.store.ts` | 8 | Zustand attendance summary store for home screen |
+| `lib/utils/formatting.ts` | 8 | Mobile helpers: `formatMinutes()`, `formatCurrency()`, `getCurrentMonthString()` |
 
 ---
 
@@ -266,7 +311,11 @@ Workshop Create: workshop-manager.tsx → workshop.actions.ts → server.ts → 
 Map Picker:      workshop-manager.tsx → map-picker.tsx (Leaflet) → lat/lng → workshop.actions.ts
 Workshop Assign: employee-manager.tsx → dropdown (if >1) or auto-assign (if 1) → employee.actions.ts
 Job Create:      job-manager.tsx → map-picker.tsx → job.actions.ts → jobs table
-Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum → display
+Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum + advance deductions → display
+Advance Flow:    advance-manager.tsx → advance.actions.ts → salary_advances table → approve/reject → deducted in salary.queries.ts
+Mobile Login:    app/(auth)/login.tsx → auth.store.ts → auth.service.ts → supabase.auth.signInWithPassword
+Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_sessions (today summary + live state)
+Mobile Salary:   app/(tabs)/salary.tsx → salary.service.ts + advance.service.ts → salary/advance data + request submit
 ```
 
 ---

@@ -51,7 +51,6 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   phone TEXT,
   hourly_rate DECIMAL(10,2) DEFAULT 0,
-  travel_rate DECIMAL(10,2) DEFAULT 0,
   daily_shift_hours DECIMAL(4,2) DEFAULT 8,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -60,8 +59,7 @@ CREATE TABLE users (
 ```
 
 **Notes:**
-- `hourly_rate` — rate per hour for workshop + job work
-- `travel_rate` — rate per hour for travel time
+- `hourly_rate` — single rate per hour for workshop + travel + on-site job work
 - `daily_shift_hours` — standard shift (e.g., 8 hrs). Beyond = overtime
 - `is_active` — only active employees count for billing
 

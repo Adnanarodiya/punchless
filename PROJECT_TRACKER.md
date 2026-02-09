@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-02-08 (Phase 8 started: mobile auth + live summary + salary + advance request/history, light theme, Expo SDK 54 upgrade)
+> **Last updated:** 2026-02-09 (Phase 8: Jobs tab with START/ARRIVED/FINISH flow + live timers + job status updates, hybrid GPS + manual approach)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -18,7 +18,7 @@
 | 5 | Job & Travel Tracking | ✅ Done | Job CRUD, map location, assignment, status workflow |
 | 6 | Salary Calculation | ✅ Done | Monthly salary report, single hourly rate calculations across all states, breakdown by state, advance deductions |
 | 7 | Salary Advances | ✅ Done | Full CRUD, approve/reject with notes, salary deduction integration, status filters |
-| 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history (GPS auto clock-in pending) |
+| 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history, GPS auto clock-in + geofence engine, jobs tab (functional), manual travel/job actions |
 | 9 | Settings & Polish | ⏳ Pending | Company settings, profile, notifications |
 | 10 | Stripe Billing | ⏳ Pending | Subscription, usage-based billing |
 
@@ -266,8 +266,8 @@
 | `app/(auth)/_layout.tsx` | 1 | ✅ Functional | Auth stack layout |
 | `app/(auth)/login.tsx` | 8 | ✅ Functional | Real Supabase email/password login, error message, loading state |
 | `app/(tabs)/_layout.tsx` | 8 | ✅ Functional | Light theme tab navigator with Lucide icons |
-| `app/(tabs)/home.tsx` | 8 | ✅ Functional | Live current state + today's attendance summary from DB |
-| `app/(tabs)/jobs.tsx` | 8 | 🟡 Placeholder | Light UI placeholder (job sync pending) |
+| `app/(tabs)/home.tsx` | 8 | ✅ Functional | Live current state + today's summary + GPS status banner + manual travel/arrive/finish job actions + end shift button + auto-refresh every 30s |
+| `app/(tabs)/jobs.tsx` | 8 | ✅ Functional | Active/All tabs, job cards with status badge, Navigate + Call + START/ARRIVED/FINISH buttons, live HH:MM:SS timers for travel & on-site, time summary, auto-refresh every 15s, job status auto-updates (in_progress/completed) |
 | `app/(tabs)/salary.tsx` | 8 | ✅ Functional | Monthly salary breakdown + advance request form + advance history |
 | `app/(tabs)/profile.tsx` | 8 | ✅ Functional | Logged-in employee profile + logout |
 
@@ -280,9 +280,14 @@
 | `lib/services/attendance.service.ts` | 8 | `getTodayAttendanceSummary()` — current state + workshop/travel/on-site minutes |
 | `lib/services/salary.service.ts` | 8 | `getMySalaryReport()` — gross, advances, net for selected month |
 | `lib/services/advance.service.ts` | 8 | `requestAdvance()` + `getMyAdvances()` |
-| `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers for next step |
+| `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers |
+| `lib/services/job.service.ts` | 8 | `getMyJobs()`, `getActiveJobs()`, `getJobTimeSummary()` — travel/on-site/total time per job with active session detection, `updateJobStatus()` — mark in_progress/completed |
+| `lib/services/location.service.ts` | 8 | GPS permission helpers, `startBackgroundTracking()`, `stopBackgroundTracking()`, `getCurrentLocation()` — expo-location wrapper |
+| `lib/services/geofence.service.ts` | 8 | **Core attendance engine**: `processLocation()` — auto workshop enter/exit with grace period; `startTravel()` (+ marks job in_progress), `arriveAtJob()`, `completeJob()` (+ marks job completed), `finishJob()`, `endShift()` — manual hybrid transitions; session open/close helpers |
+| `lib/tasks/background-location.ts` | 8 | TaskManager background task definition — processes GPS updates in background, calls geofence engine |
 | `lib/stores/auth.store.ts` | 8 | Zustand auth/session store with initialize, login, logout, refresh |
 | `lib/stores/attendance.store.ts` | 8 | Zustand attendance summary store for home screen |
+| `lib/stores/location.store.ts` | 8 | Zustand GPS tracking store — permission state, tracking on/off, last location |
 | `lib/utils/formatting.ts` | 8 | Mobile helpers: `formatMinutes()`, `formatCurrency()`, `getCurrentMonthString()` |
 
 ---
@@ -314,7 +319,9 @@ Job Create:      job-manager.tsx → map-picker.tsx → job.actions.ts → jobs 
 Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum + advance deductions → display
 Advance Flow:    advance-manager.tsx → advance.actions.ts → salary_advances table → approve/reject → deducted in salary.queries.ts
 Mobile Login:    app/(auth)/login.tsx → auth.store.ts → auth.service.ts → supabase.auth.signInWithPassword
-Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_sessions (today summary + live state)
+Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_sessions (today summary + live state) + geofence.service.ts (manual travel/job/end-shift actions) + location.store.ts (GPS status)
+Mobile Jobs:     app/(tabs)/jobs.tsx → job.service.ts → jobs table (assigned jobs with status/actions)
+Mobile GPS:      _layout.tsx → background-location.ts (TaskManager) → geofence.service.ts → processLocation() → auto workshop enter/exit + session open/close
 Mobile Salary:   app/(tabs)/salary.tsx → salary.service.ts + advance.service.ts → salary/advance data + request submit
 ```
 

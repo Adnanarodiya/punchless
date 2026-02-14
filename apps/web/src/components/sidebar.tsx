@@ -12,6 +12,8 @@ import {
   Wallet,
   Settings,
   CreditCard,
+  History,
+  FileEdit,
 } from "lucide-react";
 import { cn } from "@punchless/ui/lib/utils";
 
@@ -50,6 +52,18 @@ const navItems = [
     label: "Attendance",
     href: "/dashboard/attendance",
     icon: Clock,
+    roles: ["owner", "admin"],
+  },
+  {
+    label: "History",
+    href: "/dashboard/history",
+    icon: History,
+    roles: ["owner", "admin"],
+  },
+  {
+    label: "Requests",
+    href: "/dashboard/requests",
+    icon: FileEdit,
     roles: ["owner", "admin"],
   },
   {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import {
   arriveAtJob,
   completeJob,
   endShift,
+  startBreak,
+  endBreak,
 } from "@/lib/services/geofence.service";
 import { getActiveJobs, type MyJob } from "@/lib/services/job.service";
 import { formatMinutes } from "@/lib/utils/formatting";
@@ -27,6 +29,7 @@ const STATE_LABEL: Record<string, string> = {
   workshop: "AT WORKSHOP",
   travel: "TRAVELING",
   on_site_job: "ON SITE",
+  break: "ON BREAK",
 };
 
 const STATE_COLOR: Record<string, string> = {
@@ -34,7 +37,24 @@ const STATE_COLOR: Record<string, string> = {
   workshop: "#16a34a",
   travel: "#2563eb",
   on_site_job: "#ea580c",
+  break: "#f59e0b",
 };
+
+const STATE_BG: Record<string, string> = {
+  off_duty: "#f1f5f9",
+  workshop: "#f0fdf4",
+  travel: "#eff6ff",
+  on_site_job: "#fff7ed",
+  break: "#fffbeb",
+};
+
+function formatLiveTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
@@ -44,6 +64,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeJobs, setActiveJobs] = useState<MyJob[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Live counter state
+  const [workSeconds, setWorkSeconds] = useState(0);
+  const [breakSeconds, setBreakSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -65,9 +90,51 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [load]);
 
+  // Live counter — ticks every second
+  useEffect(() => {
+    // Calculate base seconds from completed sessions
+    const baseWorkSecs =
+      (attendance.workshopMinutes + attendance.travelMinutes + attendance.onsiteMinutes) * 60;
+    const baseBreakSecs = attendance.breakMinutes * 60;
+
+    // Calculate live seconds from current open session
+    const sessionStart = attendance.currentSessionStart;
+    const state = attendance.currentState;
+
+    function tick() {
+      const now = Date.now();
+      const liveSecs = sessionStart
+        ? Math.max(0, Math.round((now - new Date(sessionStart).getTime()) / 1000))
+        : 0;
+
+      if (state === "break") {
+        setWorkSeconds(baseWorkSecs);
+        setBreakSeconds(baseBreakSecs + liveSecs);
+      } else if (state === "workshop" || state === "travel" || state === "on_site_job") {
+        setWorkSeconds(baseWorkSecs + liveSecs);
+        setBreakSeconds(baseBreakSecs);
+      } else {
+        setWorkSeconds(baseWorkSecs);
+        setBreakSeconds(baseBreakSecs);
+      }
+    }
+
+    tick(); // immediate
+    timerRef.current = setInterval(tick, 1000);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [
+    attendance.workshopMinutes,
+    attendance.travelMinutes,
+    attendance.onsiteMinutes,
+    attendance.breakMinutes,
+    attendance.currentState,
+    attendance.currentSessionStart,
+  ]);
+
   async function onRefresh() {
     setRefreshing(true);
-    // Also trigger a manual GPS check
     if (user && tracking) {
       const loc = await refreshLocation();
       if (loc) {
@@ -105,6 +172,24 @@ export default function HomeScreen() {
     setActionLoading(false);
   }
 
+  async function handleBreakIn() {
+    if (!user) return;
+    setActionLoading(true);
+    const ok = await startBreak(user.id, user.company_id);
+    if (ok) await load();
+    else Alert.alert("Error", "You can only take a break while at workshop");
+    setActionLoading(false);
+  }
+
+  async function handleBreakOut() {
+    if (!user) return;
+    setActionLoading(true);
+    const ok = await endBreak(user.id, user.company_id);
+    if (ok) await load();
+    else Alert.alert("Error", "You are not on a break");
+    setActionLoading(false);
+  }
+
   async function handleEndShift() {
     if (!user) return;
     Alert.alert("End Shift", "Are you sure you want to end your shift?", [
@@ -127,6 +212,11 @@ export default function HomeScreen() {
   }
 
   const state = attendance.currentState;
+  const stateColor = STATE_COLOR[state];
+  const stateBg = STATE_BG[state];
+  const isWorking = state === "workshop" || state === "travel" || state === "on_site_job";
+  const isOnBreak = state === "break";
+  const isActive = isWorking || isOnBreak;
 
   return (
     <ScrollView
@@ -134,7 +224,7 @@ export default function HomeScreen() {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
-      contentContainerStyle={{ padding: 16, gap: 16 }}
+      contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
     >
       {/* GPS Status Banner */}
       {!available ? (
@@ -160,31 +250,77 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      {/* Status Card */}
-      <View style={styles.statusCard}>
-        <Text style={styles.statusLabel}>Current Status</Text>
-        <Text style={[styles.statusValue, { color: STATE_COLOR[state] }]}>
-          {STATE_LABEL[state]}
+      {/* ═══ LIVE COUNTER CARD ═══ */}
+      <View style={[styles.counterCard, { backgroundColor: stateBg }]}>
+        {/* Status Badge */}
+        <View style={[styles.statusBadge, { backgroundColor: stateColor }]}>
+          <Text style={styles.statusBadgeText}>{STATE_LABEL[state]}</Text>
+        </View>
+
+        {/* Work Counter */}
+        <Text style={styles.counterLabel}>Working Hours</Text>
+        <Text style={[styles.counterTime, { color: isWorking ? stateColor : "#0f172a" }]}>
+          {formatLiveTime(workSeconds)}
         </Text>
+
+        {/* Break Counter (show if any break taken today or currently on break) */}
+        {(breakSeconds > 0 || isOnBreak) && (
+          <View style={styles.breakCounterRow}>
+            <Text style={styles.breakLabel}>Break</Text>
+            <Text style={[styles.breakTime, isOnBreak && { color: "#f59e0b" }]}>
+              {formatLiveTime(breakSeconds)}
+            </Text>
+          </View>
+        )}
+
         {tracking && (
           <Text style={styles.gpsIndicator}>📍 GPS Active</Text>
         )}
       </View>
 
-      {/* Today's Summary */}
+      {/* ═══ BREAK BUTTON ═══ */}
+      {state === "workshop" && (
+        <TouchableOpacity
+          style={styles.breakInBtn}
+          onPress={handleBreakIn}
+          disabled={actionLoading}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.breakInIcon}>☕</Text>
+          <Text style={styles.breakInText}>Take Break</Text>
+          <Text style={styles.breakInHint}>Working hours will pause</Text>
+        </TouchableOpacity>
+      )}
+
+      {state === "break" && (
+        <TouchableOpacity
+          style={styles.breakOutBtn}
+          onPress={handleBreakOut}
+          disabled={actionLoading}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.breakOutIcon}>🔔</Text>
+          <Text style={styles.breakOutText}>End Break</Text>
+          <Text style={styles.breakOutHint}>Resume working hours</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ═══ TODAY'S SUMMARY ═══ */}
       <View style={styles.summaryCard}>
         <Text style={styles.cardTitle}>Today&apos;s Summary</Text>
-        <Row label="Workshop" value={formatMinutes(attendance.workshopMinutes)} />
-        <Row label="Travel" value={formatMinutes(attendance.travelMinutes)} />
-        <Row label="On-Site" value={formatMinutes(attendance.onsiteMinutes)} />
+        <Row label="Workshop" value={formatMinutes(attendance.workshopMinutes)} color="#16a34a" />
+        <Row label="Travel" value={formatMinutes(attendance.travelMinutes)} color="#2563eb" />
+        <Row label="On-Site" value={formatMinutes(attendance.onsiteMinutes)} color="#ea580c" />
+        <Row label="Break" value={formatMinutes(attendance.breakMinutes)} color="#f59e0b" />
         <Row
-          label="Total"
+          label="Total Working"
           value={formatMinutes(attendance.totalMinutes)}
           isLast
+          bold
         />
       </View>
 
-      {/* Quick Actions based on current state */}
+      {/* ═══ JOB ACTIONS ═══ */}
       {state === "workshop" && activeJobs.length > 0 && (
         <View style={styles.actionCard}>
           <Text style={styles.cardTitle}>Start Travel To</Text>
@@ -243,7 +379,7 @@ export default function HomeScreen() {
       )}
 
       {/* End Shift (visible when not off_duty) */}
-      {state !== "off_duty" && (
+      {isActive && (
         <TouchableOpacity
           style={styles.endShiftBtn}
           onPress={handleEndShift}
@@ -260,15 +396,19 @@ function Row({
   label,
   value,
   isLast,
+  bold,
+  color,
 }: {
   label: string;
   value: string;
   isLast?: boolean;
+  bold?: boolean;
+  color?: string;
 }) {
   return (
     <View style={[styles.summaryRow, isLast && { borderBottomWidth: 0 }]}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={[styles.summaryLabel, color ? { color } : null]}>{label}</Text>
+      <Text style={[styles.summaryValue, bold && { fontWeight: "800", fontSize: 16 }]}>{value}</Text>
     </View>
   );
 }
@@ -279,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
 
-  // Info banner (Expo Go)
+  // Info / Warning banners
   infoBanner: {
     backgroundColor: "#dbeafe",
     borderRadius: 12,
@@ -294,8 +434,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
-
-  // Warning banner
   warningBanner: {
     backgroundColor: "#fef3c7",
     borderRadius: 12,
@@ -310,31 +448,108 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // Status card
-  statusCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
+  // ═══ Live Counter Card ═══
+  counterCard: {
+    borderRadius: 20,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#e2e8f0",
   },
-  statusLabel: {
-    color: "#64748b",
-    fontSize: 14,
-    marginBottom: 8,
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
   },
-  statusValue: {
-    fontSize: 24,
-    fontWeight: "bold",
+  statusBadgeText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  counterLabel: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  counterTime: {
+    fontSize: 48,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
+    letterSpacing: 2,
+  },
+  breakCounterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  breakLabel: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  breakTime: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#64748b",
+    fontVariant: ["tabular-nums"],
   },
   gpsIndicator: {
-    marginTop: 8,
+    marginTop: 12,
     fontSize: 12,
     color: "#16a34a",
   },
 
-  // Summary card
+  // ═══ Break Buttons ═══
+  breakInBtn: {
+    backgroundColor: "#fffbeb",
+    borderWidth: 2,
+    borderColor: "#f59e0b",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    gap: 4,
+  },
+  breakInIcon: {
+    fontSize: 32,
+  },
+  breakInText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#b45309",
+  },
+  breakInHint: {
+    fontSize: 12,
+    color: "#92400e",
+  },
+  breakOutBtn: {
+    backgroundColor: "#16a34a",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    gap: 4,
+  },
+  breakOutIcon: {
+    fontSize: 32,
+  },
+  breakOutText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#ffffff",
+  },
+  breakOutHint: {
+    fontSize: 12,
+    color: "#dcfce7",
+  },
+
+  // ═══ Summary Card ═══
   summaryCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -365,7 +580,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Action card
+  // ═══ Action Cards ═══
   actionCard: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
@@ -400,8 +615,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 13,
   },
-
-  // Action button
   actionBtn: {
     borderRadius: 12,
     paddingVertical: 14,
@@ -413,7 +626,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // End shift
+  // ═══ End Shift ═══
   endShiftBtn: {
     backgroundColor: "#fff",
     borderRadius: 12,

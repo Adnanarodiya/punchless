@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-02-09 (Phase 8: Jobs tab with START/ARRIVED/FINISH flow + live timers + job status updates, hybrid GPS + manual approach)
+> **Last updated:** 2026-02-14 (Phase 8+: Splash/auth flow fix, break system with live counters, correction requests, history pages, workshop location change detection, background refresh, location permission prompt)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -19,6 +19,7 @@
 | 6 | Salary Calculation | ✅ Done | Monthly salary report, single hourly rate calculations across all states, breakdown by state, advance deductions |
 | 7 | Salary Advances | ✅ Done | Full CRUD, approve/reject with notes, salary deduction integration, status filters |
 | 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history, GPS auto clock-in + geofence engine, jobs tab (functional), manual travel/job actions |
+| 8.5 | Break System + History + Corrections | ✅ Done | Splash/auth flow, live work/break counters, break in/out, correction requests (mobile + web), history pages with filters, workshop location change detection, background refresh, location permission prompt |
 | 9 | Settings & Polish | ⏳ Pending | Company settings, profile, notifications |
 | 10 | Stripe Billing | ⏳ Pending | Subscription, usage-based billing |
 
@@ -70,6 +71,7 @@
 | `migrations/20260208061234_fix_advance_insert_policy.sql` | 7 | Fix: owner/admin can insert advances on behalf of employees + add delete policy |
 | `migrations/20260208062002_company_settings_and_monthly_salary.sql` | 7 | Added company settings columns (work_start_time, grace_period, daily_work_hours, working_days) + monthly_salary on users |
 | `migrations/20260208070315_drop_users_travel_rate.sql` | 7 | Removed redundant `travel_rate` column from users (single `hourly_rate` now used for workshop/travel/on-site) |
+| `migrations/20260214060000_break_and_correction_requests.sql` | 8.5 | Added `break` state to attendance_sessions, new `correction_requests` table with RLS policies |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -160,6 +162,10 @@
 | `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
 | `dashboard/settings/settings-manager.tsx` | 7 | **Client component**: Work schedule settings — punch-in time, grace period, daily work hours, working days/month. Saves & recalculates all employee hourly rates |
+| `dashboard/history/page.tsx` | 8.5 | Server component: fetches history sessions + employee summaries, renders `HistoryManager` |
+| `dashboard/history/history-manager.tsx` | 8.5 | **Client component**: Employee Summary / All Sessions tabs, period filter (Today/7 Days/Month), real-time live counters for active employees, drill into individual employee, last activity shows current state |
+| `dashboard/requests/page.tsx` | 8.5 | Server component: fetches correction requests, renders `RequestsManager` |
+| `dashboard/requests/requests-manager.tsx` | 8.5 | **Client component**: Pending/All/Approved/Rejected filter, approve/reject with notes, auto-updates session on approval |
 | `dashboard/billing/page.tsx` | 2 | ⏳ Placeholder — Phase 10 |
 
 #### Shared Components (`src/components/`)
@@ -174,7 +180,7 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes; `formatCurrency()` — INR formatting |
+| `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes (includes break); `formatCurrency()` — INR formatting |
 
 #### Server Utilities (`src/lib/server/`)
 
@@ -216,6 +222,7 @@
 | `job.actions.ts` | 5 | `createJob()` — create job with location/assignment; `updateJob()` — update details/status; `deleteJob()` |
 | `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
 | `settings.actions.ts` | 7 | `updateCompanySettings()` — update work schedule + recalculate all employee hourly rates from monthly salary |
+| `correction.actions.ts` | 8.5 | `approveCorrectionRequest()` — approve + auto-update session times; `rejectCorrectionRequest()` — reject with notes |
 
 #### Server Queries (`src/lib/queries/`)
 
@@ -229,6 +236,8 @@
 | `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
 | `settings.queries.ts` | 7 | `getCompanySettings()` — work_start_time, grace_period, daily_work_hours, working_days_per_month |
 | `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
+| `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
+| `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
 
 #### Supabase Clients (`src/lib/supabase/`)
 
@@ -237,6 +246,12 @@
 | `client.ts` | 2 | Browser Supabase client (`createBrowserClient`) |
 | `server.ts` | 2 | SSR Supabase client (reads cookies for auth session) |
 | `admin.ts` | 2 | Service-role client (bypasses RLS, used for admin operations) |
+
+#### API Routes (`src/app/api/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `api/history/route.ts` | 8.5 | GET endpoint for client-side history fetching with date range + optional employee filter |
 
 #### Middleware
 
@@ -262,11 +277,15 @@
 
 | File | Phase | Status | Description |
 |------|-------|--------|-------------|
-| `app/_layout.tsx` | 8 | ✅ Functional | Root layout with session guard/redirect (`/(auth)` ↔ `/(tabs)`), light theme stack |
+| `app/index.tsx` | 8.5 | ✅ Functional | Root index — redirects to login or home based on auth state (fixes "unmatched route" error) |
+| `app/_layout.tsx` | 8.5 | ✅ Functional | Root layout: 2-second branded splash screen, auth session guard, location permission modal prompt, GPS tracking init |
 | `app/(auth)/_layout.tsx` | 1 | ✅ Functional | Auth stack layout |
 | `app/(auth)/login.tsx` | 8 | ✅ Functional | Real Supabase email/password login, error message, loading state |
-| `app/(tabs)/_layout.tsx` | 8 | ✅ Functional | Light theme tab navigator with Lucide icons |
-| `app/(tabs)/home.tsx` | 8 | ✅ Functional | Live current state + today's summary + GPS status banner + manual travel/arrive/finish job actions + end shift button + auto-refresh every 30s |
+| `app/(tabs)/_layout.tsx` | 8.5 | ✅ Functional | Tab navigator: Home, Attendance, History, Salary, Requests, Profile — Lucide icons |
+| `app/(tabs)/home.tsx` | 8.5 | ✅ Functional | **Live HH:MM:SS work counter** (ticks every second), break counter, status badge, ☕ Break In / 🔔 Break Out buttons, today's summary (workshop/travel/on-site/break), job actions, end shift |
+| `app/(tabs)/attendance.tsx` | 8 | ✅ Functional | Monthly calendar view with attendance data |
+| `app/(tabs)/history.tsx` | 8.5 | ✅ Functional | Employee's own clock in/out history, period filter (Today/7 Days/Month), day-wise grouping with expandable sessions |
+| `app/(tabs)/requests.tsx` | 8.5 | ✅ Functional | Correction request system — submit break/session corrections, select session to correct, enter corrected times + reason, view past requests with status |
 | `app/(tabs)/jobs.tsx` | 8 | ✅ Functional | Active/All tabs, job cards with status badge, Navigate + Call + START/ARRIVED/FINISH buttons, live HH:MM:SS timers for travel & on-site, time summary, auto-refresh every 15s, job status auto-updates (in_progress/completed) |
 | `app/(tabs)/salary.tsx` | 8 | ✅ Functional | Monthly salary breakdown + advance request form + advance history |
 | `app/(tabs)/profile.tsx` | 8 | ✅ Functional | Logged-in employee profile + logout |
@@ -277,16 +296,19 @@
 |------|-------|-------------|
 | `lib/supabase.ts` | 3 | Supabase client configured for React Native (AsyncStorage, no URL detection) |
 | `lib/services/auth.service.ts` | 8 | `signInWithEmail()`, `signOutUser()`, `getSessionUserProfile()` |
-| `lib/services/attendance.service.ts` | 8 | `getTodayAttendanceSummary()` — current state + workshop/travel/on-site minutes |
+| `lib/services/attendance.service.ts` | 8.5 | `getTodayAttendanceSummary()` — current state + workshop/travel/on-site/break minutes + currentSessionStart for live counter |
 | `lib/services/salary.service.ts` | 8 | `getMySalaryReport()` — gross, advances, net for selected month |
 | `lib/services/advance.service.ts` | 8 | `requestAdvance()` + `getMyAdvances()` |
 | `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers |
 | `lib/services/job.service.ts` | 8 | `getMyJobs()`, `getActiveJobs()`, `getJobTimeSummary()` — travel/on-site/total time per job with active session detection, `updateJobStatus()` — mark in_progress/completed |
 | `lib/services/location.service.ts` | 8 | GPS permission helpers, `startBackgroundTracking()`, `stopBackgroundTracking()`, `getCurrentLocation()` — expo-location wrapper |
-| `lib/services/geofence.service.ts` | 8 | **Core attendance engine**: `processLocation()` — auto workshop enter/exit with grace period; `startTravel()` (+ marks job in_progress), `arriveAtJob()`, `completeJob()` (+ marks job completed), `finishJob()`, `endShift()` — manual hybrid transitions; session open/close helpers |
-| `lib/tasks/background-location.ts` | 8 | TaskManager background task definition — processes GPS updates in background, calls geofence engine |
+| `lib/services/geofence.service.ts` | 8.5 | **Core attendance engine**: `processLocation()` — auto workshop enter/exit with grace period + workshop location change detection; `startTravel()`, `arriveAtJob()`, `completeJob()`, `finishJob()`, `endShift()`, `startBreak()`, `endBreak()` — manual hybrid transitions; `forceRefreshWorkshops()` — cache invalidation; 2-min workshop cache TTL |
+| `lib/services/history.service.ts` | 8.5 | `getAttendanceHistory()` — fetch sessions for date range; `groupSessionsByDate()` — group into day summaries |
+| `lib/services/correction.service.ts` | 8.5 | `getMyCorrectionRequests()`, `submitBreakCorrection()`, `submitSessionCorrection()` — correction request CRUD |
+| `lib/services/calendar.service.ts` | 8 | Monthly attendance calendar data |
+| `lib/tasks/background-location.ts` | 8.5 | TaskManager background task — processes GPS updates + refreshes attendance summary in background (lightweight, battery efficient) |
 | `lib/stores/auth.store.ts` | 8 | Zustand auth/session store with initialize, login, logout, refresh |
-| `lib/stores/attendance.store.ts` | 8 | Zustand attendance summary store for home screen |
+| `lib/stores/attendance.store.ts` | 8.5 | Zustand attendance summary store — includes breakMinutes + currentSessionStart for live counter |
 | `lib/stores/location.store.ts` | 8 | Zustand GPS tracking store — permission state, tracking on/off, last location |
 | `lib/utils/formatting.ts` | 8 | Mobile helpers: `formatMinutes()`, `formatCurrency()`, `getCurrentMonthString()` |
 
@@ -300,8 +322,9 @@
 | `users` | 2 | All users (owner/admin/employee), linked to `auth.users`, has `company_id` + `workshop_id` (Phase 3) |
 | `workshops` | 2 | Workshop locations (name, address, lat, lng, radius, is_active) |
 | `jobs` | 2 | Job records (title, customer info, location, status, assigned employee) |
-| `attendance_sessions` | 2 | Time tracking records (employee, state, workshop, job, start/end time, duration) |
+| `attendance_sessions` | 2 | Time tracking records (employee, state: workshop/travel/on_site_job/off_duty/**break**, workshop, job, start/end time, duration) |
 | `salary_advances` | 2 | Advance requests (amount, reason, status, approved_by) |
+| `correction_requests` | 8.5 | Employee correction requests (session_id, original/requested times, reason, status: pending/approved/rejected, admin review) |
 
 ---
 
@@ -323,6 +346,11 @@ Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_se
 Mobile Jobs:     app/(tabs)/jobs.tsx → job.service.ts → jobs table (assigned jobs with status/actions)
 Mobile GPS:      _layout.tsx → background-location.ts (TaskManager) → geofence.service.ts → processLocation() → auto workshop enter/exit + session open/close
 Mobile Salary:   app/(tabs)/salary.tsx → salary.service.ts + advance.service.ts → salary/advance data + request submit
+Mobile Break:    app/(tabs)/home.tsx → geofence.service.ts → startBreak()/endBreak() → close workshop session + open break session → live counter pauses/resumes
+Mobile History:  app/(tabs)/history.tsx → history.service.ts → attendance_sessions (grouped by date with summaries)
+Mobile Requests: app/(tabs)/requests.tsx → correction.service.ts → correction_requests table → admin reviews on web
+Web History:     dashboard/history → history.queries.ts → employee summaries with live duration + all sessions
+Web Requests:    dashboard/requests → correction.queries.ts + correction.actions.ts → approve (auto-updates session) / reject
 ```
 
 ---

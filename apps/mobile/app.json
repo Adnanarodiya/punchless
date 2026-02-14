@@ -20,7 +20,9 @@
         "NSLocationWhenInUseUsageDescription": "Punchless needs your location to automatically mark attendance when you arrive at the workshop.",
         "NSLocationAlwaysUsageDescription": "Punchless needs background location access to track attendance and travel time even when the app is in the background.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Punchless needs location access to automatically track your attendance, travel, and on-site work time.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
@@ -34,7 +36,12 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_LOCATION"
+        "FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "plugins": [
@@ -48,6 +55,12 @@
         }
       ],
       "expo-task-manager"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3ab84fc4-916e-4454-8dcb-09265e4046fc"
+      }
+    }
   }
 }

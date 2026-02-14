@@ -2,12 +2,13 @@ import { supabase } from "@/lib/supabase";
 import {
   getActiveWorkshops,
   findNearestWorkshop,
+  getDistanceMeters,
   type WorkshopLocation,
 } from "@/lib/services/workshop.service";
 import { updateJobStatus } from "@/lib/services/job.service";
 import type { LocationCoords } from "@/lib/services/location.service";
 
-export type EngineState = "off_duty" | "workshop" | "travel" | "on_site_job";
+export type EngineState = "off_duty" | "workshop" | "travel" | "on_site_job" | "break";
 
 type ActiveSession = {
   id: string;
@@ -23,12 +24,13 @@ const EXIT_GRACE_COUNT = 10;
 // Module-level state (persists across background task invocations)
 let cachedWorkshops: WorkshopLocation[] = [];
 let lastWorkshopFetch = 0;
-const WORKSHOP_CACHE_TTL = 5 * 60 * 1000; // 5 min
+const WORKSHOP_CACHE_TTL = 2 * 60 * 1000; // 2 min — shorter to detect workshop location changes quickly
 
 let exitGraceCounter = 0;
 
 /**
- * Refresh cached workshops if stale
+ * Refresh cached workshops if stale.
+ * Shorter TTL ensures workshop location changes are picked up quickly.
  */
 async function ensureWorkshops(): Promise<WorkshopLocation[]> {
   const now = Date.now();
@@ -36,6 +38,15 @@ async function ensureWorkshops(): Promise<WorkshopLocation[]> {
     cachedWorkshops = await getActiveWorkshops();
     lastWorkshopFetch = now;
   }
+  return cachedWorkshops;
+}
+
+/**
+ * Force refresh workshops cache — call when workshop location might have changed.
+ */
+export async function forceRefreshWorkshops(): Promise<WorkshopLocation[]> {
+  cachedWorkshops = await getActiveWorkshops();
+  lastWorkshopFetch = Date.now();
   return cachedWorkshops;
 }
 
@@ -162,8 +173,43 @@ export async function processLocation(
 
   // ─── WORKSHOP ─────────────────────────────────
   if (currentState === "workshop") {
+    // Check if the workshop we're assigned to still exists at same location
+    // This handles the case where admin updates workshop location
+    if (openSess?.workshop_id) {
+      const assignedWorkshop = workshops.find((w) => w.id === openSess.workshop_id);
+      if (!assignedWorkshop) {
+        // Workshop was deleted or deactivated → force off_duty
+        exitGraceCounter = 0;
+        await closeSession(openSess.id);
+        // Force re-fetch workshops to get latest data
+        await forceRefreshWorkshops();
+        return { newState: "off_duty", transitioned: true };
+      }
+
+      // Check if user is still within THIS workshop's geofence
+      // (handles case where workshop location was changed)
+      const distToAssigned = getDistanceMeters(
+        coords.latitude,
+        coords.longitude,
+        assignedWorkshop.lat,
+        assignedWorkshop.lng
+      );
+      if (distToAssigned > assignedWorkshop.radius) {
+        // User is outside their assigned workshop — workshop may have moved
+        exitGraceCounter++;
+        if (exitGraceCounter >= EXIT_GRACE_COUNT) {
+          // Grace expired → workshop location changed, user no longer there → off_duty
+          exitGraceCounter = 0;
+          await closeSession(openSess.id);
+          return { newState: "off_duty", transitioned: true };
+        }
+        // Still in grace period
+        return { newState: "workshop", transitioned: false };
+      }
+    }
+
     if (nearWorkshop) {
-      // Still inside workshop — reset grace counter
+      // Still inside a workshop — reset grace counter
       exitGraceCounter = 0;
       return { newState: "workshop", transitioned: false };
     }
@@ -197,6 +243,13 @@ export async function processLocation(
     }
     // Still traveling — no auto transition
     return { newState: "travel", transitioned: false };
+  }
+
+  // ─── BREAK ─────────────────────────────────────
+  if (currentState === "break") {
+    // No automatic GPS transitions from break
+    // Employee must manually tap "Break Out" button
+    return { newState: "break", transitioned: false };
   }
 
   // ─── ON_SITE_JOB ─────────────────────────────
@@ -315,6 +368,58 @@ export async function completeJob(
     companyId,
     state: "travel",
     jobId,
+  });
+  return !!id;
+}
+
+/**
+ * Manual transition: WORKSHOP → BREAK
+ * Called when employee taps "Break In" button
+ */
+export async function startBreak(
+  employeeId: string,
+  companyId: string
+): Promise<boolean> {
+  const openSess = await getOpenSession(employeeId);
+
+  // Must be in workshop state to take a break
+  if (!openSess || openSess.state !== "workshop") return false;
+
+  // Close workshop session
+  await closeSession(openSess.id);
+
+  // Open break session (keep same workshop_id for reference)
+  const id = await openSession({
+    employeeId,
+    companyId,
+    state: "break",
+    workshopId: openSess.workshop_id,
+  });
+  return !!id;
+}
+
+/**
+ * Manual transition: BREAK → WORKSHOP
+ * Called when employee taps "Break Out" button
+ */
+export async function endBreak(
+  employeeId: string,
+  companyId: string
+): Promise<boolean> {
+  const openSess = await getOpenSession(employeeId);
+
+  // Must be in break state
+  if (!openSess || openSess.state !== "break") return false;
+
+  // Close break session
+  await closeSession(openSess.id);
+
+  // Reopen workshop session (use same workshop_id)
+  const id = await openSession({
+    employeeId,
+    companyId,
+    state: "workshop",
+    workshopId: openSess.workshop_id,
   });
   return !!id;
 }

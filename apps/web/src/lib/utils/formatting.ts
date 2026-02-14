@@ -61,4 +61,5 @@ export const STATE_CONFIG: Record<string, { label: string; colorClass: string; b
   travel: { label: "Travel", colorClass: "text-state-travel", bgClass: "bg-state-travel/10" },
   on_site_job: { label: "On-Site Job", colorClass: "text-state-onsite", bgClass: "bg-state-onsite/10" },
   off_duty: { label: "Off Duty", colorClass: "text-state-offduty", bgClass: "bg-state-offduty/10" },
+  break: { label: "On Break", colorClass: "text-yellow-600", bgClass: "bg-yellow-50" },
 };

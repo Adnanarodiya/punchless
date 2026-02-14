@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Briefcase, CircleUserRound, House, IndianRupee } from "lucide-react-native";
+import { Briefcase, CalendarDays, CircleUserRound, House, IndianRupee, History, FileEdit } from "lucide-react-native";
 
 export default function TabsLayout() {
   return (
@@ -22,6 +22,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="attendance"
+        options={{
+          title: "Attendance",
+          tabBarLabel: "Attendance",
+          tabBarIcon: ({ color, size }) => <CalendarDays size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="jobs"
         options={{
           title: "Jobs",
@@ -30,11 +38,27 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarLabel: "History",
+          tabBarIcon: ({ color, size }) => <History size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="salary"
         options={{
           title: "Salary",
           tabBarLabel: "Salary",
           tabBarIcon: ({ color, size }) => <IndianRupee size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="requests"
+        options={{
+          title: "Requests",
+          tabBarLabel: "Requests",
+          tabBarIcon: ({ color, size }) => <FileEdit size={size} color={color} />,
         }}
       />
       <Tabs.Screen

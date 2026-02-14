@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@punchless/ui/components/button";
-import { Plus, X, Pencil, Power, Trash2, User, MapPin, IndianRupee } from "lucide-react";
+import { Plus, X, Pencil, Power, Trash2, User, MapPin, IndianRupee, History } from "lucide-react";
+import Link from "next/link";
 import {
   createEmployee,
   updateEmployee,
@@ -274,6 +275,11 @@ export function EmployeeManager({
                 </div>
 
                 <div className="flex gap-1 shrink-0">
+                  <Link href={`/dashboard/history?employee=${emp.id}`}>
+                    <Button variant="ghost" size="icon" title="View History">
+                      <History className="size-4 text-primary" />
+                    </Button>
+                  </Link>
                   <Button variant="ghost" size="icon" onClick={() => startEdit(emp)} title="Edit">
                     <Pencil className="size-4" />
                   </Button>

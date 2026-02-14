@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "expo start",
     "build": "echo 'Mobile build handled by EAS'",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "lint": "eslint .",
     "clean": "rm -rf .expo node_modules"
   },

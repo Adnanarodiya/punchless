@@ -82,6 +82,91 @@ export type Database = {
           },
         ]
       }
+      correction_requests: {
+        Row: {
+          id: string
+          company_id: string
+          employee_id: string
+          session_id: string | null
+          request_type: string
+          original_start_time: string | null
+          original_end_time: string | null
+          original_state: string | null
+          requested_start_time: string | null
+          requested_end_time: string | null
+          requested_state: string | null
+          date: string
+          reason: string
+          status: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          admin_notes: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          employee_id: string
+          session_id?: string | null
+          request_type: string
+          original_start_time?: string | null
+          original_end_time?: string | null
+          original_state?: string | null
+          requested_start_time?: string | null
+          requested_end_time?: string | null
+          requested_state?: string | null
+          date: string
+          reason: string
+          status?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          admin_notes?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          employee_id?: string
+          session_id?: string | null
+          request_type?: string
+          original_start_time?: string | null
+          original_end_time?: string | null
+          original_state?: string | null
+          requested_start_time?: string | null
+          requested_end_time?: string | null
+          requested_state?: string | null
+          date?: string
+          reason?: string
+          status?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          admin_notes?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "correction_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "correction_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "correction_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string | null

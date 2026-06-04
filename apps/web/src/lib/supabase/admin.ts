@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@punchless/types/database.types";
+import type { Database } from "./database.types";
 
 export function createAdminClient() {
   return createClient<Database>(

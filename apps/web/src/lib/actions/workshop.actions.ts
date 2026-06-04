@@ -94,7 +94,10 @@ export const deleteWorkshop = protectedAction<FormData>({
   const workshopId = String(formData.get("workshopId") || "");
   if (!workshopId) return { success: false, error: "Workshop ID missing" };
 
-  const { error } = await supabase.from("workshops").delete().eq("id", workshopId);
+  const { error } = await supabase
+    .from("workshops")
+    .update({ deleted_at: new Date().toISOString() } as unknown as never)
+    .eq("id", workshopId);
 
   if (error) return { success: false, error: error.message };
 

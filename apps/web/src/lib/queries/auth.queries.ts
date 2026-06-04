@@ -26,26 +26,17 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
   if (!authUser) return null;
 
-  // Fetch user profile
-  const { data: profile, error: profileError } = await supabase
+  // Fetch user profile and company in a single select query, filtering soft-deleted profiles
+  const { data, error } = await supabase
     .from("users")
-    .select("*")
+    .select("*, company:companies(id, name, subscription_status)")
     .eq("id", authUser.id)
+    .is("deleted_at", null)
     .single();
 
-  if (profileError || !profile) return null;
+  if (error || !data) return null;
 
-  // Fetch company
-  const { data: company } = await supabase
-    .from("companies")
-    .select("id, name, subscription_status")
-    .eq("id", (profile as UserRow).company_id)
-    .single();
-
-  return {
-    ...(profile as UserRow),
-    company: company as Pick<CompanyRow, "id" | "name" | "subscription_status"> | null,
-  };
+  return data as unknown as CurrentUser;
 }
 
 // Get the current user's company

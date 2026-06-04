@@ -9,6 +9,7 @@ export async function getWorkshops(): Promise<WorkshopRow[]> {
   const { data } = await supabase
     .from("workshops")
     .select("*")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   return (data as WorkshopRow[]) ?? [];

@@ -33,32 +33,15 @@ export const updateCompanySettings = protectedAction<FormData>({
 
   if (error) return { success: false, error: error.message };
 
-  // Recalculate hourly_rate for all employees
-  const totalMonthlyHours = dailyWorkHours * workingDaysPerMonth;
+  // Recalculate hourly_rate for all active employees of the company using SQL RPC
+  const { error: rpcError } = await supabase.rpc("recalculate_hourly_rates" as any, {
+    p_company_id: me.company_id,
+    p_daily_hours: dailyWorkHours,
+    p_working_days: workingDaysPerMonth,
+  });
 
-  if (totalMonthlyHours > 0) {
-    const { data: employees } = await supabase
-      .from("users")
-      .select("id, monthly_salary")
-      .eq("company_id", me.company_id)
-      .eq("role", "employee");
-
-    if (employees) {
-      type EmpRow = { id: string; monthly_salary: number | null };
-      for (const raw of employees) {
-        const emp = raw as unknown as EmpRow;
-        const monthlySalary = emp.monthly_salary ?? 0;
-        if (monthlySalary > 0) {
-          const newHourlyRate = Math.round((monthlySalary / totalMonthlyHours) * 100) / 100;
-          await supabase
-            .from("users")
-            .update({
-              hourly_rate: newHourlyRate,
-            } as unknown as never)
-            .eq("id", emp.id);
-        }
-      }
-    }
+  if (rpcError) {
+    return { success: false, error: rpcError.message };
   }
 
   revalidatePath("/dashboard/settings");

@@ -16,7 +16,8 @@ export async function getActiveWorkshops(): Promise<WorkshopLocation[]> {
   const { data, error } = await supabase
     .from("workshops")
     .select("id, name, lat, lng, radius")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .is("deleted_at", null);
 
   if (error) {
     console.error("Failed to fetch workshops:", error.message);

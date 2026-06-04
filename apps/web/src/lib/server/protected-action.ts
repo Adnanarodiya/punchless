@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Database } from "@punchless/types/database.types";
+import type { Database } from "@/lib/supabase/database.types";
 import type { ActionResult } from "@/lib/utils/action-result";
 
 type UserRow = Database["public"]["Tables"]["users"]["Row"];

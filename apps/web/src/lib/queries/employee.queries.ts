@@ -14,6 +14,7 @@ export async function getEmployees(): Promise<EmployeeWithWorkshop[]> {
     .from("users")
     .select("*, workshops(name)")
     .eq("role", "employee")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   // Flatten the join

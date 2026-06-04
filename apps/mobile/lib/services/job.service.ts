@@ -36,6 +36,7 @@ export async function getMyJobs(employeeId: string): Promise<MyJob[]> {
       "id, title, description, customer_name, customer_phone, lat, lng, radius, status, created_at, workshops(name)"
     )
     .eq("assigned_to", employeeId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
@@ -63,6 +64,7 @@ export async function getActiveJobs(employeeId: string): Promise<MyJob[]> {
     )
     .eq("assigned_to", employeeId)
     .in("status", ["assigned", "in_progress"])
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];

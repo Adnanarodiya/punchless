@@ -15,8 +15,13 @@ export type SalaryReport = {
   total_salary: number;
 };
 
-export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]> {
+export async function getSalaryReport(
+  monthStr: string,
+  page = 1,
+  limit = 50
+): Promise<SalaryReport[]> {
   const supabase = await createClient();
+  const offset = (page - 1) * limit;
 
   // Calculate start/end dates for the selected month
   // monthStr format: "YYYY-MM" (e.g., "2026-02")
@@ -25,12 +30,70 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
   // End date is start of next month
   const endDate = new Date(year, month, 1).toISOString();
 
-  // 1. Fetch all employees
-  const { data: employeesData } = await supabase
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return [];
+
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("company_id")
+    .eq("id", authUser.id)
+    .single();
+
+  if (!userProfile) return [];
+  const companyId = (userProfile as { company_id: string }).company_id;
+
+  type SessionRow = {
+    employee_id: string;
+    state: string;
+    total_duration_minutes: number;
+  };
+
+  // 1. Fetch attendance sessions summary for this month using SQL RPC
+  const { data: sessionsData } = await supabase.rpc("get_monthly_attendance_summary" as any, {
+    p_company_id: companyId,
+    p_start_time: startDate,
+    p_end_time: endDate,
+  });
+
+  const sessions = (sessionsData as unknown as SessionRow[]) ?? [];
+
+  // 2. Fetch approved advances for this month
+  const { data: advancesData } = await supabase
+    .from("salary_advances")
+    .select("employee_id, amount")
+    .eq("status", "approved")
+    .eq("salary_month", monthStr);
+
+  // Collect distinct employee IDs who have activity this month
+  const employeeIds = new Set<string>();
+  for (const s of sessions) {
+    if (s.employee_id) employeeIds.add(s.employee_id);
+  }
+  if (advancesData) {
+    for (const adv of advancesData) {
+      const empId = (adv as { employee_id: string }).employee_id;
+      if (empId) employeeIds.add(empId);
+    }
+  }
+
+  // 3. Fetch employees (active OR who have activity in the selected month)
+  let employeeQuery = supabase
     .from("users")
     .select("id, full_name, hourly_rate")
-    .eq("role", "employee")
-    .eq("is_active", true);
+    .eq("role", "employee");
+
+  if (employeeIds.size > 0) {
+    employeeQuery = employeeQuery.or(`is_active.eq.true,id.in.(${Array.from(employeeIds).join(",")})`);
+  } else {
+    employeeQuery = employeeQuery.eq("is_active", true);
+  }
+
+  const { data: employeesData } = await employeeQuery
+    .order("full_name")
+    .range(offset, offset + limit - 1);
 
   if (!employeesData || employeesData.length === 0) return [];
 
@@ -41,31 +104,6 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
   };
 
   const employees = employeesData as unknown as EmpRow[];
-
-  // 2. Fetch attendance sessions for this month
-  const { data: sessionsData } = await supabase
-    .from("attendance_sessions")
-    .select("employee_id, state, duration_minutes")
-    .gte("start_time", startDate)
-    .lt("start_time", endDate)
-    .not("duration_minutes", "is", null);
-
-  if (!sessionsData) return [];
-
-  type SessionRow = {
-    employee_id: string;
-    state: string;
-    duration_minutes: number | null;
-  };
-
-  const sessions = sessionsData as unknown as SessionRow[];
-
-  // 3. Fetch approved advances for this month
-  const { data: advancesData } = await supabase
-    .from("salary_advances")
-    .select("employee_id, amount")
-    .eq("status", "approved")
-    .eq("salary_month", monthStr);
 
   // Build a map of employee_id → total advance amount
   const advanceMap = new Map<string, number>();
@@ -101,7 +139,7 @@ export async function getSalaryReport(monthStr: string): Promise<SalaryReport[]>
     const report = reportMap.get(session.employee_id);
     if (!report) continue;
 
-    const hours = (session.duration_minutes ?? 0) / 60;
+    const hours = (session.total_duration_minutes ?? 0) / 60;
 
     if (session.state === "workshop") {
       report.workshop_hours += hours;

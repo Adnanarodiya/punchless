@@ -15,6 +15,7 @@ export async function getJobs(): Promise<JobWithDetails[]> {
   const { data } = await supabase
     .from("jobs")
     .select("*, users(full_name, email)")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   type RawRow = JobRow & {
@@ -37,6 +38,7 @@ export async function getJobById(jobId: string): Promise<JobWithDetails | null> 
     .from("jobs")
     .select("*, users(full_name, email)")
     .eq("id", jobId)
+    .is("deleted_at", null)
     .single();
 
   if (!data) return null;

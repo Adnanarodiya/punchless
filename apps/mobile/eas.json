@@ -8,8 +8,8 @@
       "node": "20.18.0",
       "pnpm": "10.28.2",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://lwjnkyaihiclbfnukrvn.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3am5reWFpaGljbGJmbnVrcnZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NTgwMjAsImV4cCI6MjA4NjAzNDAyMH0.XDVuzIarVUiqFrpL9X8wDjdctNKiP-vO-KJg7XHmr9o"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hrjarkhzmhgdrlkzpkka.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_uH108cr2eAaXNe47tAhZaw_4l2zZ9wc"
       }
     },
     "development": {

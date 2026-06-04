@@ -59,8 +59,15 @@ function formatLiveTime(totalSeconds: number): string {
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const attendance = useAttendanceStore();
-  const { tracking, permissionGranted, available, refreshLocation, requestPermissions } =
-    useLocationStore();
+  const {
+    tracking,
+    permissionGranted,
+    available,
+    refreshLocation,
+    requestPermissions,
+    lastBackgroundError,
+    startTracking,
+  } = useLocationStore();
   const [refreshing, setRefreshing] = useState(false);
   const [activeJobs, setActiveJobs] = useState<MyJob[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
@@ -227,7 +234,20 @@ export default function HomeScreen() {
       contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
     >
       {/* GPS Status Banner */}
-      {!available ? (
+      {lastBackgroundError ? (
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={async () => {
+            // Clear error and attempt restart
+            useLocationStore.getState().setLastBackgroundError(null);
+            await startTracking();
+          }}
+        >
+          <Text style={styles.errorBannerText}>
+            ⚠️ Background tracking error: {lastBackgroundError}. Tap to retry.
+          </Text>
+        </TouchableOpacity>
+      ) : !available ? (
         <View style={styles.infoBanner}>
           <Text style={styles.infoText}>
             ℹ️ GPS tracking requires a development build. Not available in Expo Go.
@@ -446,6 +466,20 @@ const styles = StyleSheet.create({
     color: "#92400e",
     fontWeight: "600",
     fontSize: 13,
+  },
+  errorBanner: {
+    backgroundColor: "#fee2e2",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#fca5a5",
+  },
+  errorBannerText: {
+    color: "#991b1b",
+    fontWeight: "600",
+    fontSize: 13,
+    textAlign: "center",
   },
 
   // ═══ Live Counter Card ═══

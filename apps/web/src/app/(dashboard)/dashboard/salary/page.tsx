@@ -2,7 +2,7 @@ import { getSalaryReport } from "@/lib/queries/salary.queries";
 import { SalaryManager } from "./salary-manager";
 
 interface Props {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; page?: string }>;
 }
 
 export default async function SalaryPage({ searchParams }: Props) {
@@ -12,13 +12,14 @@ export default async function SalaryPage({ searchParams }: Props) {
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const monthStr = params.month || defaultMonth;
+  const page = Number(params.page || "1");
 
-  const report = await getSalaryReport(monthStr);
+  const report = await getSalaryReport(monthStr, page, 50);
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Salary</h1>
-      <SalaryManager report={report} currentMonth={monthStr} />
+      <SalaryManager report={report} currentMonth={monthStr} page={page} />
     </div>
   );
 }

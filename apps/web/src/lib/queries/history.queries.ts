@@ -33,16 +33,20 @@ export type EmployeeHistorySummary = {
  */
 export async function getHistorySessions(
   startDate: string,
-  endDate: string
+  endDate: string,
+  page = 1,
+  limit = 50
 ): Promise<HistorySession[]> {
   const supabase = await createClient();
+  const offset = (page - 1) * limit;
 
   const { data } = await supabase
     .from("attendance_sessions")
     .select("*, users(full_name, email), workshops(name), jobs(title)")
     .gte("start_time", startDate)
     .lte("start_time", endDate)
-    .order("start_time", { ascending: false });
+    .order("start_time", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   type RawRow = AttendanceRow & {
     users: { full_name: string; email: string } | null;
@@ -168,9 +172,12 @@ export async function getEmployeeSummaries(
 export async function getEmployeeHistory(
   employeeId: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  page = 1,
+  limit = 50
 ): Promise<HistorySession[]> {
   const supabase = await createClient();
+  const offset = (page - 1) * limit;
 
   const { data } = await supabase
     .from("attendance_sessions")
@@ -178,7 +185,8 @@ export async function getEmployeeHistory(
     .eq("employee_id", employeeId)
     .gte("start_time", startDate)
     .lte("start_time", endDate)
-    .order("start_time", { ascending: false });
+    .order("start_time", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   type RawRow = AttendanceRow & {
     users: { full_name: string; email: string } | null;

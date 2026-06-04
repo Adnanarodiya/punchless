@@ -70,6 +70,7 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
   const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [tick, setTick] = useState(0);
+  const [page, setPage] = useState(1);
 
   // Tick every 30 seconds for real-time duration updates
   useEffect(() => {
@@ -77,13 +78,16 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
     return () => clearInterval(interval);
   }, []);
 
-  const fetchData = useCallback(async (filterPeriod: FilterPeriod, empId?: string | null) => {
+  const fetchData = useCallback(async (filterPeriod: FilterPeriod, empId?: string | null, pageNum = 1) => {
     setLoading(true);
+    setPage(pageNum);
     try {
       const { start, end } = getDateRange(filterPeriod);
       const url = new URL("/api/history", window.location.origin);
       url.searchParams.set("start", start);
       url.searchParams.set("end", end);
+      url.searchParams.set("page", String(pageNum));
+      url.searchParams.set("limit", "50");
       if (empId) url.searchParams.set("employeeId", empId);
 
       const res = await fetch(url.toString());
@@ -104,9 +108,9 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
   function handlePeriodChange(newPeriod: FilterPeriod) {
     setPeriod(newPeriod);
     if (selectedEmployee) {
-      fetchData(newPeriod, selectedEmployee);
+      fetchData(newPeriod, selectedEmployee, 1);
     } else {
-      fetchData(newPeriod);
+      fetchData(newPeriod, null, 1);
     }
   }
 
@@ -115,18 +119,20 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
     // If switching back to main tabs from employee detail, reset
     if (selectedEmployee) {
       setSelectedEmployee(null);
-      fetchData(period);
+      fetchData(period, null, 1);
+    } else {
+      fetchData(period, null, 1);
     }
   }
 
   function handleViewEmployee(empId: string) {
     setSelectedEmployee(empId);
-    fetchData(period, empId);
+    fetchData(period, empId, 1);
   }
 
   function handleBackToList() {
     setSelectedEmployee(null);
-    fetchData(period);
+    fetchData(period, null, 1);
   }
 
   const selectedEmpInfo = selectedEmployee
@@ -214,13 +220,57 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
       )}
 
       {!loading && !selectedEmployee && tab === "sessions" && (
-        <SessionsTable sessions={sessions} />
+        <>
+          <SessionsTable sessions={sessions} />
+          <div className="flex items-center justify-between mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchData(period, null, page - 1)}
+              disabled={page === 1}
+            >
+              ← Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchData(period, null, page + 1)}
+              disabled={sessions.length < 50}
+            >
+              Next →
+            </Button>
+          </div>
+        </>
       )}
 
       {!loading && selectedEmployee && (
         <>
           <EmployeeStats sessions={sessions} />
           <SessionsTable sessions={sessions} />
+          <div className="flex items-center justify-between mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchData(period, selectedEmployee, page - 1)}
+              disabled={page === 1}
+            >
+              ← Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchData(period, selectedEmployee, page + 1)}
+              disabled={sessions.length < 50}
+            >
+              Next →
+            </Button>
+          </div>
         </>
       )}
     </div>

@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/workshop.service";
 import { updateJobStatus } from "@/lib/services/job.service";
 import type { LocationCoords } from "@/lib/services/location.service";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type EngineState = "off_duty" | "workshop" | "travel" | "on_site_job" | "break";
 
@@ -21,23 +22,48 @@ type ActiveSession = {
 // At ~30s intervals, 10 checks = ~5 minutes grace
 const EXIT_GRACE_COUNT = 10;
 
+const WORKSHOPS_CACHE_KEY = "punchless_cached_workshops";
+
 // Module-level state (persists across background task invocations)
 let cachedWorkshops: WorkshopLocation[] = [];
 let lastWorkshopFetch = 0;
-const WORKSHOP_CACHE_TTL = 2 * 60 * 1000; // 2 min — shorter to detect workshop location changes quickly
+const WORKSHOP_CACHE_TTL = 30 * 1000; // 30 seconds TTL (reduced per Task 15)
 
 let exitGraceCounter = 0;
 
 /**
  * Refresh cached workshops if stale.
- * Shorter TTL ensures workshop location changes are picked up quickly.
+ * Falls back to persistent AsyncStorage cache when offline.
  */
 async function ensureWorkshops(): Promise<WorkshopLocation[]> {
   const now = Date.now();
-  if (cachedWorkshops.length === 0 || now - lastWorkshopFetch > WORKSHOP_CACHE_TTL) {
-    cachedWorkshops = await getActiveWorkshops();
-    lastWorkshopFetch = now;
+  
+  if (cachedWorkshops.length > 0 && now - lastWorkshopFetch <= WORKSHOP_CACHE_TTL) {
+    return cachedWorkshops;
   }
+
+  try {
+    const networkWorkshops = await getActiveWorkshops();
+    if (networkWorkshops && networkWorkshops.length > 0) {
+      cachedWorkshops = networkWorkshops;
+      lastWorkshopFetch = now;
+      await AsyncStorage.setItem(WORKSHOPS_CACHE_KEY, JSON.stringify(networkWorkshops));
+      return cachedWorkshops;
+    }
+  } catch (err) {
+    console.warn("Failed to fetch workshops from network, falling back to persistent cache:", err);
+  }
+
+  try {
+    const cachedStr = await AsyncStorage.getItem(WORKSHOPS_CACHE_KEY);
+    if (cachedStr) {
+      cachedWorkshops = JSON.parse(cachedStr);
+      return cachedWorkshops;
+    }
+  } catch (err) {
+    console.error("Failed to read workshops from AsyncStorage cache:", err);
+  }
+
   return cachedWorkshops;
 }
 
@@ -45,8 +71,13 @@ async function ensureWorkshops(): Promise<WorkshopLocation[]> {
  * Force refresh workshops cache — call when workshop location might have changed.
  */
 export async function forceRefreshWorkshops(): Promise<WorkshopLocation[]> {
-  cachedWorkshops = await getActiveWorkshops();
-  lastWorkshopFetch = Date.now();
+  try {
+    cachedWorkshops = await getActiveWorkshops();
+    lastWorkshopFetch = Date.now();
+    await AsyncStorage.setItem(WORKSHOPS_CACHE_KEY, JSON.stringify(cachedWorkshops));
+  } catch (err) {
+    console.warn("Failed to force refresh workshops:", err);
+  }
   return cachedWorkshops;
 }
 
@@ -125,6 +156,8 @@ async function openSession(params: {
   return data?.id ?? null;
 }
 
+import { useAttendanceStore } from "@/lib/stores/attendance.store";
+
 /**
  * Main geofence processing — called every location update
  *
@@ -150,8 +183,7 @@ export async function processLocation(
     workshops
   );
 
-  const openSess = await getOpenSession(employeeId);
-  const currentState: EngineState = (openSess?.state as EngineState) ?? "off_duty";
+  const currentState = useAttendanceStore.getState().currentState;
 
   // ─── OFF_DUTY ─────────────────────────────────
   if (currentState === "off_duty") {
@@ -173,43 +205,8 @@ export async function processLocation(
 
   // ─── WORKSHOP ─────────────────────────────────
   if (currentState === "workshop") {
-    // Check if the workshop we're assigned to still exists at same location
-    // This handles the case where admin updates workshop location
-    if (openSess?.workshop_id) {
-      const assignedWorkshop = workshops.find((w) => w.id === openSess.workshop_id);
-      if (!assignedWorkshop) {
-        // Workshop was deleted or deactivated → force off_duty
-        exitGraceCounter = 0;
-        await closeSession(openSess.id);
-        // Force re-fetch workshops to get latest data
-        await forceRefreshWorkshops();
-        return { newState: "off_duty", transitioned: true };
-      }
-
-      // Check if user is still within THIS workshop's geofence
-      // (handles case where workshop location was changed)
-      const distToAssigned = getDistanceMeters(
-        coords.latitude,
-        coords.longitude,
-        assignedWorkshop.lat,
-        assignedWorkshop.lng
-      );
-      if (distToAssigned > assignedWorkshop.radius) {
-        // User is outside their assigned workshop — workshop may have moved
-        exitGraceCounter++;
-        if (exitGraceCounter >= EXIT_GRACE_COUNT) {
-          // Grace expired → workshop location changed, user no longer there → off_duty
-          exitGraceCounter = 0;
-          await closeSession(openSess.id);
-          return { newState: "off_duty", transitioned: true };
-        }
-        // Still in grace period
-        return { newState: "workshop", transitioned: false };
-      }
-    }
-
     if (nearWorkshop) {
-      // Still inside a workshop — reset grace counter
+      // Still inside a workshop — reset grace counter and return immediately WITHOUT database calls
       exitGraceCounter = 0;
       return { newState: "workshop", transitioned: false };
     }
@@ -217,13 +214,14 @@ export async function processLocation(
     // Outside all workshops — increment grace counter
     exitGraceCounter++;
     if (exitGraceCounter >= EXIT_GRACE_COUNT) {
-      // Grace expired → close workshop session → off_duty
+      // Grace expired → close workshop session → off_duty (requires database call to fetch the open session to close)
       exitGraceCounter = 0;
+      const openSess = await getOpenSession(employeeId);
       if (openSess) await closeSession(openSess.id);
       return { newState: "off_duty", transitioned: true };
     }
 
-    // Still in grace period — keep workshop state
+    // Still in grace period — keep workshop state without writing to DB
     return { newState: "workshop", transitioned: false };
   }
 
@@ -232,6 +230,7 @@ export async function processLocation(
     if (nearWorkshop) {
       // Returned to workshop → close travel session, open workshop session
       exitGraceCounter = 0;
+      const openSess = await getOpenSession(employeeId);
       if (openSess) await closeSession(openSess.id);
       await openSession({
         employeeId,

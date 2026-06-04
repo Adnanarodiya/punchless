@@ -10,9 +10,10 @@ import { formatCurrency } from "@/lib/utils/formatting";
 interface Props {
   report: SalaryReport[];
   currentMonth: string;
+  page?: number;
 }
 
-export function SalaryManager({ report, currentMonth }: Props) {
+export function SalaryManager({ report, currentMonth, page = 1 }: Props) {
   const router = useRouter();
   const [filterText, setFilterText] = useState("");
 
@@ -25,7 +26,11 @@ export function SalaryManager({ report, currentMonth }: Props) {
   const totalNet = filteredReport.reduce((acc, curr) => acc + curr.net_salary, 0);
 
   function handleMonthChange(newMonth: string) {
-    router.push(`/dashboard/salary?month=${newMonth}`);
+    router.push(`/dashboard/salary?month=${newMonth}&page=1`);
+  }
+
+  function handlePageChange(newPage: number) {
+    router.push(`/dashboard/salary?month=${currentMonth}&page=${newPage}`);
   }
 
   return (
@@ -134,6 +139,31 @@ export function SalaryManager({ report, currentMonth }: Props) {
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {report.length > 0 && (
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page === 1}
+          >
+            ← Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(page + 1)}
+            disabled={report.length < 50}
+          >
+            Next →
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

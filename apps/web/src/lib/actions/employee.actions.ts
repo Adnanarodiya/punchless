@@ -18,7 +18,7 @@ function calcHourlyRate(
 
 export const createEmployee = protectedAction<FormData>({
   roles: ["owner", "admin"],
-})(async (formData, { me }) => {
+})(async (formData, { supabase, me }) => {
   const parsed = createEmployeeSchema.safeParse({
     fullName: formData.get("fullName"),
     email: formData.get("email"),
@@ -34,8 +34,16 @@ export const createEmployee = protectedAction<FormData>({
   }
 
   const { fullName, email, password, phone, monthlySalary, workshopId } = parsed.data;
-  const dailyWorkHours = Number(formData.get("dailyWorkHours") || 8);
-  const workingDaysPerMonth = Number(formData.get("workingDaysPerMonth") || 26);
+
+  // Securely query settings from DB using me.company_id
+  const { data: companySettings } = await supabase
+    .from("companies")
+    .select("daily_work_hours, working_days_per_month")
+    .eq("id", me.company_id)
+    .single();
+
+  const dailyWorkHours = companySettings?.daily_work_hours ?? 8;
+  const workingDaysPerMonth = companySettings?.working_days_per_month ?? 26;
   const hourlyRate = calcHourlyRate(monthlySalary, dailyWorkHours, workingDaysPerMonth);
 
   const admin = createAdminClient();
@@ -76,7 +84,7 @@ export const createEmployee = protectedAction<FormData>({
 
 export const updateEmployee = protectedAction<FormData>({
   roles: ["owner", "admin"],
-})(async (formData, { supabase }) => {
+})(async (formData, { supabase, me }) => {
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return { success: false, error: "Employee ID missing" };
 
@@ -93,8 +101,16 @@ export const updateEmployee = protectedAction<FormData>({
   }
 
   const { fullName, phone, monthlySalary, workshopId } = parsed.data;
-  const dailyWorkHours = Number(formData.get("dailyWorkHours") || 8);
-  const workingDaysPerMonth = Number(formData.get("workingDaysPerMonth") || 26);
+
+  // Securely query settings from DB using me.company_id
+  const { data: companySettings } = await supabase
+    .from("companies")
+    .select("daily_work_hours, working_days_per_month")
+    .eq("id", me.company_id)
+    .single();
+
+  const dailyWorkHours = companySettings?.daily_work_hours ?? 8;
+  const workingDaysPerMonth = companySettings?.working_days_per_month ?? 26;
   const hourlyRate = calcHourlyRate(monthlySalary, dailyWorkHours, workingDaysPerMonth);
 
   const { error } = await supabase
@@ -141,8 +157,25 @@ export const deleteEmployee = protectedAction<FormData>({
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return { success: false, error: "Employee ID missing" };
 
-  const { error } = await admin.auth.admin.deleteUser(employeeId);
-  if (error) return { success: false, error: error.message };
+  // 1. Soft delete the employee profile
+  const { error: profileError } = await admin
+    .from("users")
+    .update({
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+    } as any)
+    .eq("id", employeeId);
+
+  if (profileError) return { success: false, error: profileError.message };
+
+  // 2. Ban the auth user to deactivate login (10 years)
+  const { error: authError } = await admin.auth.admin.updateUserById(employeeId, {
+    ban_duration: "87600h",
+  });
+  if (authError) {
+    // If auth ban fails, log it but don't fail the whole action if profile is soft deleted
+    console.warn("Failed to ban auth user:", authError.message);
+  }
 
   revalidatePath("/dashboard/employees");
   return { success: true };

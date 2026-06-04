@@ -3,7 +3,7 @@
 // ============================================
 
 // Auto-generated Supabase Database types
-// Regenerate with: npx supabase gen types typescript --project-id lwjnkyaihiclbfnukrvn > packages/types/src/database.types.ts
+// Regenerate with: npx supabase gen types typescript --project-id hrjarkhzmhgdrlkzpkka > packages/types/src/database.types.ts
 export type { Database } from "./database.types";
 export type { Tables, TablesInsert, TablesUpdate, Enums } from "./database.types";
 
@@ -44,6 +44,7 @@ export interface User {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface Workshop {
@@ -56,6 +57,7 @@ export interface Workshop {
   radius: number;
   is_active: boolean;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface Job {
@@ -73,6 +75,7 @@ export interface Job {
   status: JobStatus;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface AttendanceSession {

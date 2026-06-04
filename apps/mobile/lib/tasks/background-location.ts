@@ -4,6 +4,7 @@ import { processLocation } from "@/lib/services/geofence.service";
 import { supabase } from "@/lib/supabase";
 import { useAttendanceStore } from "@/lib/stores/attendance.store";
 import { getTodayAttendanceSummary } from "@/lib/services/attendance.service";
+import { useLocationStore } from "@/lib/stores/location.store";
 
 /**
  * Background task definition — runs even when app is backgrounded.
@@ -20,6 +21,7 @@ import { getTodayAttendanceSummary } from "@/lib/services/attendance.service";
 TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
   if (error) {
     console.error("Background location error:", error.message);
+    useLocationStore.getState().setLastBackgroundError(error.message);
     return;
   }
 
@@ -59,7 +61,11 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
     } catch {
       // Non-critical — silently ignore
     }
-  } catch (err) {
+
+    // Success: clear last background error
+    useLocationStore.getState().setLastBackgroundError(null);
+  } catch (err: any) {
     console.error("Background geofence processing error:", err);
+    useLocationStore.getState().setLastBackgroundError(err.message || String(err));
   }
 });

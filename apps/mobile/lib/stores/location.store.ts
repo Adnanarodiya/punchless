@@ -16,12 +16,14 @@ type LocationState = {
   tracking: boolean;
   lastLocation: LocationCoords | null;
   error: string | null;
+  lastBackgroundError: string | null;
 
   checkPermissions: () => Promise<boolean>;
   requestPermissions: () => Promise<boolean>;
   startTracking: () => Promise<boolean>;
   stopTracking: () => Promise<void>;
   refreshLocation: () => Promise<LocationCoords | null>;
+  setLastBackgroundError: (err: string | null) => void;
   reset: () => void;
 };
 
@@ -31,6 +33,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   tracking: false,
   lastLocation: null,
   error: null,
+  lastBackgroundError: null,
 
   checkPermissions: async () => {
     try {
@@ -93,12 +96,17 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     }
   },
 
+  setLastBackgroundError: (err: string | null) => {
+    set({ lastBackgroundError: err });
+  },
+
   reset: () => {
     set({
       permissionGranted: false,
       tracking: false,
       lastLocation: null,
       error: null,
+      lastBackgroundError: null,
     });
   },
 }));

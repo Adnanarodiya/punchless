@@ -92,7 +92,10 @@ export const deleteJob = protectedAction<FormData>({
   const jobId = String(formData.get("jobId") || "");
   if (!jobId) return { success: false, error: "Job ID missing" };
 
-  const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+  const { error } = await supabase
+    .from("jobs")
+    .update({ deleted_at: new Date().toISOString() } as unknown as never)
+    .eq("id", jobId);
 
   if (error) return { success: false, error: error.message };
 

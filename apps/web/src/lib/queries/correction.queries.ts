@@ -30,7 +30,7 @@ export async function getCorrectionRequests(
 
   let query = (supabase
     .from("correction_requests" as any)
-    .select("*, users(full_name, email)")
+    .select("*, users!correction_requests_employee_id_fkey(full_name, email)")
     .order("created_at", { ascending: false }) as any);
 
   if (status) {

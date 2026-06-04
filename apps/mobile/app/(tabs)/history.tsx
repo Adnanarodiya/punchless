@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -87,9 +88,11 @@ export default function HistoryScreen() {
     setLoading(false);
   }, [user?.id, period]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load])
+  );
 
   async function onRefresh() {
     setRefreshing(true);

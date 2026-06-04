@@ -6,6 +6,7 @@ import {
   stopBackgroundTracking,
   isBackgroundTrackingActive,
   getCurrentLocation,
+  isBackgroundLocationSupported,
   type LocationCoords,
 } from "@/lib/services/location.service";
 
@@ -38,7 +39,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   checkPermissions: async () => {
     try {
       const granted = await hasLocationPermissions();
-      set({ permissionGranted: granted, available: true });
+      set({ permissionGranted: granted, available: isBackgroundLocationSupported() });
       return granted;
     } catch {
       set({ available: false, permissionGranted: false });
@@ -51,7 +52,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       const granted = await requestLocationPermissions();
       set({
         permissionGranted: granted,
-        available: true,
+        available: isBackgroundLocationSupported(),
         error: granted ? null : "Location permission denied",
       });
       return granted;
@@ -65,10 +66,10 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     try {
       const started = await startBackgroundTracking();
       if (started) {
-        set({ tracking: true, available: true, error: null });
+        set({ tracking: true, available: isBackgroundLocationSupported(), error: null });
       } else {
         // Could be permissions denied OR Expo Go — don't crash
-        set({ tracking: false });
+        set({ tracking: false, available: isBackgroundLocationSupported() });
       }
       return started;
     } catch {
@@ -119,7 +120,7 @@ export async function syncTrackingState(): Promise<void> {
   try {
     const active = await isBackgroundTrackingActive();
     const perms = await hasLocationPermissions();
-    useLocationStore.setState({ tracking: active, permissionGranted: perms, available: true });
+    useLocationStore.setState({ tracking: active, permissionGranted: perms, available: isBackgroundLocationSupported() });
   } catch {
     useLocationStore.setState({ available: false, tracking: false, permissionGranted: false });
   }

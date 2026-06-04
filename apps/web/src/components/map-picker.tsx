@@ -87,6 +87,18 @@ export function MapPicker({
     }
   }, [currentRadius]);
 
+  useEffect(() => {
+    if (mapInstanceRef.current && markerRef.current && circleRef.current) {
+      const markerPos = markerRef.current.getLatLng();
+      if (markerPos.lat !== lat || markerPos.lng !== lng) {
+        const newPos = L.latLng(lat, lng);
+        mapInstanceRef.current.setView(newPos);
+        markerRef.current.setLatLng(newPos);
+        circleRef.current.setLatLng(newPos);
+      }
+    }
+  }, [lat, lng]);
+
   function handleRadiusChange(newRadius: number) {
     setCurrentRadius(newRadius);
     onRadiusChange?.(newRadius);

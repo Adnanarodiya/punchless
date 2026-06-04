@@ -1,5 +1,12 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import Constants, { ExecutionEnvironment } from "expo-constants";
+import { Platform } from "react-native";
+
+export function isBackgroundLocationSupported(): boolean {
+  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  return !(Platform.OS === "ios" && isExpoGo);
+}
 
 export const BACKGROUND_LOCATION_TASK = "punchless-background-location";
 
@@ -31,6 +38,10 @@ export async function requestLocationPermissions(): Promise<boolean> {
     const fg = await Location.requestForegroundPermissionsAsync();
     if (fg.status !== "granted") return false;
 
+    if (!isBackgroundLocationSupported()) {
+      return true; // Fallback to foreground only on iOS Expo Go
+    }
+
     const bg = await Location.requestBackgroundPermissionsAsync();
     return bg.status === "granted";
   } catch (err) {
@@ -46,6 +57,10 @@ export async function hasLocationPermissions(): Promise<boolean> {
   try {
     const fg = await Location.getForegroundPermissionsAsync();
     if (fg.status !== "granted") return false;
+
+    if (!isBackgroundLocationSupported()) {
+      return true; // Fallback to foreground only on iOS Expo Go
+    }
 
     const bg = await Location.getBackgroundPermissionsAsync();
     return bg.status === "granted";
@@ -78,8 +93,8 @@ export async function getCurrentLocation(): Promise<LocationCoords | null> {
  */
 export async function startBackgroundTracking(): Promise<boolean> {
   const available = await isLocationAvailable();
-  if (!available) {
-    console.warn("Background location not available in this environment (Expo Go). Use a development build for GPS features.");
+  if (!available || !isBackgroundLocationSupported()) {
+    console.warn("Background location not available in this environment (iOS Expo Go). Use a development build for GPS features.");
     return false;
   }
 

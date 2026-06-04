@@ -8,6 +8,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "clean": "turbo clean",
+    "mobile:doctor": "npx expo-doctor apps/mobile",
     "db:gen-types": "npx supabase gen types typescript --project-id hrjarkhzmhgdrlkzpkka > packages/types/src/database.types.ts",
     "db:push": "npx supabase db push",
     "db:pull": "npx supabase db pull",
@@ -28,7 +29,8 @@
   },
   "pnpm": {
     "overrides": {
-      "react": "^19.1.0"
+      "react": "19.1.0",
+      "react-dom": "19.1.0"
     }
   }
 }

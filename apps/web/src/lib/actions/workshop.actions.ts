@@ -104,3 +104,15 @@ export const deleteWorkshop = protectedAction<FormData>({
   revalidatePath("/dashboard/workshops");
   return { success: true };
 });
+
+export async function resolveGoogleMapsUrl(url: string): Promise<string> {
+  if (url.includes("maps.app.goo.gl") || url.includes("goo.gl/maps")) {
+    try {
+      const res = await fetch(url, { method: "HEAD", redirect: "follow" });
+      return res.url;
+    } catch (err) {
+      console.error("Failed to resolve short Google Maps URL:", err);
+    }
+  }
+  return url;
+}

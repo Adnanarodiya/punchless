@@ -9,6 +9,7 @@ import {
   updateWorkshop,
   toggleWorkshopStatus,
   deleteWorkshop,
+  resolveGoogleMapsUrl,
 } from "@/lib/actions/workshop.actions";
 import type { Database } from "@punchless/types/database.types";
 import { useAction, toastAction } from "@/hooks/use-action";
@@ -26,6 +27,59 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
   const [lat, setLat] = useState(21.1081059);
   const [lng, setLng] = useState(73.1213093);
   const [radius, setRadius] = useState(100);
+  const [urlInput, setUrlInput] = useState("");
+  const [resolvingUrl, setResolvingUrl] = useState(false);
+
+  const parseCoords = (input: string) => {
+    const directMatch = input.match(/^\s*([0-9.-]+)\s*,\s*([0-9.-]+)\s*$/);
+    if (directMatch) {
+      return { lat: parseFloat(directMatch[1]), lng: parseFloat(directMatch[2]) };
+    }
+
+    const patterns = [
+      /@([0-9.-]+),([0-9.-]+)/,
+      /\/place\/([0-9.-]+)[,+]([0-9.-]+)/,
+      /[?&]q=([0-9.-]+),([0-9.-]+)/,
+      /query=([0-9.-]+),([0-9.-]+)/,
+      /ll=([0-9.-]+),([0-9.-]+)/
+    ];
+
+    for (const p of patterns) {
+      const match = input.match(p);
+      if (match) {
+        return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+      }
+    }
+    return null;
+  };
+
+  async function handleMapUrlChange(val: string) {
+    setUrlInput(val);
+    if (!val.trim()) return;
+
+    const localCoords = parseCoords(val);
+    if (localCoords) {
+      setLat(localCoords.lat);
+      setLng(localCoords.lng);
+      return;
+    }
+
+    if (val.includes("maps.app.goo.gl") || val.includes("goo.gl/maps")) {
+      setResolvingUrl(true);
+      try {
+        const resolved = await resolveGoogleMapsUrl(val);
+        const resolvedCoords = parseCoords(resolved);
+        if (resolvedCoords) {
+          setLat(resolvedCoords.lat);
+          setLng(resolvedCoords.lng);
+        }
+      } catch (err) {
+        console.error("Failed to resolve URL:", err);
+      } finally {
+        setResolvingUrl(false);
+      }
+    }
+  }
 
   function startAdd() {
     setMode("add");
@@ -33,6 +87,7 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
     setLat(21.1081059);
     setLng(73.1213093);
     setRadius(100);
+    setUrlInput("");
   }
 
   function startEdit(w: WorkshopRow) {
@@ -41,11 +96,13 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
     setLat(w.lat ?? 21.1081059);
     setLng(w.lng ?? 73.1213093);
     setRadius(w.radius ?? 100);
+    setUrlInput("");
   }
 
   function cancel() {
     setMode("list");
     setEditingWorkshop(null);
+    setUrlInput("");
   }
 
   const { execute: execCreate } = useAction(createWorkshop, {
@@ -109,6 +166,18 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
                 defaultValue={editingWorkshop?.address || ""}
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm"
               />
+
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Import from Google Maps Link</label>
+                <input
+                  type="text"
+                  placeholder={resolvingUrl ? "Resolving link..." : "Paste Maps URL (e.g., https://maps.app.goo.gl/...)"}
+                  value={urlInput}
+                  disabled={resolvingUrl}
+                  onChange={(e) => handleMapUrlChange(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm"
+                />
+              </div>
 
               {/* Map picker */}
               <div>

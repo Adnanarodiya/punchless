@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "3ab84fc4-916e-4454-8dcb-09265e4046fc"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.adnandev0.punchless",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

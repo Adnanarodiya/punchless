@@ -20,6 +20,7 @@ import {
   endShift,
   startBreak,
   endBreak,
+  forceRefreshWorkshops,
 } from "@/lib/services/geofence.service";
 import { getActiveJobs, type MyJob } from "@/lib/services/job.service";
 import { formatMinutes } from "@/lib/utils/formatting";
@@ -142,7 +143,10 @@ export default function HomeScreen() {
 
   async function onRefresh() {
     setRefreshing(true);
-    if (user && tracking) {
+    // Explicitly force refresh the workshops cache first so we get the newest coordinates
+    await forceRefreshWorkshops();
+    
+    if (user && permissionGranted) {
       const loc = await refreshLocation();
       if (loc) {
         await processLocation(loc, user.id, user.company_id);

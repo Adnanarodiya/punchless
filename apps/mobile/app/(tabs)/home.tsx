@@ -149,7 +149,7 @@ export default function HomeScreen() {
     if (user && permissionGranted) {
       const loc = await refreshLocation();
       if (loc) {
-        await processLocation(loc, user.id, user.company_id);
+        await processLocation(loc, user.id, user.company_id, { bypassGrace: true });
       }
     }
     await load();

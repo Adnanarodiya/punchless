@@ -174,14 +174,23 @@ import { useAttendanceStore } from "@/lib/stores/attendance.store";
 export async function processLocation(
   coords: LocationCoords,
   employeeId: string,
-  companyId: string
+  companyId: string,
+  options?: { bypassGrace?: boolean }
 ): Promise<{ newState: EngineState; transitioned: boolean }> {
   const workshops = await ensureWorkshops();
-  const nearWorkshop = findNearestWorkshop(
-    coords.latitude,
-    coords.longitude,
-    workshops
-  );
+  
+  // Calculate minimum distance to any active workshop
+  let minDistance = Infinity;
+  let nearestWorkshop = null;
+  for (const w of workshops) {
+    const dist = getDistanceMeters(coords.latitude, coords.longitude, w.lat, w.lng);
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearestWorkshop = w;
+    }
+  }
+
+  const nearWorkshop = nearestWorkshop && minDistance <= nearestWorkshop.radius ? nearestWorkshop : null;
 
   const currentState = useAttendanceStore.getState().currentState;
 
@@ -209,6 +218,14 @@ export async function processLocation(
       // Still inside a workshop — reset grace counter and return immediately WITHOUT database calls
       exitGraceCounter = 0;
       return { newState: "workshop", transitioned: false };
+    }
+
+    // Outside all workshops
+    if (options?.bypassGrace || minDistance > 500 || workshops.length === 0) {
+      exitGraceCounter = 0;
+      const openSess = await getOpenSession(employeeId);
+      if (openSess) await closeSession(openSess.id);
+      return { newState: "off_duty", transitioned: true };
     }
 
     // Outside all workshops — increment grace counter

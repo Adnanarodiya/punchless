@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-22 (Added `grok-md.md` — Shahin Motors BMS review + Punchless gap analysis)
+> **Last updated:** 2026-06-22 (Added `SHAHIN_IMPLEMENTATION_PLAN.md` — phased Shahin ERP integration plan)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -42,6 +42,8 @@
 | `README.md` | 1 | Project overview and setup instructions |
 | `PROJECT_TRACKER.md` | 6 | **This file** — tracks all files and progress |
 | `grok-md.md` | 9 | Shahin Motors BMS full website review + Punchless dashboard gap analysis (read-only audit) |
+| `SHAHIN_IMPLEMENTATION_PLAN.md` | 11 | Shahin → Punchless phased implementation plan with ✅/🟡/☐ checklist, accessibility UX, DB schema, routes |
+| `NEW_START.md` | 11 | Quick-start guide — which MD files to use, phase order, workflow steps |
 
 ### Documentation (`/docs/`)
 

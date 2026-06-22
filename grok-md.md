@@ -3,7 +3,8 @@
 > **Review date:** 2026-06-22  
 > **Reference site:** [https://maturecommerceclasses.com/shahin](https://maturecommerceclasses.com/shahin)  
 > **Review method:** Read-only browser audit (logged in, no data added/deleted)  
-> **Pages audited:** 30 main modules + dashboard home
+> **Pages audited:** 30 main modules + dashboard home  
+> **Implementation plan:** See [`SHAHIN_IMPLEMENTATION_PLAN.md`](./SHAHIN_IMPLEMENTATION_PLAN.md) for phased build plan with ✅/☐ status
 
 ---
 

@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-02-14 (Phase 8+: Splash/auth flow fix, break system with live counters, correction requests, history pages, workshop location change detection, background refresh, location permission prompt)
+> **Last updated:** 2026-06-22 (Added `grok-md.md` — Shahin Motors BMS review + Punchless gap analysis)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -41,6 +41,7 @@
 | `DOCS_INDEX.md` | 1 | Index of all documentation files |
 | `README.md` | 1 | Project overview and setup instructions |
 | `PROJECT_TRACKER.md` | 6 | **This file** — tracks all files and progress |
+| `grok-md.md` | 9 | Shahin Motors BMS full website review + Punchless dashboard gap analysis (read-only audit) |
 
 ### Documentation (`/docs/`)
 

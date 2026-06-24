@@ -43,6 +43,19 @@ export { VisuallyHidden } from "./components/visually-hidden";
 // Composed / Reusable
 export { Modal, type ModalProps } from "./components/modal";
 export { ConfirmModal, type ConfirmModalProps } from "./components/confirm-modal";
+export { PageHeader, type PageHeaderProps } from "./components/page-header";
+export { Breadcrumbs, type BreadcrumbsProps, type BreadcrumbItem } from "./components/breadcrumbs";
+export {
+  CollapsibleNavGroup,
+  type CollapsibleNavGroupProps,
+} from "./components/collapsible-nav-group";
+export { DataTable, type DataTableProps, type DataTableColumn } from "./components/data-table";
+export {
+  PaymentModeSelect,
+  PAYMENT_MODES,
+  type PaymentMode,
+  type PaymentModeSelectProps,
+} from "./components/payment-mode-select";
 
 // Utils
 export { cn } from "./lib/utils";

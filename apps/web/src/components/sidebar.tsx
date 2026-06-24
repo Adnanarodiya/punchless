@@ -2,143 +2,153 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  MapPin,
-  Briefcase,
-  Clock,
-  DollarSign,
-  Wallet,
-  Settings,
-  CreditCard,
-  History,
-  FileEdit,
-} from "lucide-react";
+import { X } from "lucide-react";
+
+import { CollapsibleNavGroup } from "@punchless/ui/components/collapsible-nav-group";
 import { cn } from "@punchless/ui/lib/utils";
+
+import { filterNavGroups, type NavItem } from "./sidebar-config";
 
 interface SidebarProps {
   role: string;
   userName: string;
   companyName: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-const navItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Employees",
-    href: "/dashboard/employees",
-    icon: Users,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Workshops",
-    href: "/dashboard/workshops",
-    icon: MapPin,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Jobs",
-    href: "/dashboard/jobs",
-    icon: Briefcase,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Attendance",
-    href: "/dashboard/attendance",
-    icon: Clock,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "History",
-    href: "/dashboard/history",
-    icon: History,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Requests",
-    href: "/dashboard/requests",
-    icon: FileEdit,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Salary",
-    href: "/dashboard/salary",
-    icon: DollarSign,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Advances",
-    href: "/dashboard/advances",
-    icon: Wallet,
-    roles: ["owner", "admin"],
-  },
-  {
-    label: "Billing",
-    href: "/dashboard/billing",
-    icon: CreditCard,
-    roles: ["owner"],
-  },
-  {
-    label: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-    roles: ["owner"],
-  },
-];
+function NavLink({
+  item,
+  isActive,
+  onNavigate,
+}: {
+  item: NavItem;
+  isActive: boolean;
+  onNavigate?: () => void;
+}) {
+  const Icon = item.icon;
 
-export function Sidebar({ role, userName, companyName }: SidebarProps) {
-  const pathname = usePathname();
-
-  const filteredNav = navItems.filter((item) => item.roles.includes(role));
+  if (item.comingSoon || !item.href) {
+    return (
+      <div
+        className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground/70"
+        aria-disabled
+      >
+        <span className="flex items-center gap-3">
+          <Icon className="size-4 shrink-0 opacity-50" />
+          {item.label}
+        </span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Soon
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col shrink-0">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-        <Link href="/dashboard" className="text-xl font-bold text-sidebar-foreground">
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+        isActive
+          ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+          : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+      )}
+    >
+      <Icon className="size-4 shrink-0" />
+      {item.label}
+    </Link>
+  );
+}
+
+function isNavItemActive(pathname: string, href: string) {
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(href))
+  );
+}
+
+export function Sidebar({
+  role,
+  userName,
+  companyName,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
+  const pathname = usePathname();
+  const groups = filterNavGroups(role);
+
+  const content = (
+    <>
+      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
+        <Link
+          href="/dashboard"
+          onClick={onMobileClose}
+          className="text-xl font-bold text-sidebar-foreground"
+        >
           ⚡ Punchless
         </Link>
+        {onMobileClose ? (
+          <button
+            type="button"
+            onClick={onMobileClose}
+            className="rounded-lg p-2 text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground lg:hidden"
+            aria-label="Close navigation menu"
+          >
+            <X className="size-5" />
+          </button>
+        ) : null}
       </div>
 
-      {/* Company info */}
-      <div className="px-4 py-3 border-b border-sidebar-border">
-        <p className="text-sm font-medium text-sidebar-foreground truncate">
+      <div className="border-b border-sidebar-border px-4 py-3">
+        <p className="truncate text-sm font-medium text-sidebar-foreground">
           {companyName}
         </p>
-        <p className="text-xs text-muted-foreground truncate">{userName}</p>
+        <p className="truncate text-xs text-muted-foreground">{userName}</p>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {filteredNav.map((item) => {
-          const isActive =
-            pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(item.href));
-          const Icon = item.icon;
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              )}
-            >
-              <Icon className="size-4 shrink-0" />
-              {item.label}
-            </Link>
-          );
-        })}
+      <nav
+        className="flex-1 space-y-4 overflow-y-auto px-3 py-4"
+        aria-label="Main navigation"
+      >
+        {groups.map((group) => (
+          <CollapsibleNavGroup key={group.label} label={group.label}>
+            {group.items.map((item) => (
+              <NavLink
+                key={item.label}
+                item={item}
+                isActive={item.href ? isNavItemActive(pathname, item.href) : false}
+                onNavigate={onMobileClose}
+              />
+            ))}
+          </CollapsibleNavGroup>
+        ))}
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+        {content}
+      </aside>
+
+      {/* Mobile drawer */}
+      {mobileOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            onClick={onMobileClose}
+            aria-label="Close navigation menu"
+          />
+          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar shadow-xl">
+            {content}
+          </aside>
+        </div>
+      ) : null}
+    </>
   );
 }

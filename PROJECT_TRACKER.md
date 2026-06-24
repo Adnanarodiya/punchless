@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-22 (Added `SHAHIN_IMPLEMENTATION_PLAN.md` — phased Shahin ERP integration plan)
+> **Last updated:** 2026-06-24 (Phase 13 — invoice print shows remark field)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -20,8 +20,19 @@
 | 7 | Salary Advances | ✅ Done | Full CRUD, approve/reject with notes, salary deduction integration, status filters |
 | 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history, GPS auto clock-in + geofence engine, jobs tab (functional), manual travel/job actions |
 | 8.5 | Break System + History + Corrections | ✅ Done | Splash/auth flow, live work/break counters, break in/out, correction requests (mobile + web), history pages with filters, workshop location change detection, background refresh, location permission prompt |
-| 9 | Settings & Polish | ⏳ Pending | Company settings, profile, notifications |
-| 10 | Stripe Billing | ⏳ Pending | Subscription, usage-based billing |
+| 9 | Settings & Polish | 🟡 Partial | Work schedule done; home polish → Phase 11A/15 |
+| 10 | Stripe Billing | ⏸️ Skipped | No payment integration planned |
+| 11A | Dashboard Shell | ✅ Done | Grouped sidebar, PageHeader, DataTable, wired home |
+| 11B | Clients CRM | ✅ Done | clients + ledger_entries + payments + statement |
+| 12 | Suppliers + Purchases | ✅ Done | suppliers, supplier_payments, purchase_invoices |
+| 13 | Tax Invoices + GST | ✅ Done | invoices, line items, GST slabs, split payment, print, ledger auto-write |
+
+
+
+| 14 | Banks + Transactions | ☐ **Next** | bank accounts, income/expense |
+| 15 | Financial Dashboard Home | ☐ Pending | Shahin-style financial HQ |
+| 16 | HR Extensions | ☐ Pending | posts, staff payments, deposits |
+| 17 | Reports Suite | ☐ Pending | 8 reports + print + Excel |
 
 ---
 
@@ -44,6 +55,8 @@
 | `grok-md.md` | 9 | Shahin Motors BMS full website review + Punchless dashboard gap analysis (read-only audit) |
 | `SHAHIN_IMPLEMENTATION_PLAN.md` | 11 | Shahin → Punchless phased implementation plan with ✅/🟡/☐ checklist, accessibility UX, DB schema, routes |
 | `NEW_START.md` | 11 | Quick-start guide — which MD files to use, phase order, workflow steps |
+| `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
+| `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
 
 ### Documentation (`/docs/`)
 
@@ -75,6 +88,10 @@
 | `migrations/20260208062002_company_settings_and_monthly_salary.sql` | 7 | Added company settings columns (work_start_time, grace_period, daily_work_hours, working_days) + monthly_salary on users |
 | `migrations/20260208070315_drop_users_travel_rate.sql` | 7 | Removed redundant `travel_rate` column from users (single `hourly_rate` now used for workshop/travel/on-site) |
 | `migrations/20260214060000_break_and_correction_requests.sql` | 8.5 | Added `break` state to attendance_sessions, new `correction_requests` table with RLS policies |
+| `migrations/20260624120000_clients_and_ledger.sql` | 11B | **CRM foundation**: `clients`, `client_payments`, `ledger_entries` + RLS |
+| `migrations/20260624140000_suppliers_and_purchases.sql` | 12 | `suppliers`, `supplier_payments`, `purchase_invoices` + ledger `purchase` ref |
+| `migrations/20260624160000_tax_invoices.sql` | 13 | `invoices`, `invoice_line_items` + jobs `vehicle_number`/`client_id` |
+| `migrations/20260624180000_fix_ledger_delete_policy.sql` | 13 | Admin can delete `ledger_entries` (invoice ledger resync) |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -112,6 +129,11 @@
 | `src/components/modal.tsx` | 1 | Reusable modal wrapper |
 | `src/components/confirm-modal.tsx` | 1 | Confirm/cancel modal with actions |
 | `src/components/visually-hidden.tsx` | 1 | Accessibility helper for screen readers |
+| `src/components/page-header.tsx` | 11A | Page title + description + actions slot |
+| `src/components/breadcrumbs.tsx` | 11A | Accessible breadcrumb navigation |
+| `src/components/collapsible-nav-group.tsx` | 11A | Collapsible sidebar section group |
+| `src/components/data-table.tsx` | 11A | Reusable data table with optional search |
+| `src/components/payment-mode-select.tsx` | 11B | Cash/Bank/Credit payment mode select |
 
 ---
 
@@ -150,7 +172,23 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `layout.tsx` | 2 | Dashboard shell: Sidebar + Header + content area, fetches current user |
-| `dashboard/page.tsx` | 2 | Home page: stats cards (employees count, active sessions, jobs, pending advances) |
+| `dashboard/page.tsx` | 11A | Home page: stat cards, quick actions, recent attendance + jobs tables |
+| `dashboard/dashboard-quick-actions.tsx` | 11A/13 | Quick action link grid (includes Invoices) |
+| `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables |
+| `dashboard/clients/page.tsx` | 11B | Server component: fetches clients + summary, renders `ClientManager` |
+| `dashboard/clients/client-manager.tsx` | 11B | **Client component**: CRUD, receive payment modal, soft delete/recover |
+| `dashboard/clients/[id]/statement/page.tsx` | 11B | Server component: client statement with date range |
+| `dashboard/clients/[id]/statement/statement-manager.tsx` | 11B | Statement table with opening/closing balance + print |
+| `dashboard/suppliers/page.tsx` | 12 | Server component: suppliers + summary |
+| `dashboard/suppliers/supplier-manager.tsx` | 12 | CRUD, Pay Now modal, statement link, soft delete/recover |
+| `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
+| `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 12 | Payable ledger table with opening/closing + print |
+| `dashboard/purchases/page.tsx` | 12 | Server component: purchases + active suppliers |
+| `dashboard/purchases/purchase-manager.tsx` | 12 | Purchase/sales invoices with GST slabs + live total preview |
+| `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
+| `dashboard/invoices/invoice-manager.tsx` | 13 | Tax invoice CRUD, GST preview, split payment, print link |
+| `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice view |
+| `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
 | `dashboard/employees/page.tsx` | 3 | Server component: fetches employees + workshops, renders `EmployeeManager` |
 | `dashboard/employees/employee-manager.tsx` | 3 | **Client component**: Full CRUD — add/edit/delete employees, workshop dropdown (auto-assign if 1, dropdown if 2+), toggle active/inactive |
 | `dashboard/workshops/page.tsx` | 3 | Server component: fetches workshops, renders `WorkshopManager` |
@@ -175,8 +213,10 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `sidebar.tsx` | 2 | Sidebar nav with role-based menu items (owner sees all, admin sees most, employee sees limited) |
-| `dashboard-header.tsx` | 2 | Top header bar: user name + role badge + logout button |
+| `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
+| `sidebar-config.ts` | 11A | Nav groups config — live routes + "Soon" placeholders for ERP modules |
+| `dashboard-shell.tsx` | 11A | Client layout wrapper: skip-to-content, mobile nav state |
+| `dashboard-header.tsx` | 11A | Top header: mobile menu button, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
 
 #### Utils (`src/lib/utils/`)
@@ -201,6 +241,10 @@
 | `job.schema.ts` | 7 | Zod schema: `jobSchema` |
 | `advance.schema.ts` | 7 | Zod schema: `createAdvanceSchema` |
 | `settings.schema.ts` | 7 | Zod schema: `companySettingsSchema` |
+| `client.schema.ts` | 11B | Zod schemas: `createClientSchema`, `updateClientSchema`, `receiveClientPaymentSchema` |
+| `supplier.schema.ts` | 12 | Zod schemas: `createSupplierSchema`, `updateSupplierSchema`, `paySupplierSchema` |
+| `purchase.schema.ts` | 12 | Zod schemas + GST calc helpers for purchase invoices |
+| `invoice.schema.ts` | 13 | Zod schemas + payment breakdown resolver for tax invoices |
 
 #### Hooks (`src/hooks/`)
 
@@ -226,6 +270,10 @@
 | `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
 | `settings.actions.ts` | 7 | `updateCompanySettings()` — update work schedule + recalculate all employee hourly rates from monthly salary |
 | `correction.actions.ts` | 8.5 | `approveCorrectionRequest()` — approve + auto-update session times; `rejectCorrectionRequest()` — reject with notes |
+| `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
+| `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()` |
+| `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` |
+| `invoice.actions.ts` | 13 | `createInvoice()`, `updateInvoice()`, `softDeleteInvoice()` + ledger sync |
 
 #### Server Queries (`src/lib/queries/`)
 
@@ -241,6 +289,11 @@
 | `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
+| `dashboard.queries.ts` | 11A | `getDashboardStats()`, `getRecentAttendance()`, `getRecentJobs()` — home page data |
+| `client.queries.ts` | 11B | `getClients()`, `getClientById()`, `getClientsSummary()`, `getClientStatement()` |
+| `supplier.queries.ts` | 12 | `getSuppliers()`, `getSupplierById()`, `getSuppliersSummary()`, `getSupplierStatement()` |
+| `purchase.queries.ts` | 12 | `getPurchaseInvoices()` with supplier join |
+| `invoice.queries.ts` | 13 | `getInvoices()`, `getInvoiceById()`, `getNextInvoiceNumber()` |
 
 #### Supabase Clients (`src/lib/supabase/`)
 
@@ -328,6 +381,14 @@
 | `attendance_sessions` | 2 | Time tracking records (employee, state: workshop/travel/on_site_job/off_duty/**break**, workshop, job, start/end time, duration) |
 | `salary_advances` | 2 | Advance requests (amount, reason, status, approved_by) |
 | `correction_requests` | 8.5 | Employee correction requests (session_id, original/requested times, reason, status: pending/approved/rejected, admin review) |
+| `clients` | 11B | CRM clients (name, alias, contact, address, GST, opening_balance, soft delete) |
+| `client_payments` | 11B | Payments received from clients (amount, payment_mode, payment_date) |
+| `ledger_entries` | 11B | Shared finance ledger (entity_type, entry_type, debit/credit, reference_type/id) |
+| `suppliers` | 12 | Vendor CRM (mirror of clients, payable via ledger credits) |
+| `supplier_payments` | 12 | Payments to suppliers (Cash/Bank) |
+| `purchase_invoices` | 12 | Supplier purchase/sales invoices with GST breakdown |
+| `invoices` | 13 | Client tax invoices with GST + payment split |
+| `invoice_line_items` | 13 | Line items per tax invoice |
 
 ---
 

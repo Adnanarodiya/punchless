@@ -19,6 +19,25 @@ export type JobStatus = "pending" | "assigned" | "in_progress" | "completed" | "
 
 export type AdvanceStatus = "pending" | "approved" | "rejected";
 
+export type PaymentMode = "cash" | "bank" | "credit";
+
+export type LedgerEntityType = "client" | "supplier" | "staff" | "bank" | "expense";
+
+export type LedgerEntryType = "debit" | "credit";
+
+export type LedgerReferenceType =
+  | "invoice"
+  | "payment"
+  | "advance"
+  | "salary"
+  | "expense"
+  | "opening_balance"
+  | "purchase";
+
+export type PurchaseInvoiceType = "purchase" | "sales";
+
+export type TaxInvoicePaymentMode = "cash" | "bank" | "credit" | "split";
+
 // --- Database Models ---
 
 export interface Company {

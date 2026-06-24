@@ -114,3 +114,31 @@
   .text-state-offduty { @apply text-[hsl(var(--state-offduty))]; }
   .bg-state-offduty { @apply bg-[hsl(var(--state-offduty))]; }
 }
+
+/* Print utility — hide chrome, show content (Phase 11A) */
+@media print {
+  aside,
+  header,
+  [data-slot="page-header"] button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}

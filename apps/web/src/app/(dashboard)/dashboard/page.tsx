@@ -1,102 +1,93 @@
+import Link from "next/link";
 import { Users, Clock, Briefcase, Wallet } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+
+import { PageHeader } from "@punchless/ui/components/page-header";
+
+import {
+  getDashboardStats,
+  getRecentAttendance,
+  getRecentJobs,
+} from "@/lib/queries/dashboard.queries";
+
+import { DashboardQuickActions } from "./dashboard-quick-actions";
+import { DashboardRecentTables } from "./dashboard-recent-tables";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const [stats, recentAttendance, recentJobs] = await Promise.all([
+    getDashboardStats(),
+    getRecentAttendance(10),
+    getRecentJobs(10),
+  ]);
 
-  // Get counts
-  const { count: employeeCount } = await supabase
-    .from("users")
-    .select("*", { count: "exact", head: true })
-    .eq("is_active", true)
-    .eq("role", "employee");
-
-  const { count: activeSessionCount } = await supabase
-    .from("attendance_sessions")
-    .select("*", { count: "exact", head: true })
-    .is("end_time", null);
-
-  const { count: activeJobCount } = await supabase
-    .from("jobs")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["pending", "assigned", "in_progress"]);
-
-  const { count: pendingAdvanceCount } = await supabase
-    .from("salary_advances")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "pending");
-
-  const stats = [
+  const statCards = [
     {
       label: "Active Employees",
-      value: employeeCount ?? 0,
+      value: stats.employeeCount,
       icon: Users,
       color: "text-primary",
       bgColor: "bg-primary/10",
+      href: "/dashboard/employees",
     },
     {
       label: "Currently Working",
-      value: activeSessionCount ?? 0,
+      value: stats.activeSessionCount,
       icon: Clock,
       color: "text-success",
       bgColor: "bg-success/10",
+      href: "/dashboard/attendance",
     },
     {
       label: "Active Jobs",
-      value: activeJobCount ?? 0,
+      value: stats.activeJobCount,
       icon: Briefcase,
       color: "text-warning",
       bgColor: "bg-warning/10",
+      href: "/dashboard/jobs",
     },
     {
       label: "Pending Advances",
-      value: pendingAdvanceCount ?? 0,
+      value: stats.pendingAdvanceCount,
       icon: Wallet,
-      color: "text-info",
-      bgColor: "bg-info/10",
+      color: "text-state-travel",
+      bgColor: "bg-state-travel/10",
+      href: "/dashboard/advances",
     },
   ];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="Dashboard"
+        description="Workshop overview — attendance, jobs, and payroll at a glance."
+      />
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div
+            <Link
               key={stat.label}
-              className="bg-card border border-border rounded-xl p-5"
+              href={stat.href}
+              className="rounded-xl border border-border bg-card p-5 transition hover:border-primary/30 hover:bg-accent/30"
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <div className={`${stat.bgColor} ${stat.color} p-2 rounded-lg`}>
+                <div className={`rounded-lg p-2 ${stat.bgColor} ${stat.color}`}>
                   <Icon className="size-4" />
                 </div>
               </div>
               <p className="text-3xl font-bold">{stat.value}</p>
-            </div>
+            </Link>
           );
         })}
       </div>
 
-      {/* Placeholder sections */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Attendance</h2>
-          <p className="text-sm text-muted-foreground">
-            Attendance data will appear here once employees start tracking.
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-lg font-semibold mb-4">Recent Jobs</h2>
-          <p className="text-sm text-muted-foreground">
-            Job activity will appear here once jobs are created.
-          </p>
-        </div>
-      </div>
+      <DashboardQuickActions />
+
+      <DashboardRecentTables
+        recentAttendance={recentAttendance}
+        recentJobs={recentJobs}
+      />
     </div>
   );
 }

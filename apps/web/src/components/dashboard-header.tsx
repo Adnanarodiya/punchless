@@ -1,18 +1,36 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
 import { Button } from "@punchless/ui/components/button";
 import { logout } from "@/lib/actions/auth.actions";
 
 interface DashboardHeaderProps {
   userName: string;
   role: string;
+  onMenuClick?: () => void;
 }
 
-export function DashboardHeader({ userName, role }: DashboardHeaderProps) {
+export function DashboardHeader({
+  userName,
+  role,
+  onMenuClick,
+}: DashboardHeaderProps) {
   return (
-    <header className="h-16 border-b border-border flex items-center justify-between px-6 shrink-0">
-      <div />
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 sm:px-6">
+      <div className="flex items-center gap-2">
+        {onMenuClick ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            className="lg:hidden"
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+          >
+            <Menu className="size-5" />
+          </Button>
+        ) : null}
+      </div>
 
       <div className="flex items-center gap-4">
         <div className="text-right">

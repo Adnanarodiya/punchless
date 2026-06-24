@@ -536,15 +536,15 @@ This powers: Client Statement, Staff Statement, Bank Statement, Rojmel Report �
 
 | Task | Status |
 |------|--------|
-| Collapsible grouped sidebar component | ☐ |
-| Breadcrumbs component | ☐ |
-| Skip-to-content link | ☐ |
-| Mobile responsive sidebar / bottom nav | ☐ |
-| `<PageHeader>` + `<DataTable>` shared components in `packages/ui` | ☐ |
-| Print CSS utility | ☐ |
-| Dashboard home Zone 1 — real attendance + job stats (wire existing data) | ☐ |
-| Dashboard home Zone 2 — quick action buttons (links to existing pages) | ☐ |
-| Remove placeholder text from home | ☐ |
+| Collapsible grouped sidebar component | ✅ |
+| Breadcrumbs component | ✅ |
+| Skip-to-content link | ✅ |
+| Mobile responsive sidebar / bottom nav | ✅ |
+| `<PageHeader>` + `<DataTable>` shared components in `packages/ui` | ✅ |
+| Print CSS utility | ✅ |
+| Dashboard home Zone 1 — real attendance + job stats (wire existing data) | ✅ |
+| Dashboard home Zone 2 — quick action buttons (links to existing pages) | ✅ |
+| Remove placeholder text from home | ✅ |
 
 **Done when:** Home shows real data, navigation is grouped, mobile works.
 
@@ -554,18 +554,18 @@ This powers: Client Statement, Staff Statement, Bank Statement, Rojmel Report �
 
 | Task | Status |
 |------|--------|
-| Migration: `clients` table + RLS | ☐ |
-| Migration: `client_payments` table + RLS | ☐ |
-| Migration: `ledger_entries` table + RLS | ☐ |
-| `pnpm db:gen-types` | ☐ |
-| `client.actions.ts` + `client.queries.ts` | ☐ |
-| `client.schema.ts` validation | ☐ |
-| `/dashboard/clients` page + manager | ☐ |
-| Receive payment modal (Cash/Bank) | ☐ |
-| `/dashboard/clients/[id]/statement` | ☐ |
-| Summary cards (count + total due) | ☐ |
-| Soft delete + recover | ☐ |
-| Update sidebar + PROJECT_TRACKER | ☐ |
+| Migration: `clients` table + RLS | ✅ |
+| Migration: `client_payments` table + RLS | ✅ |
+| Migration: `ledger_entries` table + RLS | ✅ |
+| `pnpm db:gen-types` | 🟡 Types synced manually — run `pnpm db:push` + `pnpm db:gen-types` locally |
+| `client.actions.ts` + `client.queries.ts` | ✅ |
+| `client.schema.ts` validation | ✅ |
+| `/dashboard/clients` page + manager | ✅ |
+| Receive payment modal (Cash/Bank) | ✅ |
+| `/dashboard/clients/[id]/statement` | ✅ |
+| Summary cards (count + total due) | ✅ |
+| Soft delete + recover | ✅ |
+| Update sidebar + PROJECT_TRACKER | ✅ |
 
 **Done when:** Owner can add client, record payment, view statement.
 
@@ -575,13 +575,13 @@ This powers: Client Statement, Staff Statement, Bank Statement, Rojmel Report �
 
 | Task | Status |
 |------|--------|
-| Migration: `suppliers` + `supplier_payments` | ☐ |
-| Migration: `purchase_invoices` | ☐ |
-| Actions, queries, validations | ☐ |
-| `/dashboard/suppliers` | ☐ |
-| `/dashboard/purchases` | ☐ |
-| Pay Now modal | ☐ |
-| GST slab fields on purchase form | ☐ |
+| Migration: `suppliers` + `supplier_payments` | ✅ |
+| Migration: `purchase_invoices` | ✅ |
+| Actions, queries, validations | ✅ |
+| `/dashboard/suppliers` | ✅ |
+| `/dashboard/purchases` | ✅ |
+| Pay Now modal | ✅ |
+| GST slab fields on purchase form | ✅ |
 
 ---
 
@@ -589,14 +589,14 @@ This powers: Client Statement, Staff Statement, Bank Statement, Rojmel Report �
 
 | Task | Status |
 |------|--------|
-| Migration: `invoices` + `invoice_line_items` | ☐ |
-| GST fields (5%, 12%, 18%, 28%) | ☐ |
-| Vehicle number, client link | ☐ |
-| Payment mode split (Cash + Bank) | ☐ |
-| `/dashboard/invoices` CRUD | ☐ |
-| Invoice → ledger_entries auto-write | ☐ |
-| Print invoice view | ☐ |
-| Link invoice to job (optional FK) | ☐ |
+| Migration: `invoices` + `invoice_line_items` | ✅ |
+| GST fields (5%, 12%, 18%, 28%) | ✅ |
+| Vehicle number, client link | ✅ |
+| Payment mode split (Cash + Bank + Credit) | ✅ |
+| `/dashboard/invoices` CRUD | ✅ |
+| Invoice → ledger_entries auto-write | ✅ |
+| Print invoice view | ✅ |
+| Link invoice to job (optional FK) | ✅ |
 
 ---
 
@@ -885,9 +885,9 @@ Week 5+ → Phase 15–18
 | 1–8.5 | Core Punchless | ✅ 95% | Done |
 | 9 | Settings & Polish | 🟡 40% | Before Phase 11 |
 | 10 | Stripe Billing | ☐ 0% | Last |
-| **11A** | Dashboard Shell | ☐ 0% | **Start here** |
-| **11B** | Clients CRM | ☐ 0% | Week 2 |
-| 12 | Suppliers + Purchases | ☐ 0% | Week 3–4 |
+| **11A** | Dashboard Shell | ✅ Done | — |
+| **11B** | Clients CRM | ✅ Done | — |
+| 12 | Suppliers + Purchases | ✅ Done | — |
 | 13 | Invoicing | ☐ 0% | Week 3–4 |
 | 14 | Banks + Transactions | ☐ 0% | Week 5–6 |
 | 15 | Financial Dashboard | ☐ 0% | Week 7 |
@@ -897,4 +897,4 @@ Week 5+ → Phase 15–18
 
 ---
 
-*Next step: Say **"start Phase 11A"** and I will implement the accessible sidebar + dashboard home wiring as the first PR.*
+*Next step: Say **"start Phase 14"** to implement Banks + Transactions.*

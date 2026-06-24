@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/queries/auth.queries";
-import { Sidebar } from "@/components/sidebar";
-import { DashboardHeader } from "@/components/dashboard-header";
+import { DashboardShell } from "@/components/dashboard-shell";
 
 export default async function DashboardLayout({
   children,
@@ -15,19 +14,12 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <Sidebar
-        role={user.role}
-        userName={user.full_name}
-        companyName={user.company?.name ?? ""}
-      />
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        <DashboardHeader userName={user.full_name} role={user.role} />
-        <main className="flex-1 p-6">{children}</main>
-      </div>
-    </div>
+    <DashboardShell
+      role={user.role}
+      userName={user.full_name}
+      companyName={user.company?.name ?? ""}
+    >
+      {children}
+    </DashboardShell>
   );
 }

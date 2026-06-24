@@ -4,14 +4,27 @@
 
 ---
 
+## Locked Strategy (2026-06-24)
+
+**Finish the full web dashboard (Phases 11A–17) before mobile app work.**
+
+- No Stripe / payment integration for now
+- Mobile polish comes after dashboard is usable
+- Start with Phase 11A today
+
+**Main plan:** [`DASHBOARD_EXECUTION_PLAN.md`](./DASHBOARD_EXECUTION_PLAN.md)
+
+---
+
 ## Which MD File to Use When
 
 | File | Use it for |
 |------|------------|
-| **[`SHAHIN_IMPLEMENTATION_PLAN.md`](./SHAHIN_IMPLEMENTATION_PLAN.md)** | **Start here.** Your working plan — what to build, in what order, with ✅/🟡/☐ status, routes, DB tables, and tasks. |
+| **[`DASHBOARD_EXECUTION_PLAN.md`](./DASHBOARD_EXECUTION_PLAN.md)** | **Start here.** Locked scope, phase order 11A→17, timeline, what to do now. |
+| **[`SHAHIN_IMPLEMENTATION_PLAN.md`](./SHAHIN_IMPLEMENTATION_PLAN.md)** | Detailed tasks per phase, DB schema, route map, feature checklist. |
 | **[`grok-md.md`](./grok-md.md)** | Reference only — what Shahin has, page-by-page. Use when you need to check how a Shahin screen works. |
 
-**Rule of thumb:** Build from `SHAHIN_IMPLEMENTATION_PLAN.md`. Look at `grok-md.md` when you need Shahin details.
+**Rule of thumb:** Follow `DASHBOARD_EXECUTION_PLAN.md` for order. Use `SHAHIN_IMPLEMENTATION_PLAN.md` for task details. Use `grok-md.md` for Shahin screen reference.
 
 ---
 
@@ -78,16 +91,17 @@ After 11A is done:
 | 6 | 15 | Financial dashboard (Shahin-style home) |
 | 7 | 16 | HR extensions (posts, payments, deposits) |
 | 8 | 17 | Reports suite |
-| 9 | 18 | Admin, audit log, phone login |
-| Last | 10 | Stripe billing |
+| — | Mobile app polish | **After 11A–17** |
+| — | 18 | Admin, audit log (deferred) |
+| — | 10 | Stripe billing (**skipped — no payment integration**) |
 
 ---
 
 ## Your Immediate Action
 
-Say: **"start Phase 11A"**
+Phases 11A–13 are **done**. Test today’s work: [`TODAY_TESTING_2026-06-24.md`](./TODAY_TESTING_2026-06-24.md)
 
-That kicks off the first PR: accessible sidebar + dashboard home wiring. Do not jump to clients or invoices before 11A is done.
+Tomorrow: say **"start Phase 14"** for Banks + Transactions.
 
 ---
 

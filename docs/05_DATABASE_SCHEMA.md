@@ -204,6 +204,45 @@ CREATE INDEX idx_advances_employee ON salary_advances(employee_id, status);
 
 ---
 
+## Phase 11B — CRM & Ledger Tables
+
+### `clients`
+Workshop customers with opening balance and soft delete (`is_deleted`, `deleted_at`).
+
+### `client_payments`
+Payments received from clients (Cash/Bank). Each payment writes a matching `ledger_entries` credit.
+
+### `ledger_entries`
+Shared finance spine — powers client statements, bank statements, and Rojmel reports.
+- `entity_type`: client | supplier | staff | bank | expense
+- `entry_type`: debit (increases due) | credit (reduces due)
+- `reference_type`: invoice | payment | opening_balance | etc.
+
+Migration: `supabase/migrations/20260624120000_clients_and_ledger.sql`
+
+### Phase 12 — Suppliers & Purchases
+
+- `suppliers` — vendor CRM (mirror of clients, payable tracking)
+- `supplier_payments` — Pay Now (Cash/Bank), writes debit to `ledger_entries`
+- `purchase_invoices` — purchase/sales invoices with GST slabs (0/5/12/18/28%)
+
+Migration: `supabase/migrations/20260624140000_suppliers_and_purchases.sql`
+
+### Phase 13 — Tax Invoices
+
+- `invoices` — client tax invoices with GST slabs (0/5/12/18/28%), payment modes (cash/bank/credit/split), soft delete
+- `invoice_line_items` — line items per invoice (description, qty, unit price, GST)
+- `jobs` extended with optional `vehicle_number` and `client_id` for invoice linking
+
+Invoice create/update writes to `ledger_entries` (Shahin-style net posting):
+- Debit only the **unpaid (credit) portion** of the invoice (`reference_type: invoice`)
+- Credits for cash/bank received (`reference_type: payment`)
+- Full cash/bank invoice → credit only (reduces client due, no debit bump)
+
+Migration: `supabase/migrations/20260624160000_tax_invoices.sql`
+
+---
+
 ## Related Docs
 
 - Attendance engine → `06_ATTENDANCE_ENGINE.md`

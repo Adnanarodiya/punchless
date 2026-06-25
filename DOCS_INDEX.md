@@ -20,6 +20,7 @@
 | 📱 | `docs/09_MOBILE_APP.md` | App screens, background GPS, offline support, notifications | You're building the Expo mobile app |
 | 💳 | `docs/10_STRIPE_BILLING.md` | Stripe setup, webhooks, billing page (DO LAST!) | You're in Phase 10 and everything else is done |
 | 🎨 | `docs/11_THEMING_AND_COLORS.md` | All CSS variables, color usage rules, dark mode, attendance state colors | You need to use a color, status badge, or want to change the theme |
+| 📄 | `docs/12_STATEMENT_UI_PLAN.md` | **🔴 Priority** — Shahin-style statement UI redesign (client + supplier), 7 phases, print, migration | You're building or updating client/supplier statement pages |
 
 ---
 

@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-24 (Phase 13 — invoice print shows remark field)
+> **Last updated:** 2026-06-25 (Statement UI plan doc — priority before Phase 14)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -26,10 +26,8 @@
 | 11B | Clients CRM | ✅ Done | clients + ledger_entries + payments + statement |
 | 12 | Suppliers + Purchases | ✅ Done | suppliers, supplier_payments, purchase_invoices |
 | 13 | Tax Invoices + GST | ✅ Done | invoices, line items, GST slabs, split payment, print, ledger auto-write |
-
-
-
-| 14 | Banks + Transactions | ☐ **Next** | bank accounts, income/expense |
+| **13.5** | **Statement UI Redesign** | 🔴 **Priority — Next** | Shahin-style client + supplier statements — see `docs/12_STATEMENT_UI_PLAN.md` |
+| 14 | Banks + Transactions | ☐ Pending | bank accounts, income/expense — **after 13.5** |
 | 15 | Financial Dashboard Home | ☐ Pending | Shahin-style financial HQ |
 | 16 | HR Extensions | ☐ Pending | posts, staff payments, deposits |
 | 17 | Reports Suite | ☐ Pending | 8 reports + print + Excel |
@@ -57,6 +55,7 @@
 | `NEW_START.md` | 11 | Quick-start guide — which MD files to use, phase order, workflow steps |
 | `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
 | `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
+| `docs/12_STATEMENT_UI_PLAN.md` | 13.5 | **🔴 Priority plan** — Shahin-style statement UI (7 phases, print, company profile migration) |
 
 ### Documentation (`/docs/`)
 
@@ -73,6 +72,7 @@
 | `09_MOBILE_APP.md` | 1 | Expo app screens, GPS permissions |
 | `10_STRIPE_BILLING.md` | 1 | Subscription model, webhooks, usage metering |
 | `11_THEMING_AND_COLORS.md` | 1 | CSS variable system, color tokens |
+| `12_STATEMENT_UI_PLAN.md` | 13.5 | **Priority** — Statement UI redesign plan (client + supplier, Shahin reference) |
 
 ### Supabase (`/supabase/`)
 

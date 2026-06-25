@@ -117,6 +117,27 @@
 
 ---
 
+### 🔴 Priority Insert — Statement UI Redesign (before Phase 14)
+
+> **Plan:** [`docs/12_STATEMENT_UI_PLAN.md`](./docs/12_STATEMENT_UI_PLAN.md)  
+> **Status:** ☐ Not started  
+> **Effort:** ~4–5 hours  
+> **Why now:** Phase 11B/12 statements work but use generic dashboard UI — owners need Shahin-style printable ledger (letterhead, entity box, full table, print).
+
+| # | Deliverable |
+|---|-------------|
+| 1 | Company profile migration (`tagline`, `address`, `phone`, `email`, `logo_url`) + Settings form |
+| 2 | Shared UI: `StatementLetterhead`, `StatementEntityBox`, `BalanceBadge`, `StatementToolbar` in `packages/ui` |
+| 3 | Enriched statement queries (invoice no., vehicle, user, totals, `BalanceMeta`) |
+| 4 | Rewrite client + supplier `statement-manager.tsx` (Shahin table layout) |
+| 5 | Print CSS + optional `/statement/print` routes |
+
+**Done when:** Client/supplier statements match Shahin reference; print is clean A4 document.
+
+**Do not start Phase 14 until this is ✅** (or explicitly skipped).
+
+---
+
 ### Phase 14 — Banks + Income/Expense (~2 weeks)
 
 **Database:**
@@ -204,8 +225,9 @@
 11A (shell, no DB)
  └── 11B (clients + ledger_entries)  ← ledger is required by everything below
       ├── 12 (suppliers + purchases)
-      ├── 13 (invoices) ──────────────┐
-      └── 14 (banks + transactions) ──┤
+      ├── 13 (invoices)
+      │    └── 🔴 Statement UI redesign (docs/12) ← DO NOW
+      └── 14 (banks + transactions) ──┐
                                       ├── 15 (financial home — needs 11B–14 data)
                                       ├── 16 (HR extensions)
                                       └── 17 (reports — needs ledger + all modules)

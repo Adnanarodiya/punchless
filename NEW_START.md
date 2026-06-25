@@ -14,13 +14,16 @@
 
 **Main plan:** [`DASHBOARD_EXECUTION_PLAN.md`](./DASHBOARD_EXECUTION_PLAN.md)
 
+**🔴 Current priority (before Phase 14):** [`docs/12_STATEMENT_UI_PLAN.md`](./docs/12_STATEMENT_UI_PLAN.md) — Shahin-style statement UI for clients + suppliers.
+
 ---
 
 ## Which MD File to Use When
 
 | File | Use it for |
 |------|------------|
-| **[`DASHBOARD_EXECUTION_PLAN.md`](./DASHBOARD_EXECUTION_PLAN.md)** | **Start here.** Locked scope, phase order 11A→17, timeline, what to do now. |
+| **[`docs/12_STATEMENT_UI_PLAN.md`](./docs/12_STATEMENT_UI_PLAN.md)** | **🔴 Do now.** Statement UI redesign — 7 phases, Shahin letterhead + table + print. |
+| **[`DASHBOARD_EXECUTION_PLAN.md`](./DASHBOARD_EXECUTION_PLAN.md)** | Locked scope, phase order 11A→17, timeline. |
 | **[`SHAHIN_IMPLEMENTATION_PLAN.md`](./SHAHIN_IMPLEMENTATION_PLAN.md)** | Detailed tasks per phase, DB schema, route map, feature checklist. |
 | **[`grok-md.md`](./grok-md.md)** | Reference only — what Shahin has, page-by-page. Use when you need to check how a Shahin screen works. |
 

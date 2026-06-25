@@ -7,6 +7,7 @@ export type CompanySettings = {
   grace_period_minutes: number;
   daily_work_hours: number;
   working_days_per_month: number;
+  has_data_lock_pin: boolean;
 };
 
 /**
@@ -31,7 +32,9 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
 
   const { data, error } = await supabase
     .from("companies")
-    .select("id, name, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month")
+    .select(
+      "id, name, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, data_lock_pin_hash"
+    )
     .eq("id", (userData as { company_id: string }).company_id)
     .single();
 
@@ -46,5 +49,11 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
     grace_period_minutes: row.grace_period_minutes ?? 5,
     daily_work_hours: row.daily_work_hours ?? 8,
     working_days_per_month: row.working_days_per_month ?? 26,
+    has_data_lock_pin: Boolean(row.data_lock_pin_hash),
   };
+}
+
+export async function getDataLockStatus(): Promise<{ hasPin: boolean }> {
+  const settings = await getCompanySettings();
+  return { hasPin: settings?.has_data_lock_pin ?? false };
 }

@@ -105,6 +105,11 @@
   .text-warning { @apply text-[hsl(var(--warning))]; }
   .bg-warning { @apply bg-[hsl(var(--warning))]; }
 
+  @keyframes nav-progress {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
   .text-state-workshop { @apply text-[hsl(var(--state-workshop))]; }
   .bg-state-workshop { @apply bg-[hsl(var(--state-workshop))]; }
   .text-state-travel { @apply text-[hsl(var(--state-travel))]; }

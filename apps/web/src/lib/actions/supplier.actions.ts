@@ -19,6 +19,7 @@ function revalidateSupplierPages(supplierId?: string) {
 
 export const createSupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_supplier", entityType: "supplier" },
 })(async (formData, { supabase, me }) => {
   const parsed = createSupplierSchema.safeParse({
     name: formData.get("name"),
@@ -80,6 +81,7 @@ export const createSupplier = protectedAction<FormData>({
 
 export const updateSupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_supplier", entityType: "supplier" },
 })(async (formData, { supabase }) => {
   const parsed = updateSupplierSchema.safeParse({
     supplierId: formData.get("supplierId"),
@@ -117,6 +119,7 @@ export const updateSupplier = protectedAction<FormData>({
 
 export const softDeleteSupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "soft_delete_supplier", entityType: "supplier" },
 })(async (formData, { supabase }) => {
   const supplierId = String(formData.get("supplierId") || "");
   if (!supplierId) return { success: false, error: "Supplier ID required" };
@@ -137,6 +140,7 @@ export const softDeleteSupplier = protectedAction<FormData>({
 
 export const recoverSupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "recover_supplier", entityType: "supplier" },
 })(async (formData, { supabase }) => {
   const supplierId = String(formData.get("supplierId") || "");
   if (!supplierId) return { success: false, error: "Supplier ID required" };
@@ -157,6 +161,7 @@ export const recoverSupplier = protectedAction<FormData>({
 
 export const paySupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "pay_supplier", entityType: "supplier" },
 })(async (formData, { supabase, me }) => {
   const parsed = paySupplierSchema.safeParse({
     supplierId: formData.get("supplierId"),

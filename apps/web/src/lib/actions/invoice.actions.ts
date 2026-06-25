@@ -138,6 +138,7 @@ async function writeInvoiceLedgerEntries(
 
 export const createInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_invoice", entityType: "invoice" },
 })(async (formData, { supabase, me }) => {
   const parsed = createInvoiceSchema.safeParse({
     clientId: formData.get("clientId"),
@@ -234,6 +235,7 @@ export const createInvoice = protectedAction<FormData>({
 
 export const updateInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_invoice", entityType: "invoice" },
 })(async (formData, { supabase, me }) => {
   const parsed = updateInvoiceSchema.safeParse({
     invoiceId: formData.get("invoiceId"),
@@ -336,6 +338,7 @@ export const updateInvoice = protectedAction<FormData>({
 
 export const softDeleteInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "soft_delete_invoice", entityType: "invoice" },
 })(async (formData, { supabase }) => {
   const invoiceId = String(formData.get("invoiceId") || "");
   if (!invoiceId) return { success: false, error: "Invoice ID required" };

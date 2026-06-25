@@ -10,6 +10,18 @@ export function isBackgroundLocationSupported(): boolean {
 
 export const BACKGROUND_LOCATION_TASK = "punchless-background-location";
 
+export type TrackingProfile = "idle" | "active";
+
+const TRACKING_PROFILES: Record<
+  TrackingProfile,
+  { timeInterval: number; distanceInterval: number }
+> = {
+  idle: { timeInterval: 60_000, distanceInterval: 50 },
+  active: { timeInterval: 30_000, distanceInterval: 20 },
+};
+
+let currentProfile: TrackingProfile = "active";
+
 export type LocationCoords = {
   latitude: number;
   longitude: number;
@@ -112,11 +124,12 @@ export async function startBackgroundTracking(): Promise<boolean> {
   if (isTracking) return true;
 
   try {
+    const profile = TRACKING_PROFILES[currentProfile];
     await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
       accuracy: Location.Accuracy.Balanced,
-      timeInterval: 30_000, // 30 seconds
-      distanceInterval: 20, // 20 meters
-      deferredUpdatesInterval: 30_000,
+      timeInterval: profile.timeInterval,
+      distanceInterval: profile.distanceInterval,
+      deferredUpdatesInterval: profile.timeInterval,
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: "Punchless",
@@ -157,4 +170,20 @@ export async function isBackgroundTrackingActive(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Use slower GPS polling when off duty to save battery.
+ */
+export async function applyTrackingProfile(
+  profile: TrackingProfile
+): Promise<void> {
+  if (profile === currentProfile) return;
+  currentProfile = profile;
+
+  const isTracking = await isBackgroundTrackingActive();
+  if (!isTracking) return;
+
+  await stopBackgroundTracking();
+  await startBackgroundTracking();
 }

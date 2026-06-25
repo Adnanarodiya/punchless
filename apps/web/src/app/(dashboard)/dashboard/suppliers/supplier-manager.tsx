@@ -6,7 +6,6 @@ import {
   Plus,
   X,
   Pencil,
-  Trash2,
   RotateCcw,
   IndianRupee,
   Truck,
@@ -31,6 +30,7 @@ import {
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 interface Props {
   suppliers: SupplierWithPayable[];
@@ -55,17 +55,21 @@ export function SupplierManager({ suppliers, summary }: Props) {
     );
   }, [suppliers, viewFilter]);
 
-  const { execute: execCreate } = useAction(createSupplier, {
+  const { execute: execCreate, loading: creating } = useAction(createSupplier, {
     successMessage: "Supplier created!",
     onSuccess: () => setMode("list"),
   });
 
-  const { execute: execUpdate } = useAction(updateSupplier, {
+  const { execute: execUpdate, loading: updating } = useAction(updateSupplier, {
     successMessage: "Supplier updated!",
     onSuccess: () => {
       setMode("list");
       setEditingSupplier(null);
     },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(softDeleteSupplier, {
+    successMessage: "Supplier deleted",
   });
 
   const { execute: execPayment, loading: paying } = useAction(paySupplier, {
@@ -137,7 +141,7 @@ export function SupplierManager({ suppliers, summary }: Props) {
               {mode === "add" ? (
                 <Field label="Opening Balance (₹)" name="openingBalance" type="number" min="0" step="0.01" defaultValue="0" />
               ) : null}
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" loading={mode === "add" ? creating : updating} disabled={mode === "add" ? creating : updating}>
                 {mode === "add" ? "Create Supplier" : "Save Changes"}
               </Button>
             </form>
@@ -203,12 +207,17 @@ export function SupplierManager({ suppliers, summary }: Props) {
                             <FileText className="size-3.5" />
                           </Link>
                         </Button>
-                        <form action={toastAction(softDeleteSupplier, "Supplier deleted")}>
-                          <input type="hidden" name="supplierId" value={row.id} />
-                          <Button variant="ghost" size="sm" type="submit" title="Delete">
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
-                        </form>
+                        <DeleteConfirmButton
+                          entityName={row.name}
+                          entityType="supplier"
+                          size="sm"
+                          loading={deleting}
+                          onConfirm={async () => {
+                            const fd = new FormData();
+                            fd.set("supplierId", row.id);
+                            await execDelete(fd);
+                          }}
+                        />
                       </>
                     ) : (
                       <form action={toastAction(recoverSupplier, "Supplier recovered")}>
@@ -244,9 +253,8 @@ export function SupplierManager({ suppliers, summary }: Props) {
             </div>
             <Field label="Payment Date" name="paymentDate" type="date" required defaultValue={defaultPaymentDate()} />
             <Field label="Remark" name="remark" />
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setPaymentSupplier(null)}>Cancel</Button>
-              <Button type="submit" disabled={paying}>Record Payment</Button>
+            <div className="flex justify-end">
+              <Button type="submit" loading={paying} disabled={paying}>Record Payment</Button>
             </div>
           </form>
         ) : null}

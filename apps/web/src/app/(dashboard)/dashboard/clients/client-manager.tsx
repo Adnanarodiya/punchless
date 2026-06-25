@@ -6,7 +6,6 @@ import {
   Plus,
   X,
   Pencil,
-  Trash2,
   RotateCcw,
   IndianRupee,
   Building2,
@@ -31,6 +30,7 @@ import {
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 interface Props {
   clients: ClientWithDue[];
@@ -53,17 +53,21 @@ export function ClientManager({ clients, summary }: Props) {
     );
   }, [clients, viewFilter]);
 
-  const { execute: execCreate } = useAction(createClient, {
+  const { execute: execCreate, loading: creating } = useAction(createClient, {
     successMessage: "Client created!",
     onSuccess: () => setMode("list"),
   });
 
-  const { execute: execUpdate } = useAction(updateClient, {
+  const { execute: execUpdate, loading: updating } = useAction(updateClient, {
     successMessage: "Client updated!",
     onSuccess: () => {
       setMode("list");
       setEditingClient(null);
     },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(softDeleteClient, {
+    successMessage: "Client deleted",
   });
 
   const { execute: execPayment, loading: paying } = useAction(
@@ -171,7 +175,7 @@ export function ClientManager({ clients, summary }: Props) {
                   defaultValue="0"
                 />
               ) : null}
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" loading={mode === "add" ? creating : updating} disabled={mode === "add" ? creating : updating}>
                 {mode === "add" ? "Create Client" : "Save Changes"}
               </Button>
             </form>
@@ -293,17 +297,17 @@ export function ClientManager({ clients, summary }: Props) {
                             <FileText className="size-3.5" />
                           </Link>
                         </Button>
-                        <form action={toastAction(softDeleteClient, "Client deleted")}>
-                          <input type="hidden" name="clientId" value={row.id} />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            type="submit"
-                            title="Delete"
-                          >
-                            <Trash2 className="size-3.5 text-destructive" />
-                          </Button>
-                        </form>
+                        <DeleteConfirmButton
+                          entityName={row.name}
+                          entityType="client"
+                          size="sm"
+                          loading={deleting}
+                          onConfirm={async () => {
+                            const fd = new FormData();
+                            fd.set("clientId", row.id);
+                            await execDelete(fd);
+                          }}
+                        />
                       </>
                     ) : (
                       <form action={toastAction(recoverClient, "Client recovered")}>
@@ -358,15 +362,8 @@ export function ClientManager({ clients, summary }: Props) {
               defaultValue={defaultPaymentDate()}
             />
             <Field label="Remark" name="remark" />
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPaymentClient(null)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={paying}>
+            <div className="flex justify-end">
+              <Button type="submit" loading={paying} disabled={paying}>
                 Record Payment
               </Button>
             </div>

@@ -29,21 +29,32 @@ function parseLedgerAmount(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function sumLedgerBalance(entries: Pick<LedgerRow, "entry_type" | "amount">[]) {
-  return entries.reduce((balance, entry) => {
-    const amount = parseLedgerAmount(entry.amount);
-    if (entry.entry_type === "debit") return balance + amount;
-    return balance - amount;
-  }, 0);
+type PreparedStatementEntry = {
+  id: string;
+  entry_date: string;
+  remark: string | null;
+  reference_type: string | null;
+  entry_type: string;
+  debit: number;
+  credit: number;
+  created_at: string | null;
+};
+
+function sumPreparedBalance(entries: Pick<PreparedStatementEntry, "debit" | "credit">[]) {
+  return entries.reduce(
+    (balance, entry) =>
+      Math.round((balance + entry.debit - entry.credit) * 100) / 100,
+    0
+  );
 }
 
-function sortLedgerEntries(entries: LedgerRow[]) {
+function sortPreparedEntries(entries: PreparedStatementEntry[]) {
   return [...entries].sort((a, b) => {
     if (a.entry_date !== b.entry_date) {
       return a.entry_date.localeCompare(b.entry_date);
     }
-    if (a.entry_type !== b.entry_type) {
-      return a.entry_type === "debit" ? -1 : 1;
+    if (a.debit > 0 !== b.debit > 0) {
+      return a.debit > 0 ? -1 : 1;
     }
     return (a.created_at ?? "").localeCompare(b.created_at ?? "");
   });
@@ -120,8 +131,7 @@ async function cleanupStaleInvoiceLedgerEntries(
 
 function shouldHideInvoiceDebit(
   entry: LedgerRow,
-  fullyPaidInvoiceIds: Set<string>,
-  allEntries: LedgerRow[]
+  fullyPaidInvoiceIds: Set<string>
 ) {
   if (
     entry.reference_type !== "invoice" ||
@@ -131,26 +141,28 @@ function shouldHideInvoiceDebit(
     return false;
   }
 
-  if (fullyPaidInvoiceIds.has(entry.reference_id)) return true;
+  // Only hide when the invoice has no unpaid credit portion left.
+  return fullyPaidInvoiceIds.has(entry.reference_id);
+}
 
-  const debitAmount = parseLedgerAmount(entry.amount);
-  const paidTotal = allEntries
-    .filter(
-      (row) =>
-        row.reference_id === entry.reference_id &&
-        row.reference_type === "payment" &&
-        row.entry_type === "credit"
-    )
-    .reduce((sum, row) => sum + parseLedgerAmount(row.amount), 0);
+function buildInvoicePaymentRemark(
+  baseRemark: string,
+  payments: LedgerRow[],
+  totalCredit: number
+) {
+  if (totalCredit <= 0) return baseRemark;
 
-  return paidTotal > 0 && paidTotal >= debitAmount - 0.01;
+  const modes = [
+    ...new Set(payments.map((entry) => entry.payment_mode).filter(Boolean)),
+  ];
+
+  return `${baseRemark} — received (${modes.join(" + ")})`;
 }
 
 function prepareStatementEntries(
   entries: LedgerRow[],
-  fullyPaidInvoiceIds: Set<string>,
-  allEntries: LedgerRow[]
-): LedgerRow[] {
+  fullyPaidInvoiceIds: Set<string>
+): PreparedStatementEntry[] {
   const filtered = entries.filter((entry) => {
     const amount = parseLedgerAmount(entry.amount);
 
@@ -160,17 +172,27 @@ function prepareStatementEntries(
       return false;
     }
 
-    if (shouldHideInvoiceDebit(entry, fullyPaidInvoiceIds, allEntries)) {
+    if (shouldHideInvoiceDebit(entry, fullyPaidInvoiceIds)) {
       return false;
     }
 
     return true;
   });
 
-  const standalone: LedgerRow[] = [];
+  const invoiceDebits = new Map<string, LedgerRow>();
   const paymentGroups = new Map<string, LedgerRow[]>();
+  const otherEntries: LedgerRow[] = [];
 
   for (const entry of filtered) {
+    if (
+      entry.reference_type === "invoice" &&
+      entry.entry_type === "debit" &&
+      entry.reference_id
+    ) {
+      invoiceDebits.set(entry.reference_id, entry);
+      continue;
+    }
+
     if (
       entry.reference_type === "payment" &&
       entry.entry_type === "credit" &&
@@ -181,39 +203,74 @@ function prepareStatementEntries(
       paymentGroups.set(entry.reference_id, group);
       continue;
     }
-    standalone.push(entry);
+
+    otherEntries.push(entry);
   }
 
-  const mergedPayments: LedgerRow[] = [];
+  const mergedInvoiceIds = new Set<string>();
+  const prepared: PreparedStatementEntry[] = [];
 
-  for (const [, payments] of paymentGroups) {
-    if (payments.length === 1) {
-      mergedPayments.push(payments[0]);
-      continue;
-    }
-
-    const sorted = [...payments].sort((a, b) =>
+  for (const [invoiceId, payments] of paymentGroups) {
+    const sortedPayments = [...payments].sort((a, b) =>
       (a.created_at ?? "").localeCompare(b.created_at ?? "")
     );
-    const totalAmount = sorted.reduce(
+    const invoiceDebit = invoiceDebits.get(invoiceId);
+    const totalCredit = sortedPayments.reduce(
       (sum, entry) => sum + parseLedgerAmount(entry.amount),
       0
     );
-    const modes = [
-      ...new Set(sorted.map((entry) => entry.payment_mode).filter(Boolean)),
-    ];
+    const debitAmount = invoiceDebit
+      ? parseLedgerAmount(invoiceDebit.amount)
+      : 0;
     const baseRemark =
-      sorted[0].remark?.replace(/ — (cash|bank)$/i, "") ??
-      "Payment received";
+      invoiceDebit?.remark ??
+      sortedPayments[0].remark?.replace(/ — (cash|bank)$/i, "") ??
+      "Tax invoice";
 
-    mergedPayments.push({
-      ...sorted[0],
-      amount: totalAmount,
-      remark: `${baseRemark} — paid (${modes.join(" + ")})`,
+    mergedInvoiceIds.add(invoiceId);
+    prepared.push({
+      id: invoiceDebit?.id ?? sortedPayments[0].id,
+      entry_date: invoiceDebit?.entry_date ?? sortedPayments[0].entry_date,
+      remark: buildInvoicePaymentRemark(baseRemark, sortedPayments, totalCredit),
+      reference_type: debitAmount > 0 ? "invoice" : "payment",
+      entry_type: debitAmount > 0 ? "debit" : "credit",
+      debit: debitAmount,
+      credit: totalCredit,
+      created_at: invoiceDebit?.created_at ?? sortedPayments[0].created_at,
     });
   }
 
-  return sortLedgerEntries([...standalone, ...mergedPayments]);
+  for (const [invoiceId, invoiceDebit] of invoiceDebits) {
+    if (mergedInvoiceIds.has(invoiceId)) continue;
+
+    prepared.push({
+      id: invoiceDebit.id,
+      entry_date: invoiceDebit.entry_date,
+      remark: invoiceDebit.remark,
+      reference_type: invoiceDebit.reference_type,
+      entry_type: invoiceDebit.entry_type,
+      debit: parseLedgerAmount(invoiceDebit.amount),
+      credit: 0,
+      created_at: invoiceDebit.created_at,
+    });
+  }
+
+  for (const entry of otherEntries) {
+    prepared.push({
+      id: entry.id,
+      entry_date: entry.entry_date,
+      remark: entry.remark,
+      reference_type: entry.reference_type,
+      entry_type: entry.entry_type,
+      debit:
+        entry.entry_type === "debit" ? parseLedgerAmount(entry.amount) : 0,
+      credit:
+        entry.entry_type === "credit" ? parseLedgerAmount(entry.amount) : 0,
+      created_at: entry.created_at,
+    });
+  }
+
+  return sortPreparedEntries(prepared);
 }
 
 async function getLedgerBalancesByClient(
@@ -338,27 +395,23 @@ export async function getClientStatement(
 
   const beforePeriod = prepareStatementEntries(
     ledgerRows.filter((entry) => entry.entry_date < startDate),
-    fullyPaidInvoiceIds,
-    ledgerRows
+    fullyPaidInvoiceIds
   );
   const inPeriod = prepareStatementEntries(
     ledgerRows.filter(
       (entry) => entry.entry_date >= startDate && entry.entry_date <= endDate
     ),
-    fullyPaidInvoiceIds,
-    ledgerRows
+    fullyPaidInvoiceIds
   );
 
-  const openingBalance = sumLedgerBalance(beforePeriod);
+  const openingBalance = sumPreparedBalance(beforePeriod);
   let runningBalance = openingBalance;
 
   const lines: StatementLine[] = inPeriod
     .map((entry) => {
-      const debit =
-        entry.entry_type === "debit" ? parseLedgerAmount(entry.amount) : 0;
-      const credit =
-        entry.entry_type === "credit" ? parseLedgerAmount(entry.amount) : 0;
-      runningBalance = Math.round((runningBalance + debit - credit) * 100) / 100;
+      runningBalance = Math.round(
+        (runningBalance + entry.debit - entry.credit) * 100
+      ) / 100;
 
       return {
         id: entry.id,
@@ -366,8 +419,8 @@ export async function getClientStatement(
         remark: entry.remark,
         reference_type: entry.reference_type,
         entry_type: entry.entry_type,
-        debit,
-        credit,
+        debit: entry.debit,
+        credit: entry.credit,
         balance: runningBalance,
       };
     })

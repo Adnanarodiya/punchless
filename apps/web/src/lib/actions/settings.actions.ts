@@ -3,9 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
 import { companySettingsSchema } from "@/lib/validations/settings.schema";
+import {
+  dataLockPinSchema,
+  verifyDataLockPinSchema,
+} from "@/lib/validations/sticky-note.schema";
+import {
+  hashDataLockPin,
+  verifyDataLockPin,
+} from "@/lib/utils/pin-hash";
 
 export const updateCompanySettings = protectedAction<FormData>({
   roles: ["owner"],
+  audit: { action: "update_company_settings", entityType: "settings" },
 })(async (formData, { supabase, me }) => {
   const parsed = companySettingsSchema.safeParse({
     workStartTime: formData.get("workStartTime"),
@@ -47,5 +56,79 @@ export const updateCompanySettings = protectedAction<FormData>({
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/salary");
+  return { success: true };
+});
+
+export const setDataLockPin = protectedAction<FormData>({
+  roles: ["owner"],
+  audit: { action: "set_data_lock_pin", entityType: "settings" },
+})(async (formData, { supabase, me }) => {
+  const parsed = dataLockPinSchema.safeParse({
+    pin: String(formData.get("pin") || "").trim(),
+    confirmPin: String(formData.get("confirmPin") || "").trim(),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { error } = await supabase
+    .from("companies")
+    .update({ data_lock_pin_hash: hashDataLockPin(parsed.data.pin) } as never)
+    .eq("id", me.company_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+  return { success: true };
+});
+
+export const removeDataLockPin = protectedAction<FormData>({
+  roles: ["owner"],
+  audit: { action: "remove_data_lock_pin", entityType: "settings" },
+})(async (_formData, { supabase, me }) => {
+  const { error } = await supabase
+    .from("companies")
+    .update({ data_lock_pin_hash: null } as never)
+    .eq("id", me.company_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+  return { success: true };
+});
+
+export const verifyDataLockPinAction = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+})(async (formData, { supabase, me }) => {
+  const parsed = verifyDataLockPinSchema.safeParse({
+    pin: String(formData.get("pin") || "").trim(),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { data } = await supabase
+    .from("companies")
+    .select("data_lock_pin_hash")
+    .eq("id", me.company_id)
+    .single();
+
+  const hash = (data as { data_lock_pin_hash: string | null } | null)
+    ?.data_lock_pin_hash;
+
+  if (!hash) {
+    return { success: false, error: "Data lock PIN is not configured." };
+  }
+
+  if (!verifyDataLockPin(parsed.data.pin, hash)) {
+    return { success: false, error: "Incorrect PIN." };
+  }
+
   return { success: true };
 });

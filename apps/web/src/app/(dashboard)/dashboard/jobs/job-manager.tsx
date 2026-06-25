@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@punchless/ui/components/button";
 import { Plus, X, Pencil, MapPin, User, CheckCircle, AlertCircle, Clock } from "lucide-react";
@@ -20,8 +21,10 @@ interface Props {
 }
 
 export function JobManager({ jobs, employees }: Props) {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"list" | "add" | "edit">("list");
   const [editingJob, setEditingJob] = useState<JobWithDetails | null>(null);
+  const [highlightJobId, setHighlightJobId] = useState<string | null>(null);
 
   // Form state
   const [lat, setLat] = useState(21.1081059);
@@ -43,6 +46,29 @@ export function JobManager({ jobs, employees }: Props) {
     setLng(job.lng || 73.1213093);
     setRadius(job.radius || 50);
   }
+
+  useEffect(() => {
+    const jobId = searchParams.get("job");
+    if (!jobId) return;
+
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+
+    setHighlightJobId(jobId);
+    startEdit(job);
+
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`job-card-${jobId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    const clearTimer = window.setTimeout(() => setHighlightJobId(null), 4000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [searchParams, jobs]);
 
   function cancel() {
     setMode("list");
@@ -218,7 +244,15 @@ export function JobManager({ jobs, employees }: Props) {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {jobs.map((job) => (
-              <div key={job.id} className="bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row gap-4 hover:border-primary/50 transition-colors group">
+              <div
+                id={`job-card-${job.id}`}
+                key={job.id}
+                className={`bg-card border rounded-xl p-4 flex flex-col md:flex-row gap-4 hover:border-primary/50 transition-colors group ${
+                  highlightJobId === job.id
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border"
+                }`}
+              >
                 {/* Job Info */}
                 <div className="flex-1 space-y-2">
                   <div className="flex items-start justify-between">

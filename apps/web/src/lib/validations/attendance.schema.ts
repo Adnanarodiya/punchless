@@ -8,4 +8,11 @@ export const createAttendanceSchema = z.object({
   endTime: z.string().optional().or(z.literal("")),
 });
 
+export const bulkAttendanceSchema = z.object({
+  attendanceDate: z.string().min(1, "Date is required"),
+  workshopId: z.string().uuid("Select a workshop"),
+  employeeIds: z.array(z.string().uuid()).min(1, "Select at least one employee"),
+});
+
 export type CreateAttendanceInput = z.infer<typeof createAttendanceSchema>;
+export type BulkAttendanceInput = z.infer<typeof bulkAttendanceSchema>;

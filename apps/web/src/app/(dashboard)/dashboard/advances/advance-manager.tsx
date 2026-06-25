@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Button } from "@punchless/ui/components/button";
+import { Modal } from "@punchless/ui/components/modal";
 import {
   Plus,
   X,
   Check,
   XCircle,
-  Trash2,
   Wallet,
   Clock,
   CheckCircle2,
@@ -23,7 +23,8 @@ import {
 import type { AdvanceWithEmployee } from "@/lib/queries/advance.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils/formatting";
-import { useAction, toastAction } from "@/hooks/use-action";
+import { useAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { toast } from "sonner";
 
 interface Props {
@@ -88,9 +89,13 @@ export function AdvanceManager({ advances, employees }: Props) {
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   })();
 
-  const { execute: execCreate } = useAction(createAdvance, {
+  const { execute: execCreate, loading: creating } = useAction(createAdvance, {
     successMessage: "Advance request created!",
     onSuccess: () => setShowForm(false),
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(deleteAdvance, {
+    successMessage: "Advance deleted",
   });
 
   async function handleCreate(formData: FormData) {
@@ -256,7 +261,7 @@ export function AdvanceManager({ advances, employees }: Props) {
             </div>
 
             <div className="md:col-span-2 lg:col-span-4 flex justify-end">
-              <Button type="submit">
+              <Button type="submit" loading={creating} disabled={creating}>
                 <Plus className="size-4" /> Create Advance Request
               </Button>
             </div>
@@ -264,13 +269,18 @@ export function AdvanceManager({ advances, employees }: Props) {
         </div>
       )}
 
-      {/* Notes modal for approve/reject */}
-      {notesModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-semibold">
-              {notesModal.action === "approve" ? "Approve" : "Reject"} Advance
-            </h3>
+      <Modal
+        open={!!notesModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setNotesModal(null);
+            setNotesText("");
+          }
+        }}
+        title={notesModal ? `${notesModal.action === "approve" ? "Approve" : "Reject"} Advance` : undefined}
+      >
+        {notesModal ? (
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Add an optional note for this{" "}
               {notesModal.action === "approve" ? "approval" : "rejection"}.
@@ -282,16 +292,7 @@ export function AdvanceManager({ advances, employees }: Props) {
               rows={3}
               className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm resize-none"
             />
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setNotesModal(null);
-                  setNotesText("");
-                }}
-              >
-                Cancel
-              </Button>
+            <div className="flex justify-end">
               <Button
                 variant={notesModal.action === "approve" ? "default" : "destructive"}
                 onClick={handleApproveWithNotes}
@@ -308,8 +309,8 @@ export function AdvanceManager({ advances, employees }: Props) {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </Modal>
 
       {/* Advances list */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -430,21 +431,16 @@ export function AdvanceManager({ advances, employees }: Props) {
                               </Button>
                             </>
                           )}
-                          <form action={toastAction(deleteAdvance, "Advance deleted")}>
-                            <input
-                              type="hidden"
-                              name="advanceId"
-                              value={adv.id}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              type="submit"
-                              title="Delete"
-                            >
-                              <Trash2 className="size-4 text-destructive" />
-                            </Button>
-                          </form>
+                          <DeleteConfirmButton
+                            entityName={`${adv.employee_name} — ${formatCurrency(adv.amount)}`}
+                            entityType="advance"
+                            loading={deleting}
+                            onConfirm={async () => {
+                              const fd = new FormData();
+                              fd.set("advanceId", adv.id);
+                              await execDelete(fd);
+                            }}
+                          />
                         </div>
                       </td>
                     </tr>

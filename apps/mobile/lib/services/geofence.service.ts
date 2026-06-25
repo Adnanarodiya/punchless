@@ -1,22 +1,20 @@
-import { supabase } from "@/lib/supabase";
 import {
   getActiveWorkshops,
-  findNearestWorkshop,
   getDistanceMeters,
   type WorkshopLocation,
 } from "@/lib/services/workshop.service";
 import { updateJobStatus } from "@/lib/services/job.service";
 import type { LocationCoords } from "@/lib/services/location.service";
+import {
+  closeAttendanceSession,
+  getActiveSession,
+  openAttendanceSession,
+} from "@/lib/services/session.service";
+import { useAttendanceStore } from "@/lib/stores/attendance.store";
+import type { EngineState } from "@/lib/types/attendance-engine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type EngineState = "off_duty" | "workshop" | "travel" | "on_site_job" | "break";
-
-type ActiveSession = {
-  id: string;
-  state: EngineState;
-  workshop_id: string | null;
-  job_id: string | null;
-};
+export type { EngineState };
 
 // Grace period: how many consecutive "outside" checks before we end a session
 // At ~30s intervals, 10 checks = ~5 minutes grace
@@ -82,83 +80,6 @@ export async function forceRefreshWorkshops(): Promise<WorkshopLocation[]> {
 }
 
 /**
- * Get the current open session for this employee (no end_time)
- */
-async function getOpenSession(employeeId: string): Promise<ActiveSession | null> {
-  const { data } = await supabase
-    .from("attendance_sessions")
-    .select("id, state, workshop_id, job_id")
-    .eq("employee_id", employeeId)
-    .is("end_time", null)
-    .order("start_time", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (!data) return null;
-  return data as ActiveSession;
-}
-
-/**
- * Close an open session (set end_time + compute duration)
- */
-async function closeSession(sessionId: string): Promise<void> {
-  const now = new Date().toISOString();
-
-  // First get start_time to compute duration
-  const { data: session } = await supabase
-    .from("attendance_sessions")
-    .select("start_time")
-    .eq("id", sessionId)
-    .single();
-
-  if (!session) return;
-
-  const startMs = new Date(session.start_time).getTime();
-  const endMs = new Date(now).getTime();
-  const durationMinutes = Math.round((endMs - startMs) / 60000);
-
-  await supabase
-    .from("attendance_sessions")
-    .update({
-      end_time: now,
-      duration_minutes: Math.max(durationMinutes, 0),
-    })
-    .eq("id", sessionId);
-}
-
-/**
- * Open a new session
- */
-async function openSession(params: {
-  employeeId: string;
-  companyId: string;
-  state: EngineState;
-  workshopId?: string | null;
-  jobId?: string | null;
-}): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("attendance_sessions")
-    .insert({
-      employee_id: params.employeeId,
-      company_id: params.companyId,
-      state: params.state,
-      workshop_id: params.workshopId ?? null,
-      job_id: params.jobId ?? null,
-      start_time: new Date().toISOString(),
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    console.error("Failed to open session:", error.message);
-    return null;
-  }
-  return data?.id ?? null;
-}
-
-import { useAttendanceStore } from "@/lib/stores/attendance.store";
-
-/**
  * Main geofence processing — called every location update
  *
  * Handles only GPS-automatic transitions:
@@ -199,7 +120,7 @@ export async function processLocation(
     if (nearWorkshop) {
       // Entered workshop geofence → create workshop session
       exitGraceCounter = 0;
-      const id = await openSession({
+      const id = await openAttendanceSession({
         employeeId,
         companyId,
         state: "workshop",
@@ -223,8 +144,8 @@ export async function processLocation(
     // Outside all workshops
     if (options?.bypassGrace || minDistance > 500 || workshops.length === 0) {
       exitGraceCounter = 0;
-      const openSess = await getOpenSession(employeeId);
-      if (openSess) await closeSession(openSess.id);
+      const openSess = await getActiveSession(employeeId);
+      if (openSess) await closeAttendanceSession(openSess.id, openSess.start_time);
       return { newState: "off_duty", transitioned: true };
     }
 
@@ -233,8 +154,8 @@ export async function processLocation(
     if (exitGraceCounter >= EXIT_GRACE_COUNT) {
       // Grace expired → close workshop session → off_duty (requires database call to fetch the open session to close)
       exitGraceCounter = 0;
-      const openSess = await getOpenSession(employeeId);
-      if (openSess) await closeSession(openSess.id);
+      const openSess = await getActiveSession(employeeId);
+      if (openSess) await closeAttendanceSession(openSess.id, openSess.start_time);
       return { newState: "off_duty", transitioned: true };
     }
 
@@ -247,9 +168,9 @@ export async function processLocation(
     if (nearWorkshop) {
       // Returned to workshop → close travel session, open workshop session
       exitGraceCounter = 0;
-      const openSess = await getOpenSession(employeeId);
-      if (openSess) await closeSession(openSess.id);
-      await openSession({
+      const openSess = await getActiveSession(employeeId);
+      if (openSess) await closeAttendanceSession(openSess.id, openSess.start_time);
+      await openAttendanceSession({
         employeeId,
         companyId,
         state: "workshop",
@@ -283,19 +204,19 @@ export async function startTravel(
   companyId: string,
   jobId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in workshop state
   if (!openSess || openSess.state !== "workshop") return false;
 
   // Close workshop session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Mark job as in_progress
   await updateJobStatus(jobId, "in_progress");
 
   // Open travel session
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "travel",
@@ -313,16 +234,16 @@ export async function arriveAtJob(
   companyId: string,
   jobId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in travel state
   if (!openSess || openSess.state !== "travel") return false;
 
   // Close travel session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Open on_site_job session
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "on_site_job",
@@ -340,16 +261,16 @@ export async function finishJob(
   companyId: string,
   jobId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in on_site_job state
   if (!openSess || openSess.state !== "on_site_job") return false;
 
   // Close on_site_job session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Open return travel session
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "travel",
@@ -367,19 +288,19 @@ export async function completeJob(
   companyId: string,
   jobId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in on_site_job state
   if (!openSess || openSess.state !== "on_site_job") return false;
 
   // Close on_site_job session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Mark job as completed
   await updateJobStatus(jobId, "completed");
 
   // Open return travel session
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "travel",
@@ -396,16 +317,16 @@ export async function startBreak(
   employeeId: string,
   companyId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in workshop state to take a break
   if (!openSess || openSess.state !== "workshop") return false;
 
   // Close workshop session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Open break session (keep same workshop_id for reference)
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "break",
@@ -422,16 +343,16 @@ export async function endBreak(
   employeeId: string,
   companyId: string
 ): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
 
   // Must be in break state
   if (!openSess || openSess.state !== "break") return false;
 
   // Close break session
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
 
   // Reopen workshop session (use same workshop_id)
-  const id = await openSession({
+  const id = await openAttendanceSession({
     employeeId,
     companyId,
     state: "workshop",
@@ -444,10 +365,10 @@ export async function endBreak(
  * Manual: End shift completely (close any open session)
  */
 export async function endShift(employeeId: string): Promise<boolean> {
-  const openSess = await getOpenSession(employeeId);
+  const openSess = await getActiveSession(employeeId);
   if (!openSess) return false;
 
-  await closeSession(openSess.id);
+  await closeAttendanceSession(openSess.id, openSess.start_time);
   exitGraceCounter = 0;
   return true;
 }

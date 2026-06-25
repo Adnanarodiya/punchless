@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@punchless/ui/components/button";
-import { Plus, X, StopCircle, Trash2, Radio, History } from "lucide-react";
+import { Plus, X, StopCircle, Radio, History, Users, Printer } from "lucide-react";
+import { AttendancePrintSheet } from "@/components/attendance-print-sheet";
 import {
+  bulkMarkAttendance,
   createAttendanceSession,
   closeAttendanceSession,
   deleteAttendanceSession,
@@ -13,6 +15,7 @@ import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { Database } from "@punchless/types/database.types";
 import { formatDuration, formatTime, getLiveDurationMinutes, STATE_CONFIG } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 type WorkshopRow = Database["public"]["Tables"]["workshops"]["Row"];
 
@@ -25,15 +28,27 @@ interface Props {
 
 export function AttendanceManager({ todaySessions, activeSessions, employees, workshops }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [tab, setTab] = useState<"live" | "today">("live");
+  const [tab, setTab] = useState<"live" | "today" | "bulk" | "sheet">("live");
+  const [selectedBulkEmployees, setSelectedBulkEmployees] = useState<string[]>([]);
   const [showEndTime, setShowEndTime] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { execute: execCreate } = useAction(createAttendanceSession, {
+  const { execute: execCreate, loading: creating } = useAction(createAttendanceSession, {
     successMessage: "Session created!",
     onSuccess: () => { setShowAddForm(false); setShowEndTime(false); },
     onError: (err) => setError(err),
   });
+
+  const { execute: execDelete, loading: deleting } = useAction(deleteAttendanceSession, {
+    successMessage: "Session deleted",
+  });
+
+  const { execute: execBulk, loading: bulkLoading } = useAction(bulkMarkAttendance, {
+    successMessage: "Bulk attendance saved!",
+    onSuccess: () => setSelectedBulkEmployees([]),
+  });
+
+  const defaultBulkDate = () => new Date().toISOString().slice(0, 10);
 
   async function handleCreate(formData: FormData) {
     setError(null);
@@ -86,12 +101,32 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
             <History className="size-4 inline mr-1.5" />
             Today ({todaySessions.length})
           </button>
+          <button
+            onClick={() => setTab("bulk")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === "bulk" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+            }`}
+          >
+            <Users className="size-4 inline mr-1.5" />
+            Bulk
+          </button>
+          <button
+            onClick={() => setTab("sheet")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === "sheet" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+            }`}
+          >
+            <Printer className="size-4 inline mr-1.5" />
+            Sheet
+          </button>
         </div>
 
+        {tab !== "bulk" ? (
         <Button onClick={() => setShowAddForm(!showAddForm)} variant={showAddForm ? "outline" : "default"} size="sm">
           {showAddForm ? <X className="size-4" /> : <Plus className="size-4" />}
           {showAddForm ? "Cancel" : "Add Session"}
         </Button>
+        ) : null}
       </div>
 
       {/* Add session form */}
@@ -171,7 +206,7 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
             </div>
 
             <div className="flex items-end">
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" loading={creating} disabled={creating}>
                 Create Session
               </Button>
             </div>
@@ -179,22 +214,114 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
         </div>
       )}
 
-      {/* Sessions list */}
+      {tab === "sheet" ? (
+        <AttendancePrintSheet
+          sessions={todaySessions}
+          dateLabel={new Date().toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        />
+      ) : tab === "bulk" ? (
+        <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Mark employees present for a day — creates a closed workshop session (9:00 AM + daily work hours from Settings).
+          </p>
+          <form action={execBulk} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Date</label>
+                <input
+                  name="attendanceDate"
+                  type="date"
+                  required
+                  defaultValue={defaultBulkDate()}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground block mb-1">Workshop</label>
+                <select name="workshopId" required className={selectClass}>
+                  <option value="" disabled>Select workshop</option>
+                  {workshops.map((w) => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="rounded-lg border border-border divide-y divide-border max-h-72 overflow-y-auto">
+              {employees.map((emp) => (
+                <label
+                  key={emp.id}
+                  className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted/50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    name="employeeIds"
+                    value={emp.id}
+                    checked={selectedBulkEmployees.includes(emp.id)}
+                    onChange={(e) => {
+                      setSelectedBulkEmployees((prev) =>
+                        e.target.checked
+                          ? [...prev, emp.id]
+                          : prev.filter((id) => id !== emp.id)
+                      );
+                    }}
+                    className="size-4 rounded border-input"
+                  />
+                  <span className="font-medium">{emp.full_name}</span>
+                  {emp.workshop_name ? (
+                    <span className="text-xs text-muted-foreground ml-auto">{emp.workshop_name}</span>
+                  ) : null}
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedBulkEmployees(employees.map((e) => e.id))}
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedBulkEmployees([])}
+              >
+                Clear
+              </Button>
+              <Button type="submit" loading={bulkLoading} disabled={bulkLoading || selectedBulkEmployees.length === 0}>
+                {bulkLoading ? "Saving…" : `Mark ${selectedBulkEmployees.length} present`}
+              </Button>
+            </div>
+          </form>
+        </div>
+      ) : (
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {tab === "live" ? (
           <SessionTable
             sessions={activeSessions}
             showLiveDuration
             emptyMessage="No active sessions right now"
+            onDelete={execDelete}
+            deleting={deleting}
           />
         ) : (
           <SessionTable
             sessions={todaySessions}
             showLiveDuration={false}
             emptyMessage="No attendance sessions today"
+            onDelete={execDelete}
+            deleting={deleting}
           />
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -212,10 +339,14 @@ function SessionTable({
   sessions,
   showLiveDuration,
   emptyMessage,
+  onDelete,
+  deleting,
 }: {
   sessions: AttendanceWithDetails[];
   showLiveDuration: boolean;
   emptyMessage: string;
+  onDelete: (formData: FormData) => Promise<void>;
+  deleting: boolean;
 }) {
   if (sessions.length === 0) {
     return <p className="text-sm text-muted-foreground p-6 text-center">{emptyMessage}</p>;
@@ -283,12 +414,16 @@ function SessionTable({
                         </Button>
                       </form>
                     )}
-                    <form action={toastAction(deleteAttendanceSession, "Session deleted")}>
-                      <input type="hidden" name="sessionId" value={s.id} />
-                      <Button variant="ghost" size="icon" type="submit" title="Delete session">
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </form>
+                    <DeleteConfirmButton
+                      entityName={s.employee_name}
+                      entityType="session"
+                      loading={deleting}
+                      onConfirm={async () => {
+                        const fd = new FormData();
+                        fd.set("sessionId", s.id);
+                        await onDelete(fd);
+                      }}
+                    />
                   </div>
                 </td>
               </tr>

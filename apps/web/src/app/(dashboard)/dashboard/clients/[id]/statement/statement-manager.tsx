@@ -134,20 +134,55 @@ export function StatementManager({
           {
             key: "particulars",
             header: "Particulars",
-            cell: (row) => (
-              <div>
-                <p>{row.remark || referenceLabel(row.reference_type)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {referenceLabel(row.reference_type)}
-                </p>
-              </div>
-            ),
+            cell: (row) => {
+              const hasPending = row.reference_type === "invoice" && row.debit > 0.01;
+              const hasReceived = row.credit > 0.01;
+              const subtitle = hasPending && hasReceived
+                ? `Received ${formatCurrency(row.credit)} · Pending ${formatCurrency(row.debit)} still owed`
+                : hasPending
+                  ? `Pending — ${formatCurrency(row.debit)} still owed`
+                  : referenceLabel(row.reference_type);
+
+              return (
+                <div
+                  className={
+                    hasPending
+                      ? "rounded-md border border-warning/30 bg-warning/10 px-2 py-1"
+                      : undefined
+                  }
+                >
+                  <p>{row.remark || referenceLabel(row.reference_type)}</p>
+                  <p
+                    className={
+                      hasPending
+                        ? "text-xs font-medium text-warning"
+                        : "text-xs text-muted-foreground"
+                    }
+                  >
+                    {subtitle}
+                  </p>
+                </div>
+              );
+            },
           },
           {
             key: "debit",
             header: "Debit",
-            cell: (row) =>
-              row.debit > 0 ? formatCurrency(row.debit) : "—",
+            cell: (row) => {
+              if (row.debit <= 0) return "—";
+
+              const isPendingInvoice = row.reference_type === "invoice";
+
+              return (
+                <span
+                  className={
+                    isPendingInvoice ? "font-semibold text-warning" : undefined
+                  }
+                >
+                  {formatCurrency(row.debit)}
+                </span>
+              );
+            },
           },
           {
             key: "credit",

@@ -12,6 +12,7 @@ import {
   Briefcase,
   ChevronRight,
   List,
+  Download,
 } from "lucide-react";
 import type { HistorySession, EmployeeHistorySummary } from "@/lib/queries/history.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
@@ -139,6 +140,92 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
     ? employees.find((e) => e.id === selectedEmployee)
     : null;
 
+  function exportCsv() {
+    const rows: string[][] = [];
+    const periodName = periodLabel[period];
+
+    if (selectedEmployee && sessions.length > 0) {
+      rows.push([
+        "Employee",
+        "Date",
+        "State",
+        "Workshop",
+        "Start",
+        "End",
+        "Duration (min)",
+      ]);
+      for (const s of sessions) {
+        rows.push([
+          s.employee_name,
+          formatDate(s.start_time),
+          s.state,
+          s.workshop_name || s.job_title || "",
+          formatTime(s.start_time),
+          s.end_time ? formatTime(s.end_time) : "Live",
+          String(s.duration_minutes ?? ""),
+        ]);
+      }
+    } else if (tab === "sessions") {
+      rows.push([
+        "Employee",
+        "Date",
+        "State",
+        "Workshop",
+        "Start",
+        "End",
+        "Duration (min)",
+      ]);
+      for (const s of sessions) {
+        rows.push([
+          s.employee_name,
+          formatDate(s.start_time),
+          s.state,
+          s.workshop_name || s.job_title || "",
+          formatTime(s.start_time),
+          s.end_time ? formatTime(s.end_time) : "Live",
+          String(s.duration_minutes ?? ""),
+        ]);
+      }
+    } else {
+      rows.push([
+        "Employee",
+        "Workshop",
+        "Sessions",
+        "Total minutes",
+        "Workshop min",
+        "Travel min",
+        "On-site min",
+        "Active now",
+      ]);
+      for (const s of summaries) {
+        rows.push([
+          s.employee_name,
+          s.workshop_name || "",
+          String(s.total_sessions),
+          String(s.total_minutes),
+          String(s.workshop_minutes),
+          String(s.travel_minutes),
+          String(s.onsite_minutes),
+          s.is_active_now ? "Yes" : "No",
+        ]);
+      }
+    }
+
+    const csv = rows
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `attendance-${periodName.toLowerCase().replace(/\s+/g, "-")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Bar: Left = Tabs, Right = Period Filter */}
@@ -187,21 +274,27 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
           )}
         </div>
 
-        {/* Right: Period Filter */}
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
-          {(["1day", "7days", "month"] as FilterPeriod[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => handlePeriodChange(p)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                period === p
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {periodLabel[p]}
-            </button>
-          ))}
+        {/* Right: Period Filter + Export */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading}>
+            <Download className="size-4" />
+            Export CSV
+          </Button>
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            {(["1day", "7days", "month"] as FilterPeriod[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePeriodChange(p)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  period === p
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {periodLabel[p]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

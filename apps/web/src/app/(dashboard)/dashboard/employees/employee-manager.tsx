@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { Button } from "@punchless/ui/components/button";
-import { Plus, X, Pencil, Power, Trash2, User, MapPin, IndianRupee, History } from "lucide-react";
+import {
+  Plus,
+  X,
+  Pencil,
+  Power,
+  User,
+  MapPin,
+  IndianRupee,
+  History,
+  FileText,
+  Banknote,
+} from "lucide-react";
 import Link from "next/link";
 import {
   createEmployee,
@@ -14,19 +25,45 @@ import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { Database } from "@punchless/types/database.types";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 type WorkshopRow = Database["public"]["Tables"]["workshops"]["Row"];
+type PostRow = Database["public"]["Tables"]["posts"]["Row"];
 
 interface Props {
   employees: EmployeeWithWorkshop[];
   workshops: WorkshopRow[];
+  posts: PostRow[];
   dailyWorkHours: number;
   workingDaysPerMonth: number;
+}
+
+function formatJoiningDuration(joiningDate: string | null | undefined) {
+  if (!joiningDate) return null;
+  const start = new Date(joiningDate);
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  let days = now.getDate() - start.getDate();
+  if (days < 0) {
+    months -= 1;
+    days += 30;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  const parts = [];
+  if (years > 0) parts.push(`${years}y`);
+  if (months > 0) parts.push(`${months}m`);
+  if (days > 0 || parts.length === 0) parts.push(`${days}d`);
+  return parts.join(" ");
 }
 
 export function EmployeeManager({
   employees,
   workshops,
+  posts,
   dailyWorkHours,
   workingDaysPerMonth,
 }: Props) {
@@ -58,6 +95,10 @@ export function EmployeeManager({
       setMode("list");
       setEditingEmployee(null);
     },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(deleteEmployee, {
+    successMessage: "Employee deleted",
   });
 
   function startAdd() {
@@ -118,6 +159,19 @@ export function EmployeeManager({
               <input name="email" type="email" placeholder="Email" required className={inputClass} />
               <input name="password" type="password" placeholder="Temporary password (min 6)" minLength={6} required className={inputClass} />
               <input name="phone" type="tel" placeholder="Phone (optional)" className={inputClass} />
+              <input name="address" placeholder="Address (optional)" className={inputClass} />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Post</label>
+                <select name="postId" className={selectClass}>
+                  <option value="">No post</option>
+                  {posts.map((post) => (
+                    <option key={post.id} value={post.id}>{post.name}</option>
+                  ))}
+                </select>
+              </div>
+              <input name="joiningDate" type="date" className={inputClass} />
+              <input name="accountNo" placeholder="Bank account no. (optional)" className={inputClass} />
+              <input name="ifscCode" placeholder="IFSC code (optional)" className={inputClass} />
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Monthly Salary (₹)</label>
@@ -168,8 +222,8 @@ export function EmployeeManager({
               <input type="hidden" name="dailyWorkHours" value={dailyWorkHours} />
               <input type="hidden" name="workingDaysPerMonth" value={workingDaysPerMonth} />
 
-              <Button type="submit" className="w-full" disabled={workshops.length === 0 || creating}>
-                {creating ? "Creating..." : "Create Employee"}
+              <Button type="submit" className="w-full" loading={creating} disabled={workshops.length === 0 || creating}>
+                Create Employee
               </Button>
             </form>
           </>
@@ -188,6 +242,19 @@ export function EmployeeManager({
               <input name="fullName" placeholder="Full name" required defaultValue={editingEmployee.full_name} className={inputClass} />
               <input value={editingEmployee.email} disabled className={`${inputClass} opacity-50 cursor-not-allowed`} />
               <input name="phone" type="tel" placeholder="Phone (optional)" defaultValue={editingEmployee.phone || ""} className={inputClass} />
+              <input name="address" placeholder="Address (optional)" defaultValue={editingEmployee.address || ""} className={inputClass} />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Post</label>
+                <select name="postId" defaultValue={editingEmployee.post_id || ""} className={selectClass}>
+                  <option value="">No post</option>
+                  {posts.map((post) => (
+                    <option key={post.id} value={post.id}>{post.name}</option>
+                  ))}
+                </select>
+              </div>
+              <input name="joiningDate" type="date" defaultValue={editingEmployee.joining_date || ""} className={inputClass} />
+              <input name="accountNo" placeholder="Bank account no." defaultValue={editingEmployee.account_no || ""} className={inputClass} />
+              <input name="ifscCode" placeholder="IFSC code" defaultValue={editingEmployee.ifsc_code || ""} className={inputClass} />
 
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Monthly Salary (₹)</label>
@@ -233,8 +300,8 @@ export function EmployeeManager({
               <input type="hidden" name="dailyWorkHours" value={dailyWorkHours} />
               <input type="hidden" name="workingDaysPerMonth" value={workingDaysPerMonth} />
 
-              <Button type="submit" className="w-full" disabled={updating}>
-                {updating ? "Saving..." : "Save Changes"}
+              <Button type="submit" className="w-full" loading={updating} disabled={updating}>
+                Save Changes
               </Button>
             </form>
           </>
@@ -258,6 +325,14 @@ export function EmployeeManager({
                   </div>
                   <p className="text-sm text-muted-foreground">{emp.email}</p>
                   {emp.phone && <p className="text-xs text-muted-foreground">{emp.phone}</p>}
+                  {emp.post_name && (
+                    <p className="text-xs text-muted-foreground">{emp.post_name}</p>
+                  )}
+                  {emp.joining_date && (
+                    <p className="text-xs text-muted-foreground">
+                      Joined {emp.joining_date} ({formatJoiningDuration(emp.joining_date)})
+                    </p>
+                  )}
                   <div className="flex gap-4 text-xs text-muted-foreground">
                     <span>{formatCurrency(emp.monthly_salary ?? 0)}/month</span>
                     <span>₹{emp.hourly_rate ?? 0}/hr</span>
@@ -275,6 +350,16 @@ export function EmployeeManager({
                 </div>
 
                 <div className="flex gap-1 shrink-0">
+                  <Link href={`/dashboard/salary/payments?employee=${emp.id}`}>
+                    <Button variant="ghost" size="icon" title="Quick payment">
+                      <Banknote className="size-4 text-primary" />
+                    </Button>
+                  </Link>
+                  <Link href={`/dashboard/employees/${emp.id}/statement`}>
+                    <Button variant="ghost" size="icon" title="Staff statement">
+                      <FileText className="size-4 text-primary" />
+                    </Button>
+                  </Link>
                   <Link href={`/dashboard/history?employee=${emp.id}`}>
                     <Button variant="ghost" size="icon" title="View History">
                       <History className="size-4 text-primary" />
@@ -290,12 +375,16 @@ export function EmployeeManager({
                       <Power className={`size-4 ${emp.is_active ? "text-success" : "text-state-offduty"}`} />
                     </Button>
                   </form>
-                  <form action={toastAction(deleteEmployee, "Employee deleted")}>
-                    <input type="hidden" name="employeeId" value={emp.id} />
-                    <Button variant="ghost" size="icon" type="submit" title="Delete">
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </form>
+                  <DeleteConfirmButton
+                    entityName={emp.full_name}
+                    entityType="employee"
+                    loading={deleting}
+                    onConfirm={async () => {
+                      const fd = new FormData();
+                      fd.set("employeeId", emp.id);
+                      await execDelete(fd);
+                    }}
+                  />
                 </div>
               </div>
             ))}

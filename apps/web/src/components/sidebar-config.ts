@@ -60,9 +60,9 @@ export const navGroups: NavGroup[] = [
       },
       {
         label: "Posts",
+        href: "/dashboard/posts",
         icon: UserCircle,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
       {
         label: "Workshops",
@@ -135,15 +135,15 @@ export const navGroups: NavGroup[] = [
     items: [
       {
         label: "Transactions",
+        href: "/dashboard/transactions",
         icon: ArrowLeftRight,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
       {
         label: "Banks",
+        href: "/dashboard/banks",
         icon: Landmark,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
     ],
   },
@@ -158,15 +158,15 @@ export const navGroups: NavGroup[] = [
       },
       {
         label: "Payments",
+        href: "/dashboard/salary/payments",
         icon: Banknote,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
       {
         label: "Deposits",
+        href: "/dashboard/salary/deposits",
         icon: PiggyBank,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
       {
         label: "Advances",
@@ -180,22 +180,34 @@ export const navGroups: NavGroup[] = [
     label: "Reports",
     items: [
       {
-        label: "Daily",
+        label: "All Reports",
+        href: "/dashboard/reports",
         icon: BarChart3,
         roles: ["owner", "admin"],
-        comingSoon: true,
+      },
+      {
+        label: "Daily",
+        href: "/dashboard/reports/daily",
+        icon: BarChart3,
+        roles: ["owner", "admin"],
       },
       {
         label: "Monthly",
+        href: "/dashboard/reports/monthly",
         icon: BarChart3,
         roles: ["owner", "admin"],
-        comingSoon: true,
+      },
+      {
+        label: "GST",
+        href: "/dashboard/reports/gst",
+        icon: FileText,
+        roles: ["owner", "admin"],
       },
       {
         label: "Rojmel",
+        href: "/dashboard/reports/rojmel",
         icon: ScrollText,
         roles: ["owner", "admin"],
-        comingSoon: true,
       },
     ],
   },
@@ -210,15 +222,21 @@ export const navGroups: NavGroup[] = [
       },
       {
         label: "Users",
+        href: "/dashboard/settings/users",
         icon: Users,
         roles: ["owner"],
-        comingSoon: true,
       },
       {
         label: "Audit Log",
+        href: "/dashboard/audit-log",
         icon: Shield,
         roles: ["owner"],
-        comingSoon: true,
+      },
+      {
+        label: "Password",
+        href: "/dashboard/settings/password",
+        icon: Shield,
+        roles: ["owner", "admin"],
       },
       {
         label: "Billing",

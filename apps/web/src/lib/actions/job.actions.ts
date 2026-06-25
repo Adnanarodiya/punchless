@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import { sendPushToUser } from "@/lib/server/push-notifications";
 import { jobSchema } from "@/lib/validations/job.schema";
 
 export const createJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_job", entityType: "job" },
 })(async (formData, { supabase, me }) => {
   const parsed = jobSchema.safeParse({
     title: formData.get("title"),
@@ -38,12 +40,21 @@ export const createJob = protectedAction<FormData>({
 
   if (error) return { success: false, error: error.message };
 
+  if (assignedTo) {
+    void sendPushToUser(assignedTo, {
+      title: "New job assigned",
+      body: title,
+      data: { type: "job_assigned", screen: "jobs" },
+    });
+  }
+
   revalidatePath("/dashboard/jobs");
   return { success: true };
 });
 
 export const updateJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_job", entityType: "job" },
 })(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
   if (!jobId) return { success: false, error: "Job ID missing" };
@@ -66,6 +77,14 @@ export const updateJob = protectedAction<FormData>({
 
   const { title, description, customerName, customerPhone, assignedTo, status, lat, lng } = parsed.data;
 
+  const { data: existingJob } = await supabase
+    .from("jobs")
+    .select("assigned_to")
+    .eq("id", jobId)
+    .single();
+
+  const previousAssignee = existingJob?.assigned_to ?? null;
+
   const { error } = await supabase
     .from("jobs")
     .update({
@@ -82,12 +101,21 @@ export const updateJob = protectedAction<FormData>({
 
   if (error) return { success: false, error: error.message };
 
+  if (assignedTo && assignedTo !== previousAssignee) {
+    void sendPushToUser(assignedTo, {
+      title: "New job assigned",
+      body: title,
+      data: { type: "job_assigned", screen: "jobs" },
+    });
+  }
+
   revalidatePath("/dashboard/jobs");
   return { success: true };
 });
 
 export const deleteJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_job", entityType: "job" },
 })(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
   if (!jobId) return { success: false, error: "Job ID missing" };

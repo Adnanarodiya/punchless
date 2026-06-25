@@ -88,6 +88,18 @@ export default function LoginPage() {
             Create one
           </Link>
         </p>
+
+        {process.env.NEXT_PUBLIC_SUPPORT_PHONE ? (
+          <p className="text-center text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
+            Need help? Call{" "}
+            <a
+              href={`tel:${process.env.NEXT_PUBLIC_SUPPORT_PHONE.replace(/\s/g, "")}`}
+              className="text-primary hover:underline font-medium"
+            >
+              {process.env.NEXT_PUBLIC_SUPPORT_PHONE}
+            </a>
+          </p>
+        ) : null}
       </div>
     </div>
   );

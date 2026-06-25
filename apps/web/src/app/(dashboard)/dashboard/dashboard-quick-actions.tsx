@@ -10,6 +10,10 @@ import {
   History,
   Building2,
   FileText,
+  Landmark,
+  ArrowLeftRight,
+  ShoppingCart,
+  Truck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -30,6 +34,30 @@ const quickActions: {
     description: "GST tax invoices",
     href: "/dashboard/invoices",
     icon: FileText,
+  },
+  {
+    label: "Suppliers",
+    description: "Vendors & payables",
+    href: "/dashboard/suppliers",
+    icon: Truck,
+  },
+  {
+    label: "Purchases",
+    description: "Purchase invoices",
+    href: "/dashboard/purchases",
+    icon: ShoppingCart,
+  },
+  {
+    label: "Banks",
+    description: "Accounts & transfers",
+    href: "/dashboard/banks",
+    icon: Landmark,
+  },
+  {
+    label: "Transactions",
+    description: "Income & expense",
+    href: "/dashboard/transactions",
+    icon: ArrowLeftRight,
   },
   {
     label: "Employees",

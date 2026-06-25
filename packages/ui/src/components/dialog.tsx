@@ -60,7 +60,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background fixed z-50 max-h-[90dvh] sm:max-h-[80dvh] w-full max-w-full sm:max-w-lg grid gap-4 border rounded-t-4xl rounded-b-none sm:rounded-4xl duration-200 p-4 overflow-y-auto shadow-100",
+          "bg-background fixed z-50 max-h-[90dvh] sm:max-h-[80dvh] w-full max-w-full sm:max-w-lg grid gap-4 border rounded-t-lg rounded-b-none sm:rounded-lg duration-200 p-4 overflow-y-auto shadow-lg",
           // Mobile: Bottom sheet style
           "max-sm:bottom-0 max-sm:inset-x-0 translate-x-0 translate-y-0",
           "max-sm:data-[state=open]:animate-in max-sm:data-[state=open]:slide-in-from-bottom-full",

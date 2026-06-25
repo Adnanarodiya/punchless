@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +21,10 @@ interface ConfirmModalProps {
   description?: string;
   confirmText?: string;
   cancelText?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel?: () => void;
   variant?: "default" | "destructive";
+  loading?: boolean;
   className?: string;
 }
 
@@ -36,10 +38,11 @@ function ConfirmModal({
   onConfirm,
   onCancel,
   variant = "default",
+  loading = false,
   className,
 }: ConfirmModalProps) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
       <AlertDialogContent className={cn("", className)}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -49,6 +52,7 @@ function ConfirmModal({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
+            disabled={loading}
             onClick={() => {
               onCancel?.();
             }}
@@ -56,13 +60,24 @@ function ConfirmModal({
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            disabled={loading}
+            onClick={(e) => {
+              e.preventDefault();
+              void onConfirm();
+            }}
             className={cn(
               variant === "destructive" &&
                 "bg-destructive text-white hover:bg-destructive/90"
             )}
           >
-            {confirmText}
+            {loading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Please wait…
+              </>
+            ) : (
+              confirmText
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

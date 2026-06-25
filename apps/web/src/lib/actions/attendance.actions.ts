@@ -2,10 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
-import { createAttendanceSchema } from "@/lib/validations/attendance.schema";
+import {
+  bulkAttendanceSchema,
+  createAttendanceSchema,
+} from "@/lib/validations/attendance.schema";
 
 export const createAttendanceSession = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_attendance_session", entityType: "attendance" },
 })(async (formData, { supabase, me }) => {
   const parsed = createAttendanceSchema.safeParse({
     employeeId: String(formData.get("employeeId") || ""),
@@ -101,6 +105,7 @@ export const createAttendanceSession = protectedAction<FormData>({
 
 export const closeAttendanceSession = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "close_attendance_session", entityType: "attendance" },
 })(async (formData, { supabase }) => {
   const sessionId = String(formData.get("sessionId") || "");
   if (!sessionId) return { success: false, error: "Session ID required" };
@@ -133,6 +138,7 @@ export const closeAttendanceSession = protectedAction<FormData>({
 
 export const deleteAttendanceSession = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_attendance_session", entityType: "attendance" },
 })(async (formData, { supabase }) => {
   const sessionId = String(formData.get("sessionId") || "");
   if (!sessionId) return { success: false, error: "Session ID required" };
@@ -145,5 +151,85 @@ export const deleteAttendanceSession = protectedAction<FormData>({
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/dashboard/attendance");
+  return { success: true };
+});
+
+export const bulkMarkAttendance = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "bulk_mark_attendance", entityType: "attendance" },
+})(async (formData, { supabase, me }) => {
+  const parsed = bulkAttendanceSchema.safeParse({
+    attendanceDate: formData.get("attendanceDate"),
+    workshopId: formData.get("workshopId"),
+    employeeIds: formData.getAll("employeeIds").map(String),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { attendanceDate, workshopId, employeeIds } = parsed.data;
+
+  const { data: companySettings } = await supabase
+    .from("companies")
+    .select("daily_work_hours")
+    .eq("id", me.company_id)
+    .single();
+
+  const dailyHours = companySettings?.daily_work_hours ?? 8;
+  const start = new Date(`${attendanceDate}T09:00:00`);
+  const end = new Date(start);
+  end.setHours(end.getHours() + dailyHours);
+
+  const startISO = start.toISOString();
+  const endISO = end.toISOString();
+  const durationMinutes = dailyHours * 60;
+
+  let created = 0;
+  const skipped: string[] = [];
+
+  for (const employeeId of employeeIds) {
+    const dayStart = `${attendanceDate}T00:00:00`;
+    const dayEnd = `${attendanceDate}T23:59:59`;
+
+    const { data: existing } = await supabase
+      .from("attendance_sessions")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .gte("start_time", dayStart)
+      .lte("start_time", dayEnd)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      skipped.push(employeeId);
+      continue;
+    }
+
+    const { error } = await supabase.from("attendance_sessions").insert({
+      company_id: me.company_id,
+      employee_id: employeeId,
+      state: "workshop",
+      workshop_id: workshopId,
+      start_time: startISO,
+      end_time: endISO,
+      duration_minutes: durationMinutes,
+    } as unknown as never);
+
+    if (!error) created += 1;
+  }
+
+  if (created === 0) {
+    return {
+      success: false,
+      error:
+        skipped.length > 0
+          ? "All selected employees already have attendance for this date."
+          : "Failed to create attendance sessions.",
+    };
+  }
+
+  revalidatePath("/dashboard/attendance");
+  revalidatePath("/dashboard/history");
   return { success: true };
 });

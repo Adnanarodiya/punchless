@@ -1,15 +1,28 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { cn } from "@punchless/ui/lib/utils";
+
 import type { RevenueChartPoint } from "@/lib/queries/dashboard.queries";
 import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
 
+export type ChartRange = "7d" | "6m";
+
 interface Props {
   points: RevenueChartPoint[];
+  chartRange: ChartRange;
   hasDataLockPin: boolean;
 }
 
-export function DashboardRevenueChart({ points, hasDataLockPin }: Props) {
+export function DashboardRevenueChart({
+  points,
+  chartRange,
+  hasDataLockPin,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const locked = useFinancialLocked(hasDataLockPin);
 
   const maxValue = Math.max(
@@ -17,17 +30,54 @@ export function DashboardRevenueChart({ points, hasDataLockPin }: Props) {
     ...points.flatMap((p) => [p.income, p.expense])
   );
 
+  function setChartRange(range: ChartRange) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("chart", range);
+    router.push(`/dashboard?${params.toString()}`);
+  }
+
+  const title =
+    chartRange === "6m"
+      ? "Last 6 months — income vs expense"
+      : "Last 7 days — income vs expense";
+
   return (
     <section
       aria-labelledby="revenue-chart-heading"
       className="relative rounded-xl border border-border bg-card p-5"
     >
-      <h2 id="revenue-chart-heading" className="mb-1 text-lg font-semibold">
-        Last 7 days — income vs expense
-      </h2>
-      <p className="mb-6 text-sm text-muted-foreground">
-        From Income &amp; Expense entries only
-      </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="revenue-chart-heading" className="mb-1 text-lg font-semibold">
+            {title}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            From Income &amp; Expense entries only
+          </p>
+        </div>
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {(
+            [
+              { id: "7d" as const, label: "7 days" },
+              { id: "6m" as const, label: "6 months" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setChartRange(opt.id)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:text-sm",
+                chartRange === opt.id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div
         className={
@@ -59,8 +109,8 @@ export function DashboardRevenueChart({ points, hasDataLockPin }: Props) {
                 }
               />
             </div>
-            <span className="text-[10px] text-muted-foreground sm:text-xs">
-              {formatShortDate(point.date)}
+            <span className="text-center text-[10px] text-muted-foreground sm:text-xs">
+              {point.label ?? formatShortDate(point.date)}
             </span>
           </div>
         ))}

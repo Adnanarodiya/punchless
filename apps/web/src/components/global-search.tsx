@@ -6,6 +6,7 @@ import {
   Briefcase,
   Building2,
   FileText,
+  Receipt,
   Search,
   UserCircle,
   Users,
@@ -26,6 +27,7 @@ const TYPE_META: Record<
   invoice: { label: "Invoice", icon: FileText },
   supplier: { label: "Supplier", icon: UserCircle },
   job: { label: "Job", icon: Briefcase },
+  purchase: { label: "Purchase", icon: Receipt },
 };
 
 interface Props {
@@ -112,7 +114,7 @@ export function GlobalSearch({ open, onOpenChange }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Search clients, employees, invoices…"
+          placeholder="Search clients, invoices, purchases, jobs…"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>

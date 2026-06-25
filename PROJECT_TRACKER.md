@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-25 (UI/UX polish — modals, sidebar, loaders, delete confirms)
+> **Last updated:** 2026-06-25 (Phase 19 — Shahin parity gaps #1,3–11; phone login #2 deferred)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -32,6 +32,7 @@
 | 17 | Reports Suite | ✅ Done | 8 reports + period filters + print + CSV export |
 | 18 | Admin & Auth Extensions | ✅ Done | audit log, dashboard users, change password, auto-audit on write actions |
 | — | Shahin Extras | ✅ Done | data lock PIN, sticky notes widget, global search (Ctrl+K) |
+| 19 | Shahin Parity (nice-to-haves) | 🟡 Partial | FY selector, 6-month chart, Excel export, invoice/job detail pages, attendance print sheet, search purchases + invoice-by-client, correction audit, login support phone — **#2 phone login deferred last** |
 
 ---
 
@@ -169,7 +170,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `layout.tsx` | 2 | Auth layout: centered card with dark background |
-| `login/page.tsx` | 2 | Login form: email + password → `signInWithPassword` → redirect to dashboard |
+| `login/page.tsx` | 2/19 | Login form: email + password; optional `NEXT_PUBLIC_SUPPORT_PHONE` help line |
 | `signup/page.tsx` | 2 | Signup form: company name + name + email + password → admin API creates user + company → auto-login |
 
 #### Dashboard Pages (`src/app/(dashboard)/`)
@@ -177,7 +178,11 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `layout.tsx` | 2 | Dashboard shell: Sidebar + Header + content area, fetches current user |
-| `dashboard/page.tsx` | 15 | Financial HQ + operations stats, quick actions, recent tables |
+| `dashboard/page.tsx` | 15/19 | Financial HQ + operations stats; FY selector (`?fy=`), revenue chart range (`?chart=7d\|6m`) |
+| `dashboard-fy-selector.tsx` | 19 | FY `<select>` — only years with transaction data (newest first); default current FY |
+| `dashboard-revenue-chart.tsx` | 15/19 | 7-day / 6-month income vs expense toggle |
+| `invoices/[id]/page.tsx` | 19 | Dedicated invoice detail view (summary, line items, print/edit links) |
+| `jobs/[id]/page.tsx` | 19 | Dedicated job detail page (customer, assignment, location, edit link) |
 | `dashboard/dashboard-financial-cards.tsx` | 15 | Income, expense, cash, bank, client credit, supplier payable cards |
 | `dashboard/dashboard-todays-payments.tsx` | 15 | Today's payments table (client component — DataTable) |
 | `dashboard/dashboard-pending-dues.tsx` | 15 | Top 5 client dues + supplier payables |
@@ -257,7 +262,10 @@
 |------|-------|-------------|
 | `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
 | `sidebar-config.ts` | 11A/17/18 | Nav — Reports + Account: Users, Audit Log, Password |
-| `report-layout.tsx` | 17 | Shared report shell — period presets, custom range, print, CSV export |
+| `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
+| `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
+| `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
+| `export-xlsx.ts` | 19 | `downloadXlsx()` via SheetJS; CSV fallback on failure |
 | `report-table.tsx` | 17 | Server-friendly printable table for report pages |
 | `report-period.ts` | 17 | `resolveReportPeriod()` — today/week/month/year/custom + month/year modes |
 | `export-csv.ts` | 17 | Client CSV download helper |
@@ -281,7 +289,7 @@
 |------|-------|-------------|
 | `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes (includes break); `formatCurrency()` — INR formatting |
 | `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
-| `audit-display.ts` | 18 | Action/entity pill labels, tones (success/warning/destructive), human-readable summaries |
+| `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
 | `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
 | `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
 
@@ -359,7 +367,7 @@
 | `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
 | `settings.actions.ts` | 7/Extras | Work schedule + `setDataLockPin`, `removeDataLockPin`, `verifyDataLockPinAction` |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
-| `correction.actions.ts` | 8.5 | `approveCorrectionRequest()` — approve + auto-update session times; `rejectCorrectionRequest()` — reject with notes |
+| `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
 | `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
 | `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()` |
 | `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` |
@@ -384,7 +392,7 @@
 | `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
-| `dashboard.queries.ts` | 15 | Stats, financial summary, today's payments, pending dues, revenue chart, recent tables |
+| `dashboard.queries.ts` | 15/19 | Stats, `getFinancialYearsWithData()`, FY-scoped financial summary, revenue charts |
 | `client.queries.ts` | 11B | `getClientStatement()` merges invoice+payment into one row; shows unpaid debits |
 | `supplier.queries.ts` | 12 | `getSuppliers()`, `getSupplierById()`, `getSuppliersSummary()`, `getSupplierStatement()` |
 | `purchase.queries.ts` | 12 | `getPurchaseInvoices()` with supplier join |
@@ -394,7 +402,7 @@
 | `audit.queries.ts` | 18 | `getAuditLogs()` — owner-only, date range + user join |
 | `admin-user.queries.ts` | 18 | `getDashboardUsers()` — owner/admin accounts for company |
 | `sticky-note.queries.ts` | Extras | `getStickyNotes()` |
-| `search.queries.ts` | Extras | `globalSearch()` — deep links to statements, invoice print, job edit |
+| `search.queries.ts` | Extras/19 | `globalSearch()` — clients, employees, suppliers, jobs, invoices (number + client name), purchases (number + supplier) |
 
 #### Supabase Clients (`src/lib/supabase/`)
 

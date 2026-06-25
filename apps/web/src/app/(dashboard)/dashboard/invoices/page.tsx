@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { getActiveClients } from "@/lib/queries/client.queries";
 import { getJobs } from "@/lib/queries/job.queries";
 import { getInvoices, getNextInvoiceNumber } from "@/lib/queries/invoice.queries";
@@ -12,11 +14,13 @@ export default async function InvoicesPage() {
   ]);
 
   return (
-    <InvoiceManager
-      invoices={invoices}
-      clients={clients}
-      jobs={jobs}
-      suggestedInvoiceNumber={suggestedInvoiceNumber}
-    />
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading invoices…</div>}>
+      <InvoiceManager
+        invoices={invoices}
+        clients={clients}
+        jobs={jobs}
+        suggestedInvoiceNumber={suggestedInvoiceNumber}
+      />
+    </Suspense>
   );
 }

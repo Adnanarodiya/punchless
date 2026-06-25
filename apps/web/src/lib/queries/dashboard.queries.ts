@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  getFinancialYearRangeToDate,
+  getFinancialYearStartYearForDate,
+} from "@/lib/utils/financial-year";
 import type { AttendanceWithDetails } from "./attendance.queries";
 import type { JobWithDetails } from "./job.queries";
 import { getBanksSummary } from "./bank.queries";
@@ -160,9 +164,31 @@ export async function getRecentJobs(limit = 10): Promise<JobWithDetails[]> {
   }));
 }
 
-export async function getFinancialSummary(): Promise<FinancialSummary> {
+/** FY start years that have income/expense transaction data, newest first. */
+export async function getFinancialYearsWithData(): Promise<number[]> {
   const supabase = await createClient();
-  const { start, end, label } = currentMonthRange();
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("transaction_date");
+
+  const years = new Set<number>();
+  for (const row of data ?? []) {
+    if (row.transaction_date) {
+      years.add(getFinancialYearStartYearForDate(row.transaction_date));
+    }
+  }
+
+  return Array.from(years).sort((a, b) => b - a);
+}
+
+export async function getFinancialSummary(
+  fyStartYear?: number
+): Promise<FinancialSummary> {
+  const supabase = await createClient();
+  const { start, end, label } = fyStartYear
+    ? getFinancialYearRangeToDate(fyStartYear)
+    : currentMonthRange();
 
   const [
     { data: monthTransactions },
@@ -354,7 +380,9 @@ export async function getRevenueChart(
     }
   }
 
-  return Object.entries(byDate).map(([date, values]) => ({
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, values]) => ({
     date,
     label: new Date(date).toLocaleDateString("en-IN", {
       day: "2-digit",
@@ -363,4 +391,52 @@ export async function getRevenueChart(
     income: Math.round(values.income * 100) / 100,
     expense: Math.round(values.expense * 100) / 100,
   }));
+}
+
+export async function getRevenueChartByMonth(
+  months = 6
+): Promise<RevenueChartPoint[]> {
+  const supabase = await createClient();
+  const end = new Date();
+  const start = new Date(end.getFullYear(), end.getMonth() - (months - 1), 1);
+
+  const startStr = start.toISOString().slice(0, 10);
+  const endStr = end.toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("amount, transaction_type, transaction_date")
+    .gte("transaction_date", startStr)
+    .lte("transaction_date", endStr);
+
+  const byMonth: Record<string, { income: number; expense: number }> = {};
+
+  for (let i = 0; i < months; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+    const key = d.toISOString().slice(0, 7);
+    byMonth[key] = { income: 0, expense: 0 };
+  }
+
+  for (const row of data ?? []) {
+    const key = row.transaction_date.slice(0, 7);
+    if (!byMonth[key]) continue;
+    const amount = parseAmount(row.amount);
+    if (row.transaction_type === "income") {
+      byMonth[key].income += amount;
+    } else {
+      byMonth[key].expense += amount;
+    }
+  }
+
+  return Object.entries(byMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, values]) => ({
+      date: `${month}-01`,
+      label: new Date(`${month}-01`).toLocaleDateString("en-IN", {
+        month: "short",
+        year: "2-digit",
+      }),
+      income: Math.round(values.income * 100) / 100,
+      expense: Math.round(values.expense * 100) / 100,
+    }));
 }

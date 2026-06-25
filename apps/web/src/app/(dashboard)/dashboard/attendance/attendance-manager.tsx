@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@punchless/ui/components/button";
-import { Plus, X, StopCircle, Radio, History, Users } from "lucide-react";
+import { Plus, X, StopCircle, Radio, History, Users, Printer } from "lucide-react";
+import { AttendancePrintSheet } from "@/components/attendance-print-sheet";
 import {
   bulkMarkAttendance,
   createAttendanceSession,
@@ -27,7 +28,7 @@ interface Props {
 
 export function AttendanceManager({ todaySessions, activeSessions, employees, workshops }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [tab, setTab] = useState<"live" | "today" | "bulk">("live");
+  const [tab, setTab] = useState<"live" | "today" | "bulk" | "sheet">("live");
   const [selectedBulkEmployees, setSelectedBulkEmployees] = useState<string[]>([]);
   const [showEndTime, setShowEndTime] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +109,15 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
           >
             <Users className="size-4 inline mr-1.5" />
             Bulk
+          </button>
+          <button
+            onClick={() => setTab("sheet")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              tab === "sheet" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+            }`}
+          >
+            <Printer className="size-4 inline mr-1.5" />
+            Sheet
           </button>
         </div>
 
@@ -204,7 +214,17 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
         </div>
       )}
 
-      {tab === "bulk" ? (
+      {tab === "sheet" ? (
+        <AttendancePrintSheet
+          sessions={todaySessions}
+          dateLabel={new Date().toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        />
+      ) : tab === "bulk" ? (
         <div className="bg-card border border-border rounded-xl p-5 space-y-4">
           <p className="text-sm text-muted-foreground">
             Mark employees present for a day — creates a closed workshop session (9:00 AM + daily work hours from Settings).

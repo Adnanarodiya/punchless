@@ -168,6 +168,16 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
     tone: "workshop",
     summary: "Bulk attendance marked for date",
   },
+  approve_correction: {
+    label: "Correction Approved",
+    tone: "success",
+    summary: "Attendance correction request approved",
+  },
+  reject_correction: {
+    label: "Correction Rejected",
+    tone: "destructive",
+    summary: "Attendance correction request rejected",
+  },
 
   invite_admin: {
     label: "Admin Invited",
@@ -231,6 +241,7 @@ const ENTITY_CONFIG: Record<string, AuditEntityDisplay> = {
   job: { label: "Job", tone: "travel" },
   advance: { label: "Advance", tone: "warning" },
   attendance: { label: "Attendance", tone: "workshop" },
+  correction_request: { label: "Correction", tone: "workshop" },
   user: { label: "User", tone: "destructive" },
   settings: { label: "Settings", tone: "muted" },
   sticky_note: { label: "Note", tone: "warning" },

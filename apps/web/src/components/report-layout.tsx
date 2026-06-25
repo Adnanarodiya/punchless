@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Download, Printer } from "lucide-react";
+import { Download, FileSpreadsheet, Printer } from "lucide-react";
 
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
@@ -10,6 +11,10 @@ import { PageHeader } from "@punchless/ui/components/page-header";
 import { cn } from "@punchless/ui/lib/utils";
 
 import { downloadCsv } from "@/lib/utils/export-csv";
+import {
+  downloadCsvFallback,
+  downloadXlsx,
+} from "@/lib/utils/export-xlsx";
 import type { ReportPeriod, ReportPreset } from "@/lib/utils/report-period";
 
 type PeriodMode = "range" | "month" | "year";
@@ -43,6 +48,7 @@ export function ReportLayout({
   children,
 }: Props) {
   const router = useRouter();
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   function navigatePreset(preset: ReportPreset) {
     router.push(`${basePath}?period=${preset}`);
@@ -66,6 +72,20 @@ export function ReportLayout({
 
   const defaultMonth = period.start.slice(0, 7);
   const defaultYear = period.start.slice(0, 4);
+  const exportBaseName =
+    exportFilename ?? title.toLowerCase().replace(/\s+/g, "-");
+
+  async function handleExportExcel() {
+    if (!exportRows || exportRows.length === 0) return;
+    setExportingExcel(true);
+    try {
+      await downloadXlsx(exportRows, exportBaseName);
+    } catch {
+      downloadCsvFallback(exportRows, exportBaseName);
+    } finally {
+      setExportingExcel(false);
+    }
+  }
 
   return (
     <div className="space-y-6 print:space-y-4">
@@ -89,19 +109,26 @@ export function ReportLayout({
             Print
           </Button>
           {exportRows && exportRows.length > 0 ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                downloadCsv(
-                  exportRows,
-                  exportFilename ?? title.toLowerCase().replace(/\s+/g, "-")
-                )
-              }
-            >
-              <Download className="size-4" />
-              Export CSV
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadCsv(exportRows, exportBaseName)}
+              >
+                <Download className="size-4" />
+                Export CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleExportExcel()}
+                loading={exportingExcel}
+                disabled={exportingExcel}
+              >
+                <FileSpreadsheet className="size-4" />
+                Export Excel
+              </Button>
+            </>
           ) : null}
         </div>
       </PageHeader>

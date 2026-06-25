@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Pencil, Printer } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Eye, Plus, X, Pencil, Printer } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@punchless/ui/components/page-header";
@@ -51,6 +52,7 @@ export function InvoiceManager({
   jobs,
   suggestedInvoiceNumber,
 }: Props) {
+  const searchParams = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [editingInvoice, setEditingInvoice] =
     useState<InvoiceWithDetails | null>(null);
@@ -128,6 +130,14 @@ export function InvoiceManager({
     setBankAmount(String(invoice.bank_amount));
     setShowForm(true);
   }
+
+  useEffect(() => {
+    const invoiceId = searchParams.get("invoice");
+    if (!invoiceId) return;
+    const invoice = invoices.find((row) => row.id === invoiceId);
+    if (!invoice) return;
+    openEdit(invoice);
+  }, [searchParams, invoices]);
 
   return (
     <div className="space-y-6">
@@ -337,6 +347,11 @@ export function InvoiceManager({
               header: "Actions",
               cell: (row) => (
                 <div className="flex gap-1">
+                  <Button variant="ghost" size="sm" asChild title="View">
+                    <Link href={`/dashboard/invoices/${row.id}`}>
+                      <Eye className="size-3.5" />
+                    </Link>
+                  </Button>
                   <Button variant="ghost" size="sm" asChild title="Print">
                     <Link href={`/dashboard/invoices/${row.id}/print`} target="_blank">
                       <Printer className="size-3.5" />

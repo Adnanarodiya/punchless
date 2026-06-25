@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, X, Pencil } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function PurchaseManager({ purchases, suppliers }: Props) {
+  const searchParams = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [editingPurchase, setEditingPurchase] =
     useState<PurchaseWithSupplier | null>(null);
@@ -80,6 +82,14 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
     setGstPercent(String(purchase.gst_percent));
     setShowForm(true);
   }
+
+  useEffect(() => {
+    const purchaseId = searchParams.get("purchase");
+    if (!purchaseId) return;
+    const purchase = purchases.find((row) => row.id === purchaseId);
+    if (!purchase) return;
+    openEdit(purchase);
+  }, [searchParams, purchases]);
 
   return (
     <div className="space-y-6">

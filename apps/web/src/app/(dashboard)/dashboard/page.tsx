@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Users, Clock, Briefcase, Wallet } from "lucide-react";
 
 import { PageHeader } from "@punchless/ui/components/page-header";
@@ -6,48 +7,73 @@ import { PageHeader } from "@punchless/ui/components/page-header";
 import {
   getDashboardStats,
   getFinancialSummary,
+  getFinancialYearsWithData,
   getRecentAttendance,
   getRecentJobs,
   getRevenueChart,
+  getRevenueChartByMonth,
   getTodaysPayments,
   getTopPendingDues,
 } from "@/lib/queries/dashboard.queries";
 import { getDataLockStatus } from "@/lib/queries/settings.queries";
 import { getStickyNotes } from "@/lib/queries/sticky-note.queries";
+import {
+  buildFinancialYearSelectOptions,
+  getCurrentFinancialYearStartYear,
+  resolveDashboardFinancialYear,
+} from "@/lib/utils/financial-year";
 import { DashboardDataLockControls } from "@/components/dashboard-data-lock-controls";
 
 import { DashboardFinancialCards } from "./dashboard-financial-cards";
+import { DashboardFySelector } from "./dashboard-fy-selector";
 import { DashboardLiveClock } from "./dashboard-live-clock";
 import { DashboardPendingDues } from "./dashboard-pending-dues";
 import { DashboardQuickActions } from "./dashboard-quick-actions";
 import { DashboardRecentTables } from "./dashboard-recent-tables";
-import { DashboardRevenueChart } from "./dashboard-revenue-chart";
+import {
+  DashboardRevenueChart,
+  type ChartRange,
+} from "./dashboard-revenue-chart";
 import { DashboardStickyNotes } from "./dashboard-sticky-notes";
 import { DashboardTodaysPayments } from "./dashboard-todays-payments";
 
-export default async function DashboardPage() {
-  const [
-    stats,
-    financial,
-    todaysPayments,
-    pendingDues,
-    revenueChart,
-    recentAttendance,
-    recentJobs,
-    dataLock,
-    stickyNotes,
-  ] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fy?: string; chart?: string }>;
+}) {
+  const params = await searchParams;
+  const chartRange: ChartRange = params.chart === "6m" ? "6m" : "7d";
+  const currentFy = getCurrentFinancialYearStartYear();
+
+  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, recentAttendance, recentJobs, dataLock, stickyNotes] =
+    await Promise.all([
+    getFinancialYearsWithData(),
     getDashboardStats(),
-    getFinancialSummary(),
     getTodaysPayments(),
     getTopPendingDues(5),
     getRevenueChart(7),
+    getRevenueChartByMonth(6),
     getRecentAttendance(10),
     getRecentJobs(10),
     getDataLockStatus(),
     getStickyNotes(),
   ]);
 
+  const fyStartYear = resolveDashboardFinancialYear(
+    params.fy,
+    yearsWithData,
+    currentFy
+  );
+  const fyOptions = buildFinancialYearSelectOptions(
+    yearsWithData,
+    fyStartYear,
+    currentFy,
+    Boolean(params.fy)
+  );
+  const financial = await getFinancialSummary(fyStartYear);
+
+  const revenueChart = chartRange === "6m" ? revenueChart6m : revenueChart7d;
   const hasDataLockPin = dataLock.hasPin;
 
   const operationCards = [
@@ -93,6 +119,9 @@ export default async function DashboardPage() {
       >
         <div className="flex flex-col items-end gap-2">
           <DashboardLiveClock />
+          <Suspense fallback={null}>
+            <DashboardFySelector options={fyOptions} selectedFy={fyStartYear} />
+          </Suspense>
           <DashboardDataLockControls hasDataLockPin={hasDataLockPin} />
         </div>
       </PageHeader>
@@ -110,7 +139,13 @@ export default async function DashboardPage() {
         <DashboardPendingDues dues={pendingDues} hasDataLockPin={hasDataLockPin} />
       </div>
 
-      <DashboardRevenueChart points={revenueChart} hasDataLockPin={hasDataLockPin} />
+      <Suspense fallback={null}>
+        <DashboardRevenueChart
+          points={revenueChart}
+          chartRange={chartRange}
+          hasDataLockPin={hasDataLockPin}
+        />
+      </Suspense>
 
       <DashboardStickyNotes notes={stickyNotes} />
 

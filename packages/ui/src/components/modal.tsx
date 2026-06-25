@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogOverlay,
   DialogTitle,
 } from "./dialog";
 import { VisuallyHidden } from "./visually-hidden";
@@ -19,7 +18,6 @@ interface ModalProps {
   hideCloseBtn?: boolean;
   closeOnOverlayClick?: boolean;
   className?: string;
-  overlayClassName?: string;
 }
 
 function Modal({
@@ -30,7 +28,6 @@ function Modal({
   hideCloseBtn = false,
   closeOnOverlayClick = true,
   className = "",
-  overlayClassName = "",
 }: ModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -56,7 +53,6 @@ function Modal({
         )}
         {children}
       </DialogContent>
-      <DialogOverlay className={overlayClassName} />
     </Dialog>
   );
 }

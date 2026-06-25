@@ -8,24 +8,36 @@ import { cn } from "../lib/utils";
 export interface CollapsibleNavGroupProps {
   label: string;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: React.ReactNode;
   className?: string;
 }
 
 export function CollapsibleNavGroup({
   label,
-  defaultOpen = true,
+  defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
   children,
   className,
 }: CollapsibleNavGroupProps) {
-  const [open, setOpen] = React.useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
   const panelId = React.useId();
+
+  function toggle() {
+    const next = !open;
+    if (!isControlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  }
 
   return (
     <div data-slot="collapsible-nav-group" className={cn("space-y-1", className)}>
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={toggle}
         aria-expanded={open}
         aria-controls={panelId}
         className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"

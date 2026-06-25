@@ -1,13 +1,15 @@
 import { getEmployees } from "@/lib/queries/employee.queries";
+import { getPosts } from "@/lib/queries/post.queries";
 import { getWorkshops } from "@/lib/queries/workshop.queries";
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 import { EmployeeManager } from "./employee-manager";
 
 export default async function EmployeesPage() {
-  const [employees, workshops, settings] = await Promise.all([
+  const [employees, workshops, settings, posts] = await Promise.all([
     getEmployees(),
     getWorkshops(),
     getCompanySettings(),
+    getPosts(),
   ]);
 
   // Only pass active workshops for assignment
@@ -22,6 +24,7 @@ export default async function EmployeesPage() {
       <EmployeeManager
         employees={employees}
         workshops={activeWorkshops}
+        posts={posts}
         dailyWorkHours={dailyWorkHours}
         workingDaysPerMonth={workingDaysPerMonth}
       />

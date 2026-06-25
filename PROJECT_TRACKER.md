@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-24 (Phase 13 — invoice print shows remark field)
+> **Last updated:** 2026-06-25 (UI/UX polish — modals, sidebar, loaders, delete confirms)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -26,13 +26,12 @@
 | 11B | Clients CRM | ✅ Done | clients + ledger_entries + payments + statement |
 | 12 | Suppliers + Purchases | ✅ Done | suppliers, supplier_payments, purchase_invoices |
 | 13 | Tax Invoices + GST | ✅ Done | invoices, line items, GST slabs, split payment, print, ledger auto-write |
-
-
-
-| 14 | Banks + Transactions | ☐ **Next** | bank accounts, income/expense |
-| 15 | Financial Dashboard Home | ☐ Pending | Shahin-style financial HQ |
-| 16 | HR Extensions | ☐ Pending | posts, staff payments, deposits |
-| 17 | Reports Suite | ☐ Pending | 8 reports + print + Excel |
+| 14 | Banks + Transactions | ✅ Done | bank_accounts, deposits/withdrawals, transfers, income/expense, statements |
+| 15 | Financial Dashboard Home | ✅ Done | Financial cards, today's payments, pending dues, 7-day chart, live clock |
+| 16 | HR Extensions | ✅ Done | posts, extended employees, staff payments, salary deposits, staff statement, bulk attendance, history CSV export |
+| 17 | Reports Suite | ✅ Done | 8 reports + period filters + print + CSV export |
+| 18 | Admin & Auth Extensions | ✅ Done | audit log, dashboard users, change password, auto-audit on write actions |
+| — | Shahin Extras | ✅ Done | data lock PIN, sticky notes widget, global search (Ctrl+K) |
 
 ---
 
@@ -56,7 +55,9 @@
 | `SHAHIN_IMPLEMENTATION_PLAN.md` | 11 | Shahin → Punchless phased implementation plan with ✅/🟡/☐ checklist, accessibility UX, DB schema, routes |
 | `NEW_START.md` | 11 | Quick-start guide — which MD files to use, phase order, workflow steps |
 | `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
+| `PHASE_14_TESTING.md` | 14 | **Phase 14 testing plan** — 2 dummy banks, 15 tests; Test 3 clarifies 3-page navigation flow |
 | `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
+| `scripts/add-audit-config.mjs` | 18 | Dev script — adds `audit` config to `protectedAction` exports (CRLF-safe) |
 
 ### Documentation (`/docs/`)
 
@@ -92,6 +93,10 @@
 | `migrations/20260624140000_suppliers_and_purchases.sql` | 12 | `suppliers`, `supplier_payments`, `purchase_invoices` + ledger `purchase` ref |
 | `migrations/20260624160000_tax_invoices.sql` | 13 | `invoices`, `invoice_line_items` + jobs `vehicle_number`/`client_id` |
 | `migrations/20260624180000_fix_ledger_delete_policy.sql` | 13 | Admin can delete `ledger_entries` (invoice ledger resync) |
+| `migrations/20260625120000_banks_and_transactions.sql` | 14 | `bank_accounts`, `bank_transactions`, `bank_transfers`, `transactions` + ledger ref types |
+| `migrations/20260625140000_hr_extensions.sql` | 16 | `posts`, `staff_payments`, `salary_deposits`; extend `users` (address, post_id, joining_date, account_no, ifsc_code); ledger ref `salary_deposit`, `staff_payment` |
+| `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
+| `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -172,13 +177,18 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `layout.tsx` | 2 | Dashboard shell: Sidebar + Header + content area, fetches current user |
-| `dashboard/page.tsx` | 11A | Home page: stat cards, quick actions, recent attendance + jobs tables |
-| `dashboard/dashboard-quick-actions.tsx` | 11A/13 | Quick action link grid (includes Invoices) |
+| `dashboard/page.tsx` | 15 | Financial HQ + operations stats, quick actions, recent tables |
+| `dashboard/dashboard-financial-cards.tsx` | 15 | Income, expense, cash, bank, client credit, supplier payable cards |
+| `dashboard/dashboard-todays-payments.tsx` | 15 | Today's payments table (client component — DataTable) |
+| `dashboard/dashboard-pending-dues.tsx` | 15 | Top 5 client dues + supplier payables |
+| `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
+| `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
+| `dashboard/dashboard-quick-actions.tsx` | 15 | Quick actions — commerce, finance, operations, payroll |
 | `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables |
 | `dashboard/clients/page.tsx` | 11B | Server component: fetches clients + summary, renders `ClientManager` |
 | `dashboard/clients/client-manager.tsx` | 11B | **Client component**: CRUD, receive payment modal, soft delete/recover |
 | `dashboard/clients/[id]/statement/page.tsx` | 11B | Server component: client statement with date range |
-| `dashboard/clients/[id]/statement/statement-manager.tsx` | 11B | Statement table with opening/closing balance + print |
+| `dashboard/clients/[id]/statement/statement-manager.tsx` | 11B | Statement table — merged invoice+payment rows, pending highlight, print |
 | `dashboard/suppliers/page.tsx` | 12 | Server component: suppliers + summary |
 | `dashboard/suppliers/supplier-manager.tsx` | 12 | CRUD, Pay Now modal, statement link, soft delete/recover |
 | `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
@@ -186,15 +196,33 @@
 | `dashboard/purchases/page.tsx` | 12 | Server component: purchases + active suppliers |
 | `dashboard/purchases/purchase-manager.tsx` | 12 | Purchase/sales invoices with GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
-| `dashboard/invoices/invoice-manager.tsx` | 13 | Tax invoice CRUD, GST preview, split payment, print link |
-| `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice view |
+| `dashboard/invoices/invoice-manager.tsx` | 13 | Tax invoice CRUD, GST preview, split payment, pending credit highlight, print link |
+| `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice with payment summary + pending balance due |
 | `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
-| `dashboard/employees/page.tsx` | 3 | Server component: fetches employees + workshops, renders `EmployeeManager` |
-| `dashboard/employees/employee-manager.tsx` | 3 | **Client component**: Full CRUD — add/edit/delete employees, workshop dropdown (auto-assign if 1, dropdown if 2+), toggle active/inactive |
+| `dashboard/banks/page.tsx` | 14 | Server component: bank accounts + summary |
+| `dashboard/banks/bank-manager.tsx` | 14 | Bank CRUD, soft delete/recover, links to transactions/transfer/statement |
+| `dashboard/banks/transactions/page.tsx` | 14 | Bank deposit/withdraw page |
+| `dashboard/banks/transactions/bank-transactions-manager.tsx` | 14 | Record deposits/withdrawals + history table |
+| `dashboard/banks/transfer/page.tsx` | 14 | Bank-to-bank transfer page |
+| `dashboard/banks/transfer/bank-transfer-manager.tsx` | 14 | Transfer form + history table |
+| `dashboard/banks/[id]/statement/page.tsx` | 14 | Bank statement with date range |
+| `dashboard/banks/[id]/statement/statement-manager.tsx` | 14 | Deposit/withdraw ledger table + print |
+| `dashboard/transactions/page.tsx` | 14 | Income/expense transactions page |
+| `dashboard/transactions/transaction-manager.tsx` | 14 | Income/expense CRUD; cash/bank breakdown on cards; Rojmel explainer (not bank balance) |
+| `dashboard/employees/page.tsx` | 3/16 | Server component: fetches employees, workshops, posts; renders `EmployeeManager` |
+| `dashboard/employees/employee-manager.tsx` | 3/16 | **Client component**: CRUD + post, address, joining date, bank details; quick payment + staff statement links |
+| `dashboard/employees/[id]/statement/page.tsx` | 16 | Employee staff statement (date range) |
+| `dashboard/employees/[id]/statement/statement-manager.tsx` | 16 | Statement table — deposits, payments, advances, running balance |
+| `dashboard/posts/page.tsx` | 16 | Posts (job titles) list page |
+| `dashboard/posts/post-manager.tsx` | 16 | Post CRUD with soft delete/recover |
+| `dashboard/salary/payments/page.tsx` | 16 | Staff payments list page |
+| `dashboard/salary/payments/staff-payment-manager.tsx` | 16 | Advance / salary paid / deduction entry (cash/bank → expense ledger) |
+| `dashboard/salary/deposits/page.tsx` | 16 | Salary deposits list page |
+| `dashboard/salary/deposits/salary-deposit-manager.tsx` | 16 | Accrual deposits; amount prefills from employee `monthly_salary` |
 | `dashboard/workshops/page.tsx` | 3 | Server component: fetches workshops, renders `WorkshopManager` |
 | `dashboard/workshops/workshop-manager.tsx` | 3 | **Client component**: Full CRUD — add/edit/delete workshops with map picker, toggle active/inactive |
 | `dashboard/attendance/page.tsx` | 4 | Server component: fetches today's sessions + active sessions + employees + workshops, renders `AttendanceManager` |
-| `dashboard/attendance/attendance-manager.tsx` | 4 | **Client component**: Live/Today tabs, stats row (active/workshop/travel/on-site counts), add manual session form, session table with close/delete actions, live duration for open sessions |
+| `dashboard/attendance/attendance-manager.tsx` | 4/16 | Live/Today/Bulk tabs; bulk present marking for a date (closed workshop sessions) |
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
 | `dashboard/salary/page.tsx` | 6 | Server component: reads `?month=` search param, fetches salary report, renders `SalaryManager` |
@@ -202,9 +230,23 @@
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
 | `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
-| `dashboard/settings/settings-manager.tsx` | 7 | **Client component**: Work schedule settings — punch-in time, grace period, daily work hours, working days/month. Saves & recalculates all employee hourly rates |
+| `dashboard/settings/settings-manager.tsx` | 7/18 | Work schedule settings + quick links to Dashboard Users and Change Password |
+| `dashboard/settings/users/page.tsx` | 18 | Owner-only: list dashboard users (owner/admin), invite admin |
+| `dashboard/settings/users/users-manager.tsx` | 18 | Invite admin form + deactivate admin (service-role create + ban) |
+| `dashboard/settings/password/page.tsx` | 18 | Change password page (owner/admin) |
+| `dashboard/settings/password/password-manager.tsx` | 18 | Current + new password form via `changePassword` action |
+| `dashboard/audit-log/page.tsx` | 18 | Owner-only audit log with date-range filter |
+| `dashboard/audit-log/audit-log-manager.tsx` | 18 | Colored action/entity pills, legend, summaries, CSV export |
+| `audit-pill.tsx` | 18 | Reusable rounded pill badge for audit log tones |
+| `dashboard-sticky-notes.tsx` | Extras | Dashboard sticky notes CRUD widget |
+| `dashboard-data-lock-controls.tsx` | Extras | Lock/unlock financials + PIN modal |
+| `global-search.tsx` | Extras | Cmd+K palette — deep links to statements/details |
+| `delete-confirm-button.tsx` | UX | Reusable delete trigger + ConfirmModal ("Are you sure?") |
+| `page-navigation-loader.tsx` | UX | Full-screen loader overlay on internal navigation |
+| `navigation.store.ts` | UX | Zustand — navigation loading state |
+| `(dashboard)/loading.tsx` | UX | Suspense fallback while dashboard pages load |
 | `dashboard/history/page.tsx` | 8.5 | Server component: fetches history sessions + employee summaries, renders `HistoryManager` |
-| `dashboard/history/history-manager.tsx` | 8.5 | **Client component**: Employee Summary / All Sessions tabs, period filter (Today/7 Days/Month), real-time live counters for active employees, drill into individual employee, last activity shows current state |
+| `dashboard/history/history-manager.tsx` | 8.5/16 | Employee Summary / All Sessions tabs, period filter, CSV export |
 | `dashboard/requests/page.tsx` | 8.5 | Server component: fetches correction requests, renders `RequestsManager` |
 | `dashboard/requests/requests-manager.tsx` | 8.5 | **Client component**: Pending/All/Approved/Rejected filter, approve/reject with notes, auto-updates session on approval |
 | `dashboard/billing/page.tsx` | 2 | ⏳ Placeholder — Phase 10 |
@@ -214,7 +256,21 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
-| `sidebar-config.ts` | 11A | Nav groups config — live routes + "Soon" placeholders for ERP modules |
+| `sidebar-config.ts` | 11A/17/18 | Nav — Reports + Account: Users, Audit Log, Password |
+| `report-layout.tsx` | 17 | Shared report shell — period presets, custom range, print, CSV export |
+| `report-table.tsx` | 17 | Server-friendly printable table for report pages |
+| `report-period.ts` | 17 | `resolveReportPeriod()` — today/week/month/year/custom + month/year modes |
+| `export-csv.ts` | 17 | Client CSV download helper |
+| `report.queries.ts` | 17 | Daily, monthly, yearly, GST, invoice, income-expense, expense, rojmel queries |
+| `dashboard/reports/page.tsx` | 17 | Reports hub — links to all 8 reports |
+| `dashboard/reports/daily/page.tsx` | 17 | Daily summary report |
+| `dashboard/reports/monthly/page.tsx` | 17 | Monthly P&L report |
+| `dashboard/reports/yearly/page.tsx` | 17 | Yearly 12-month report |
+| `dashboard/reports/gst/page.tsx` | 17 | GST slab summary |
+| `dashboard/reports/invoices/page.tsx` | 17 | Invoice list report |
+| `dashboard/reports/income-expense/page.tsx` | 17 | Particular-wise income/expense |
+| `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
+| `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
 | `dashboard-shell.tsx` | 11A | Client layout wrapper: skip-to-content, mobile nav state |
 | `dashboard-header.tsx` | 11A | Top header: mobile menu button, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
@@ -224,18 +280,24 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `formatting.ts` | 4 | `formatDuration()` — minutes→"Xh Ym"; `formatTime()` — ISO→local time; `formatDate()` — ISO→local date; `getLiveDurationMinutes()` — start to now; `STATE_CONFIG` — state labels + color classes (includes break); `formatCurrency()` — INR formatting |
+| `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
+| `audit-display.ts` | 18 | Action/entity pill labels, tones (success/warning/destructive), human-readable summaries |
+| `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
+| `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
 
 #### Server Utilities (`src/lib/server/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `protected-action.ts` | 7 | `protectedAction()` HOF — wraps server actions with auth check, role-based permissions, try/catch error handling |
+| `protected-action.ts` | 7/18 | `protectedAction()` HOF — auth, roles, try/catch; optional `audit` config auto-logs successful writes |
 
 #### Validation Schemas (`src/lib/validations/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `employee.schema.ts` | 7 | Zod schemas: `createEmployeeSchema`, `updateEmployeeSchema` |
+| `employee.schema.ts` | 3/16 | Zod schemas: employee CRUD + address, post, joining date, bank fields |
+| `post.schema.ts` | 16 | Zod schemas: `createPostSchema`, `updatePostSchema` |
+| `staff-payment.schema.ts` | 16 | Zod schemas: `createStaffPaymentSchema`, `createSalaryDepositSchema` |
 | `workshop.schema.ts` | 7 | Zod schema: `workshopSchema` (name, lat, lng, radius) |
 | `attendance.schema.ts` | 7 | Zod schema: `createAttendanceSchema` |
 | `job.schema.ts` | 7 | Zod schema: `jobSchema` |
@@ -245,6 +307,30 @@
 | `supplier.schema.ts` | 12 | Zod schemas: `createSupplierSchema`, `updateSupplierSchema`, `paySupplierSchema` |
 | `purchase.schema.ts` | 12 | Zod schemas + GST calc helpers for purchase invoices |
 | `invoice.schema.ts` | 13 | Zod schemas + payment breakdown resolver for tax invoices |
+| `bank.schema.ts` | 14 | Zod schemas: bank CRUD, deposit/withdraw, bank transfer |
+| `transaction.schema.ts` | 14 | Zod schema: income/expense with cash or bank payment |
+| `admin.schema.ts` | 18 | Zod schemas: `inviteAdminSchema`, `changePasswordSchema` |
+| `sticky-note.schema.ts` | Extras | `stickyNoteSchema`, `dataLockPinSchema`, `verifyDataLockPinSchema` |
+
+#### Stores (`apps/web/src/lib/stores/`)
+
+| File | Phase | Description |
+|------|-------|-------------|
+| `data-lock.store.ts` | Extras | Zustand — financial unlock state (sessionStorage persist) |
+
+#### UI/UX Polish (`packages/ui/` + dashboard)
+
+| Change | Description |
+|--------|-------------|
+| `dialog.tsx` / `alert-dialog.tsx` | Lower border radius (`rounded-lg`), removed duplicate overlay in Modal |
+| `button.tsx` | `loading` prop — spinner + auto-disable |
+| `confirm-modal.tsx` | `loading` prop on destructive/default confirms |
+| `collapsible-nav-group.tsx` | Controlled open state for accordion sidebar |
+| `sidebar.tsx` | Independent scroll (`h-screen`), one nav group open at a time, single-link groups flat |
+| `dashboard-shell.tsx` | Main content scroll only; `NavigationProgress` on route change |
+| All `*-manager.tsx` deletes | `DeleteConfirmButton` instead of instant delete |
+| Modal forms | Cancel buttons removed — close via X only |
+| Save/submit buttons | `loading` spinner via `useAction` state |
 
 #### Hooks (`src/hooks/`)
 
@@ -263,24 +349,33 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `auth.actions.ts` | 2 | `signUp()` — admin API create user + company + auto-login; `login()` — email/password; `logout()` — sign out + redirect |
-| `employee.actions.ts` | 3 | `createEmployee()` — admin API + profile insert + workshop assignment; `updateEmployee()` — name/phone/rates/workshop; `toggleEmployeeStatus()`; `deleteEmployee()` — removes auth + profile |
+| `employee.actions.ts` | 3/16 | Employee CRUD + auto-sync current month salary deposit on create/update |
+| `salary-deposit-sync.ts` | 16 | `syncMonthlySalaryDeposit()` — upsert deposit + ledger from `monthly_salary` |
+| `post.actions.ts` | 16 | `createPost`, `updatePost`, `softDeletePost`, `recoverPost` |
+| `staff-payment.actions.ts` | 16 | `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
-| `attendance.actions.ts` | 4 | `createAttendanceSession()` — manual session with auto duration calc; `closeAttendanceSession()` — end open session (set end_time to now); `deleteAttendanceSession()` — remove session |
+| `attendance.actions.ts` | 4/16 | Manual sessions + `bulkMarkAttendance()` for daily present marking |
 | `job.actions.ts` | 5 | `createJob()` — create job with location/assignment; `updateJob()` — update details/status; `deleteJob()` |
 | `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
-| `settings.actions.ts` | 7 | `updateCompanySettings()` — update work schedule + recalculate all employee hourly rates from monthly salary |
+| `settings.actions.ts` | 7/Extras | Work schedule + `setDataLockPin`, `removeDataLockPin`, `verifyDataLockPinAction` |
+| `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5 | `approveCorrectionRequest()` — approve + auto-update session times; `rejectCorrectionRequest()` — reject with notes |
 | `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
 | `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()` |
 | `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` |
 | `invoice.actions.ts` | 13 | `createInvoice()`, `updateInvoice()`, `softDeleteInvoice()` + ledger sync |
+| `bank.actions.ts` | 14 | Bank CRUD, `recordBankTransaction()`, `recordBankTransfer()` + ledger writes |
+| `transaction.actions.ts` | 14/18 | `createTransaction()`, `deleteTransaction()` + ledger writes; audit on writes |
+| `admin.actions.ts` | 18 | `inviteAdminUser()`, `deactivateAdminUser()`, `changePassword()` |
 
 #### Server Queries (`src/lib/queries/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
 | `auth.queries.ts` | 2 | `getAuthUser()` — Supabase auth user; `getCurrentUser()` — user + company join; `getCurrentCompany()` |
-| `employee.queries.ts` | 3 | `getEmployees()` — all employees with workshop name join |
+| `employee.queries.ts` | 3/16 | `getEmployees()`, `getEmployeeById()` — workshop + post joins |
+| `post.queries.ts` | 16 | `getPosts()`, `getPostsSummary()`, `getPostById()` |
+| `staff-payment.queries.ts` | 16 | `getStaffPayments()`, `getSalaryDeposits()`, `getEmployeeStatement()`, `getEmployeeSalaryBalance()` |
 | `workshop.queries.ts` | 3 | `getWorkshops()` — all workshops ordered by created_at |
 | `attendance.queries.ts` | 4 | `getTodayAttendance()` — today's sessions with employee/workshop/job joins; `getActiveSessions()` — open sessions (no end_time); `getAttendanceByDateRange()` — date-filtered; `getAttendanceSummary()` — grouped by employee+workshop+state with total minutes |
 | `job.queries.ts` | 5 | `getJobs()` — list all jobs with assigned user details; `getJobById()` — get single job details |
@@ -289,11 +384,17 @@
 | `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
-| `dashboard.queries.ts` | 11A | `getDashboardStats()`, `getRecentAttendance()`, `getRecentJobs()` — home page data |
-| `client.queries.ts` | 11B | `getClients()`, `getClientById()`, `getClientsSummary()`, `getClientStatement()` |
+| `dashboard.queries.ts` | 15 | Stats, financial summary, today's payments, pending dues, revenue chart, recent tables |
+| `client.queries.ts` | 11B | `getClientStatement()` merges invoice+payment into one row; shows unpaid debits |
 | `supplier.queries.ts` | 12 | `getSuppliers()`, `getSupplierById()`, `getSuppliersSummary()`, `getSupplierStatement()` |
 | `purchase.queries.ts` | 12 | `getPurchaseInvoices()` with supplier join |
 | `invoice.queries.ts` | 13 | `getInvoices()`, `getInvoiceById()`, `getNextInvoiceNumber()` |
+| `bank.queries.ts` | 14 | `getBanks()`, `getBankById()`, `getBankStatement()`, `getBankTransactions()`, `getBankTransfers()` |
+| `transaction.queries.ts` | 14 | `getTransactions()`, `getTransactionsSummary()` |
+| `audit.queries.ts` | 18 | `getAuditLogs()` — owner-only, date range + user join |
+| `admin-user.queries.ts` | 18 | `getDashboardUsers()` — owner/admin accounts for company |
+| `sticky-note.queries.ts` | Extras | `getStickyNotes()` |
+| `search.queries.ts` | Extras | `globalSearch()` — deep links to statements, invoice print, job edit |
 
 #### Supabase Clients (`src/lib/supabase/`)
 
@@ -308,6 +409,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `api/history/route.ts` | 8.5 | GET endpoint for client-side history fetching with date range + optional employee filter |
+| `api/search/route.ts` | Extras | GET `?q=` — authenticated global search JSON |
 
 #### Middleware
 
@@ -389,6 +491,8 @@
 | `purchase_invoices` | 12 | Supplier purchase/sales invoices with GST breakdown |
 | `invoices` | 13 | Client tax invoices with GST + payment split |
 | `invoice_line_items` | 13 | Line items per tax invoice |
+| `audit_logs` | 18 | Action trail (user, action, entity_type/id, summary); owner read, owner/admin insert |
+| `sticky_notes` | Extras | Dashboard reminders (title, description, note_date); owner/admin CRUD |
 
 ---
 

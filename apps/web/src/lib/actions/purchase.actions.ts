@@ -17,6 +17,7 @@ function revalidatePurchasePages() {
 
 export const createPurchaseInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_purchase_invoice", entityType: "purchase" },
 })(async (formData, { supabase, me }) => {
   const parsed = createPurchaseInvoiceSchema.safeParse({
     supplierId: formData.get("supplierId"),
@@ -96,6 +97,7 @@ export const createPurchaseInvoice = protectedAction<FormData>({
 
 export const updatePurchaseInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_purchase_invoice", entityType: "purchase" },
 })(async (formData, { supabase }) => {
   const parsed = updatePurchaseInvoiceSchema.safeParse({
     purchaseId: formData.get("purchaseId"),
@@ -150,6 +152,7 @@ export const updatePurchaseInvoice = protectedAction<FormData>({
 
 export const softDeletePurchaseInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "soft_delete_purchase_invoice", entityType: "purchase" },
 })(async (formData, { supabase }) => {
   const purchaseId = String(formData.get("purchaseId") || "");
   if (!purchaseId) return { success: false, error: "Purchase ID required" };

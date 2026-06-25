@@ -118,14 +118,42 @@ export default async function InvoicePrintPage({
           </section>
         ) : null}
 
-        <footer className="mt-8 border-t border-border pt-4 text-sm text-muted-foreground">
-          <p className="capitalize">Payment: {invoice.payment_mode}</p>
-          <p>
-            {invoice.cash_amount > 0 ? `Cash ${formatCurrency(invoice.cash_amount)} · ` : ""}
-            {invoice.bank_amount > 0 ? `Bank ${formatCurrency(invoice.bank_amount)} · ` : ""}
-            {invoice.credit_amount > 0 ? `Credit ${formatCurrency(invoice.credit_amount)}` : ""}
+        <section className="mt-8 rounded-lg border border-border p-4 text-sm">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Payment Summary
           </p>
-        </footer>
+          <div className="space-y-2">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Mode</span>
+              <span className="font-medium capitalize">{invoice.payment_mode}</span>
+            </div>
+            {invoice.cash_amount > 0 ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Cash received</span>
+                <span className="font-medium">{formatCurrency(invoice.cash_amount)}</span>
+              </div>
+            ) : null}
+            {invoice.bank_amount > 0 ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Bank received</span>
+                <span className="font-medium">{formatCurrency(invoice.bank_amount)}</span>
+              </div>
+            ) : null}
+            {invoice.credit_amount > 0.01 ? (
+              <div className="flex justify-between gap-4 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+                <span className="font-medium text-warning">Balance due (pending)</span>
+                <span className="font-semibold text-warning">
+                  {formatCurrency(invoice.credit_amount)}
+                </span>
+              </div>
+            ) : (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Balance due</span>
+                <span className="font-medium">{formatCurrency(0)}</span>
+              </div>
+            )}
+          </div>
+        </section>
       </article>
 
 

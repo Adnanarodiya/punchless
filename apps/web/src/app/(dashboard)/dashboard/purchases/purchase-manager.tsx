@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, X, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, Pencil } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@punchless/ui/components/page-header";
@@ -20,7 +20,8 @@ import {
 import type { PurchaseWithSupplier } from "@/lib/queries/purchase.queries";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
-import { useAction, toastAction } from "@/hooks/use-action";
+import { useAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 const GST_SLABS = [0, 5, 12, 18, 28] as const;
 
@@ -45,7 +46,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
     };
   }, [taxableAmount, gstPercent]);
 
-  const { execute: execCreate } = useAction(createPurchaseInvoice, {
+  const { execute: execCreate, loading: creating } = useAction(createPurchaseInvoice, {
     successMessage: "Purchase invoice recorded!",
     onSuccess: () => {
       setShowForm(false);
@@ -54,12 +55,16 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
     },
   });
 
-  const { execute: execUpdate } = useAction(updatePurchaseInvoice, {
+  const { execute: execUpdate, loading: updating } = useAction(updatePurchaseInvoice, {
     successMessage: "Purchase invoice updated!",
     onSuccess: () => {
       setShowForm(false);
       setEditingPurchase(null);
     },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(softDeletePurchaseInvoice, {
+    successMessage: "Invoice deleted",
   });
 
   function openAdd() {
@@ -155,7 +160,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
             </div>
 
             <div className="md:col-span-2">
-              <Button type="submit" className="w-full sm:w-auto">
+              <Button type="submit" className="w-full sm:w-auto" loading={editingPurchase ? updating : creating} disabled={editingPurchase ? updating : creating}>
                 {editingPurchase ? "Save Changes" : "Record Invoice"}
               </Button>
             </div>
@@ -228,12 +233,17 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
                   <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
                     <Pencil className="size-3.5" />
                   </Button>
-                  <form action={toastAction(softDeletePurchaseInvoice, "Invoice deleted")}>
-                    <input type="hidden" name="purchaseId" value={row.id} />
-                    <Button variant="ghost" size="sm" type="submit" title="Delete">
-                      <Trash2 className="size-3.5 text-destructive" />
-                    </Button>
-                  </form>
+                  <DeleteConfirmButton
+                    entityName={row.invoice_number || row.supplier_name}
+                    entityType="invoice"
+                    size="sm"
+                    loading={deleting}
+                    onConfirm={async () => {
+                      const fd = new FormData();
+                      fd.set("purchaseId", row.id);
+                      await execDelete(fd);
+                    }}
+                  />
                 </div>
               ),
             },

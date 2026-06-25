@@ -12,6 +12,7 @@ function revalidateAdvancePages() {
 
 export const createAdvance = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_advance", entityType: "advance" },
 })(async (formData, { supabase, me }) => {
   const parsed = createAdvanceSchema.safeParse({
     employeeId: formData.get("employeeId"),
@@ -44,6 +45,7 @@ export const createAdvance = protectedAction<FormData>({
 
 export const approveAdvance = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "approve_advance", entityType: "advance" },
 })(async (formData, { supabase, me }) => {
   const advanceId = String(formData.get("advanceId") || "");
   const notes = String(formData.get("notes") || "") || null;
@@ -68,6 +70,7 @@ export const approveAdvance = protectedAction<FormData>({
 
 export const rejectAdvance = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "reject_advance", entityType: "advance" },
 })(async (formData, { supabase, me }) => {
   const advanceId = String(formData.get("advanceId") || "");
   const notes = String(formData.get("notes") || "") || null;
@@ -92,6 +95,7 @@ export const rejectAdvance = protectedAction<FormData>({
 
 export const deleteAdvance = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_advance", entityType: "advance" },
 })(async (formData, { supabase }) => {
   const advanceId = String(formData.get("advanceId") || "");
   if (!advanceId) return { success: false, error: "Advance ID required" };

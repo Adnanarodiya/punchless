@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@punchless/ui/components/button";
 import {
   Clock,
@@ -8,8 +10,18 @@ import {
   Hourglass,
   Save,
   Building2,
+  Users,
+  KeyRound,
+  Lock,
+  Trash2,
 } from "lucide-react";
-import { updateCompanySettings } from "@/lib/actions/settings.actions";
+import {
+  removeDataLockPin,
+  setDataLockPin,
+  updateCompanySettings,
+} from "@/lib/actions/settings.actions";
+import { useDataLockStore } from "@/lib/stores/data-lock.store";
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import type { CompanySettings } from "@/lib/queries/settings.queries";
 import { useAction } from "@/hooks/use-action";
 
@@ -18,8 +30,21 @@ interface Props {
 }
 
 export function SettingsManager({ settings }: Props) {
+  const resetDataLock = useDataLockStore((s) => s.reset);
+  const [removePinOpen, setRemovePinOpen] = useState(false);
+
   const { execute: handleSubmit, loading: saving } = useAction(updateCompanySettings, {
     successMessage: "Settings saved! Employee hourly rates have been recalculated.",
+  });
+
+  const { execute: handleSetPin, loading: savingPin } = useAction(setDataLockPin, {
+    successMessage: "Data lock PIN saved",
+    onSuccess: () => resetDataLock(),
+  });
+
+  const { execute: handleRemovePin, loading: removingPin } = useAction(removeDataLockPin, {
+    successMessage: "Data lock removed",
+    onSuccess: () => resetDataLock(),
   });
 
   const inputClass =
@@ -32,6 +57,33 @@ export function SettingsManager({ settings }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/dashboard/settings/users"
+          className="rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-accent/30"
+        >
+          <div className="mb-2 flex items-center gap-2 text-primary">
+            <Users className="size-4" />
+            <span className="font-medium">Dashboard Users</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Invite admin accounts for the web dashboard.
+          </p>
+        </Link>
+        <Link
+          href="/dashboard/settings/password"
+          className="rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-accent/30"
+        >
+          <div className="mb-2 flex items-center gap-2 text-primary">
+            <KeyRound className="size-4" />
+            <span className="font-medium">Change Password</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Update your login password.
+          </p>
+        </Link>
+      </div>
+
       {/* Company Info */}
       <div className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -43,6 +95,70 @@ export function SettingsManager({ settings }: Props) {
             <p className="text-sm text-muted-foreground">{settings.name}</p>
           </div>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Lock className="size-5 text-primary" />
+          Data lock PIN
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Hide income, expenses, bank balances, and dues on the dashboard until
+          the PIN is entered. Useful on a shared office PC.
+        </p>
+
+        {settings.has_data_lock_pin ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success">
+              PIN is set
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRemovePinOpen(true)}
+            >
+              <Trash2 className="size-4" />
+              Remove PIN
+            </Button>
+          </div>
+        ) : null}
+
+        <form action={handleSetPin} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium">New PIN</label>
+            <input
+              name="pin"
+              type="password"
+              inputMode="numeric"
+              pattern="\d{4,6}"
+              minLength={4}
+              maxLength={6}
+              required
+              placeholder="4–6 digits"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Confirm PIN</label>
+            <input
+              name="confirmPin"
+              type="password"
+              inputMode="numeric"
+              pattern="\d{4,6}"
+              minLength={4}
+              maxLength={6}
+              required
+              placeholder="Repeat PIN"
+              className={inputClass}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Button type="submit" loading={savingPin} disabled={savingPin}>
+              {settings.has_data_lock_pin ? "Change PIN" : "Set PIN"}
+            </Button>
+          </div>
+        </form>
       </div>
 
       {/* Work Schedule Settings */}
@@ -159,11 +275,25 @@ export function SettingsManager({ settings }: Props) {
         </div>
 
         {/* Save Button */}
-        <Button type="submit" disabled={saving} className="w-full md:w-auto">
+        <Button type="submit" loading={saving} disabled={saving} className="w-full md:w-auto">
           <Save className="size-4" />
-          {saving ? "Saving..." : "Save Settings"}
+          Save Settings
         </Button>
       </form>
+
+      <ConfirmModal
+        open={removePinOpen}
+        onOpenChange={setRemovePinOpen}
+        title="Remove data lock PIN?"
+        description="Financial figures will always be visible on the dashboard."
+        confirmText="Remove PIN"
+        variant="destructive"
+        loading={removingPin}
+        onConfirm={async () => {
+          await handleRemovePin(new FormData());
+          setRemovePinOpen(false);
+        }}
+      />
     </div>
   );
 }

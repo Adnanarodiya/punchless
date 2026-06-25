@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, X, Pencil, Trash2, Printer } from "lucide-react";
+import { Plus, X, Pencil, Printer } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@punchless/ui/components/page-header";
@@ -24,7 +24,8 @@ import type { InvoiceWithDetails } from "@/lib/queries/invoice.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import type { JobWithDetails } from "@/lib/queries/job.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
-import { useAction, toastAction } from "@/hooks/use-action";
+import { useAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 const GST_SLABS = [0, 5, 12, 18, 28] as const;
 
@@ -83,7 +84,7 @@ export function InvoiceManager({
     return { gstAmount, total, breakdown, dueEffect, excessPayment };
   }, [taxableAmount, gstPercent, paymentMode, cashAmount, bankAmount]);
 
-  const { execute: execCreate } = useAction(createInvoice, {
+  const { execute: execCreate, loading: creating } = useAction(createInvoice, {
     successMessage: "Tax invoice created!",
     onSuccess: () => {
       setShowForm(false);
@@ -91,13 +92,17 @@ export function InvoiceManager({
     },
   });
 
-  const { execute: execUpdate } = useAction(updateInvoice, {
+  const { execute: execUpdate, loading: updating } = useAction(updateInvoice, {
     successMessage: "Invoice updated!",
     onSuccess: () => {
       setShowForm(false);
       setEditingInvoice(null);
       resetForm();
     },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(softDeleteInvoice, {
+    successMessage: "Invoice deleted",
   });
 
   function resetForm() {
@@ -262,7 +267,9 @@ export function InvoiceManager({
             </div>
 
             <div className="md:col-span-2">
-              <Button type="submit">{editingInvoice ? "Save Changes" : "Create Invoice"}</Button>
+              <Button type="submit" loading={editingInvoice ? updating : creating} disabled={editingInvoice ? updating : creating}>
+                {editingInvoice ? "Save Changes" : "Create Invoice"}
+              </Button>
             </div>
           </form>
         </div>
@@ -303,16 +310,27 @@ export function InvoiceManager({
             {
               key: "payment",
               header: "Payment",
-              cell: (row) => (
-                <div className="text-xs">
-                  <p className="font-medium capitalize">{PAYMENT_MODE_LABELS[row.payment_mode as PaymentMode] ?? row.payment_mode}</p>
-                  <p className="text-muted-foreground">
-                    {row.cash_amount > 0 ? `C ${formatCurrency(row.cash_amount)} ` : ""}
-                    {row.bank_amount > 0 ? `B ${formatCurrency(row.bank_amount)} ` : ""}
-                    {row.credit_amount > 0 ? `Cr ${formatCurrency(row.credit_amount)}` : ""}
-                  </p>
-                </div>
-              ),
+              cell: (row) => {
+                const pendingAmount = Number(row.credit_amount) || 0;
+                const hasPending = pendingAmount > 0.01;
+
+                return (
+                  <div className="text-xs">
+                    <p className="font-medium capitalize">
+                      {PAYMENT_MODE_LABELS[row.payment_mode as PaymentMode] ?? row.payment_mode}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {row.cash_amount > 0 ? `C ${formatCurrency(row.cash_amount)} ` : ""}
+                      {row.bank_amount > 0 ? `B ${formatCurrency(row.bank_amount)} ` : ""}
+                      {hasPending ? (
+                        <span className="font-semibold text-warning">
+                          Cr {formatCurrency(pendingAmount)} pending
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                );
+              },
             },
             {
               key: "actions",
@@ -327,12 +345,17 @@ export function InvoiceManager({
                   <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
                     <Pencil className="size-3.5" />
                   </Button>
-                  <form action={toastAction(softDeleteInvoice, "Invoice deleted")}>
-                    <input type="hidden" name="invoiceId" value={row.id} />
-                    <Button variant="ghost" size="sm" type="submit" title="Delete">
-                      <Trash2 className="size-3.5 text-destructive" />
-                    </Button>
-                  </form>
+                  <DeleteConfirmButton
+                    entityName={row.invoice_number || row.client_name}
+                    entityType="invoice"
+                    size="sm"
+                    loading={deleting}
+                    onConfirm={async () => {
+                      const fd = new FormData();
+                      fd.set("invoiceId", row.id);
+                      await execDelete(fd);
+                    }}
+                  />
                 </div>
               ),
             },

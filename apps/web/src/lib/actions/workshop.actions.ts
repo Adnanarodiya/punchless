@@ -6,6 +6,7 @@ import { workshopSchema } from "@/lib/validations/workshop.schema";
 
 export const createWorkshop = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_workshop", entityType: "workshop" },
 })(async (formData, { supabase, me }) => {
   const parsed = workshopSchema.safeParse({
     name: formData.get("name"),
@@ -39,6 +40,7 @@ export const createWorkshop = protectedAction<FormData>({
 
 export const updateWorkshop = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_workshop", entityType: "workshop" },
 })(async (formData, { supabase }) => {
   const workshopId = String(formData.get("workshopId") || "");
   if (!workshopId) return { success: false, error: "Workshop ID missing" };
@@ -71,6 +73,7 @@ export const updateWorkshop = protectedAction<FormData>({
 
 export const toggleWorkshopStatus = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "toggle_workshop_status", entityType: "workshop" },
 })(async (formData, { supabase }) => {
   const workshopId = String(formData.get("workshopId") || "");
   const nextStatus = String(formData.get("nextStatus") || "false") === "true";
@@ -90,6 +93,7 @@ export const toggleWorkshopStatus = protectedAction<FormData>({
 
 export const deleteWorkshop = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_workshop", entityType: "workshop" },
 })(async (formData, { supabase }) => {
   const workshopId = String(formData.get("workshopId") || "");
   if (!workshopId) return { success: false, error: "Workshop ID missing" };

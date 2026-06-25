@@ -3,7 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@punchless/ui/components/button";
-import { MapPin, Pencil, Power, Trash2, Plus, X } from "lucide-react";
+import { MapPin, Pencil, Power, Plus, X } from "lucide-react";
 import {
   createWorkshop,
   updateWorkshop,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/workshop.actions";
 import type { Database } from "@punchless/types/database.types";
 import { useAction, toastAction } from "@/hooks/use-action";
+import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 
 type WorkshopRow = Database["public"]["Tables"]["workshops"]["Row"];
 
@@ -105,14 +106,18 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
     setUrlInput("");
   }
 
-  const { execute: execCreate } = useAction(createWorkshop, {
+  const { execute: execCreate, loading: creating } = useAction(createWorkshop, {
     successMessage: "Workshop created!",
     onSuccess: () => setMode("list"),
   });
 
-  const { execute: execUpdate } = useAction(updateWorkshop, {
+  const { execute: execUpdate, loading: updating } = useAction(updateWorkshop, {
     successMessage: "Workshop updated!",
     onSuccess: () => { setMode("list"); setEditingWorkshop(null); },
+  });
+
+  const { execute: execDelete, loading: deleting } = useAction(deleteWorkshop, {
+    successMessage: "Workshop deleted",
   });
 
   async function handleCreate(formData: FormData) {
@@ -219,7 +224,7 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" loading={mode === "add" ? creating : updating} disabled={mode === "add" ? creating : updating}>
                 {mode === "add" ? "Create Workshop" : "Save Changes"}
               </Button>
             </form>
@@ -267,12 +272,16 @@ export function WorkshopManager({ workshops }: { workshops: WorkshopRow[] }) {
                       <Power className={`size-4 ${w.is_active ? "text-success" : "text-state-offduty"}`} />
                     </Button>
                   </form>
-                  <form action={toastAction(deleteWorkshop, "Workshop deleted")}>
-                    <input type="hidden" name="workshopId" value={w.id} />
-                    <Button variant="ghost" size="icon" type="submit" title="Delete">
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </form>
+                  <DeleteConfirmButton
+                    entityName={w.name}
+                    entityType="workshop"
+                    loading={deleting}
+                    onConfirm={async () => {
+                      const fd = new FormData();
+                      fd.set("workshopId", w.id);
+                      await execDelete(fd);
+                    }}
+                  />
                 </div>
               </div>
             ))}

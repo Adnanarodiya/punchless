@@ -4,7 +4,16 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { protectedAction } from "@/lib/server/protected-action";
 import { createEmployeeSchema, updateEmployeeSchema } from "@/lib/validations/employee.schema";
-import type { ActionResult } from "@/lib/utils/action-result";
+import { syncMonthlySalaryDeposit } from "@/lib/utils/salary-deposit-sync";
+
+function revalidateEmployeePages(employeeId?: string) {
+  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard/salary/deposits");
+  revalidatePath("/dashboard/salary");
+  if (employeeId) {
+    revalidatePath(`/dashboard/employees/${employeeId}/statement`);
+  }
+}
 
 function calcHourlyRate(
   monthlySalary: number,
@@ -18,12 +27,18 @@ function calcHourlyRate(
 
 export const createEmployee = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_employee", entityType: "employee" },
 })(async (formData, { supabase, me }) => {
   const parsed = createEmployeeSchema.safeParse({
     fullName: formData.get("fullName"),
     email: formData.get("email"),
     password: formData.get("password"),
     phone: formData.get("phone"),
+    address: formData.get("address"),
+    postId: formData.get("postId"),
+    joiningDate: formData.get("joiningDate"),
+    accountNo: formData.get("accountNo"),
+    ifscCode: formData.get("ifscCode"),
     monthlySalary: formData.get("monthlySalary"),
     workshopId: formData.get("workshopId"),
   });
@@ -33,7 +48,19 @@ export const createEmployee = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { fullName, email, password, phone, monthlySalary, workshopId } = parsed.data;
+  const {
+    fullName,
+    email,
+    password,
+    phone,
+    address,
+    postId,
+    joiningDate,
+    accountNo,
+    ifscCode,
+    monthlySalary,
+    workshopId,
+  } = parsed.data;
 
   // Securely query settings from DB using me.company_id
   const { data: companySettings } = await supabase
@@ -66,6 +93,11 @@ export const createEmployee = protectedAction<FormData>({
     full_name: fullName,
     email: email.toLowerCase(),
     phone: phone || null,
+    address: address || null,
+    post_id: postId || null,
+    joining_date: joiningDate || null,
+    account_no: accountNo || null,
+    ifsc_code: ifscCode || null,
     monthly_salary: monthlySalary,
     hourly_rate: hourlyRate,
     daily_shift_hours: dailyWorkHours,
@@ -78,12 +110,23 @@ export const createEmployee = protectedAction<FormData>({
     return { success: false, error: profileError.message };
   }
 
-  revalidatePath("/dashboard/employees");
+  if (monthlySalary > 0) {
+    await syncMonthlySalaryDeposit(supabase, {
+      companyId: me.company_id,
+      employeeId: createdAuth.user.id,
+      employeeName: fullName,
+      monthlySalary,
+      createdBy: me.id,
+    });
+  }
+
+  revalidateEmployeePages(createdAuth.user.id);
   return { success: true };
 });
 
 export const updateEmployee = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_employee", entityType: "employee" },
 })(async (formData, { supabase, me }) => {
   const employeeId = String(formData.get("employeeId") || "");
   if (!employeeId) return { success: false, error: "Employee ID missing" };
@@ -91,6 +134,11 @@ export const updateEmployee = protectedAction<FormData>({
   const parsed = updateEmployeeSchema.safeParse({
     fullName: formData.get("fullName"),
     phone: formData.get("phone"),
+    address: formData.get("address"),
+    postId: formData.get("postId"),
+    joiningDate: formData.get("joiningDate"),
+    accountNo: formData.get("accountNo"),
+    ifscCode: formData.get("ifscCode"),
     monthlySalary: formData.get("monthlySalary"),
     workshopId: formData.get("workshopId"),
   });
@@ -100,7 +148,17 @@ export const updateEmployee = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { fullName, phone, monthlySalary, workshopId } = parsed.data;
+  const {
+    fullName,
+    phone,
+    address,
+    postId,
+    joiningDate,
+    accountNo,
+    ifscCode,
+    monthlySalary,
+    workshopId,
+  } = parsed.data;
 
   // Securely query settings from DB using me.company_id
   const { data: companySettings } = await supabase
@@ -118,6 +176,11 @@ export const updateEmployee = protectedAction<FormData>({
     .update({
       full_name: fullName,
       phone: phone || null,
+      address: address || null,
+      post_id: postId || null,
+      joining_date: joiningDate || null,
+      account_no: accountNo || null,
+      ifsc_code: ifscCode || null,
       monthly_salary: monthlySalary,
       hourly_rate: hourlyRate,
       daily_shift_hours: dailyWorkHours,
@@ -127,12 +190,23 @@ export const updateEmployee = protectedAction<FormData>({
 
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/dashboard/employees");
+  if (monthlySalary > 0) {
+    await syncMonthlySalaryDeposit(supabase, {
+      companyId: me.company_id,
+      employeeId,
+      employeeName: fullName,
+      monthlySalary,
+      createdBy: me.id,
+    });
+  }
+
+  revalidateEmployeePages(employeeId);
   return { success: true };
 });
 
 export const toggleEmployeeStatus = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "toggle_employee_status", entityType: "employee" },
 })(async (formData, { supabase }) => {
   const employeeId = String(formData.get("employeeId") || "");
   const nextStatus = String(formData.get("nextStatus") || "false") === "true";
@@ -152,6 +226,7 @@ export const toggleEmployeeStatus = protectedAction<FormData>({
 
 export const deleteEmployee = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_employee", entityType: "employee" },
 })(async (formData) => {
   const admin = createAdminClient();
   const employeeId = String(formData.get("employeeId") || "");

@@ -18,6 +18,7 @@ function revalidateClientPages(clientId?: string) {
 
 export const createClient = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_client", entityType: "client" },
 })(async (formData, { supabase, me }) => {
   const parsed = createClientSchema.safeParse({
     name: formData.get("name"),
@@ -79,6 +80,7 @@ export const createClient = protectedAction<FormData>({
 
 export const updateClient = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_client", entityType: "client" },
 })(async (formData, { supabase }) => {
   const parsed = updateClientSchema.safeParse({
     clientId: formData.get("clientId"),
@@ -116,6 +118,7 @@ export const updateClient = protectedAction<FormData>({
 
 export const softDeleteClient = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "soft_delete_client", entityType: "client" },
 })(async (formData, { supabase }) => {
   const clientId = String(formData.get("clientId") || "");
   if (!clientId) return { success: false, error: "Client ID required" };
@@ -136,6 +139,7 @@ export const softDeleteClient = protectedAction<FormData>({
 
 export const recoverClient = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "recover_client", entityType: "client" },
 })(async (formData, { supabase }) => {
   const clientId = String(formData.get("clientId") || "");
   if (!clientId) return { success: false, error: "Client ID required" };
@@ -156,6 +160,7 @@ export const recoverClient = protectedAction<FormData>({
 
 export const receiveClientPayment = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "receive_client_payment", entityType: "client" },
 })(async (formData, { supabase, me }) => {
   const parsed = receiveClientPaymentSchema.safeParse({
     clientId: formData.get("clientId"),

@@ -6,6 +6,7 @@ import { jobSchema } from "@/lib/validations/job.schema";
 
 export const createJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "create_job", entityType: "job" },
 })(async (formData, { supabase, me }) => {
   const parsed = jobSchema.safeParse({
     title: formData.get("title"),
@@ -44,6 +45,7 @@ export const createJob = protectedAction<FormData>({
 
 export const updateJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "update_job", entityType: "job" },
 })(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
   if (!jobId) return { success: false, error: "Job ID missing" };
@@ -88,6 +90,7 @@ export const updateJob = protectedAction<FormData>({
 
 export const deleteJob = protectedAction<FormData>({
   roles: ["owner", "admin"],
+  audit: { action: "delete_job", entityType: "job" },
 })(async (formData, { supabase }) => {
   const jobId = String(formData.get("jobId") || "");
   if (!jobId) return { success: false, error: "Job ID missing" };

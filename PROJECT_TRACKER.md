@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-25 (Phase 19 — Shahin parity gaps #1,3–11; phone login #2 deferred)
+> **Last updated:** 2026-06-25 (Phase 8 mobile — done items marked; remainder deferred)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -18,7 +18,7 @@
 | 5 | Job & Travel Tracking | ✅ Done | Job CRUD, map location, assignment, status workflow |
 | 6 | Salary Calculation | ✅ Done | Monthly salary report, single hourly rate calculations across all states, breakdown by state, advance deductions |
 | 7 | Salary Advances | ✅ Done | Full CRUD, approve/reject with notes, salary deduction integration, status filters |
-| 8 | Mobile App | 🚧 In Progress | Real auth, session guards, live attendance summary, salary + advance request/history, GPS auto clock-in + geofence engine, jobs tab (functional), manual travel/job actions |
+| 8 | Mobile App | 🟡 Mostly Done | Employee app usable end-to-end — **deferred (later):** job detail screen, GPS auto-arrive at job, real-device GPS QA |
 | 8.5 | Break System + History + Corrections | ✅ Done | Splash/auth flow, live work/break counters, break in/out, correction requests (mobile + web), history pages with filters, workshop location change detection, background refresh, location permission prompt |
 | 9 | Settings & Polish | 🟡 Partial | Work schedule done; home polish → Phase 11A/15 |
 | 10 | Stripe Billing | ⏸️ Skipped | No payment integration planned |
@@ -32,7 +32,27 @@
 | 17 | Reports Suite | ✅ Done | 8 reports + period filters + print + CSV export |
 | 18 | Admin & Auth Extensions | ✅ Done | audit log, dashboard users, change password, auto-audit on write actions |
 | — | Shahin Extras | ✅ Done | data lock PIN, sticky notes widget, global search (Ctrl+K) |
-| 19 | Shahin Parity (nice-to-haves) | 🟡 Partial | FY selector, 6-month chart, Excel export, invoice/job detail pages, attendance print sheet, search purchases + invoice-by-client, correction audit, login support phone — **#2 phone login deferred last** |
+| 19 | Shahin Parity (nice-to-haves) | ✅ Done | FY selector, 6-month chart, Excel export, invoice/job detail pages, attendance print sheet, search, correction audit, login support phone — **phone/SMS login cancelled (out of scope)** |
+
+### Phase 8 Mobile — ✅ Done now vs ⏳ Later
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Auth + splash + session guard | ✅ Done | Login, logout, branded splash, route protection |
+| Home screen (live counters, break, job actions) | ✅ Done | Work/break timers, start travel, end shift |
+| Jobs list (active/all, timers, navigate/call/actions) | ✅ Done | START / ARRIVED / FINISH on cards |
+| Attendance calendar | ✅ Done | Monthly view |
+| History + correction requests | ✅ Done | Phase 8.5 |
+| Salary + advance requests | ✅ Done | Monthly breakdown + request form |
+| Profile + logout | ✅ Done | Basic employee profile |
+| Workshop geofence (auto enter/exit) | ✅ Done | `geofence.service.ts` + background task |
+| Offline session queue + auto-sync | ✅ Done | `offline.store`, `sync.service`, `OfflineBanner` |
+| Battery-aware GPS intervals | ✅ Done | 60s/50m off-duty, 30s/20m active |
+| Push notifications (Expo) | ✅ Done | `push_tokens` table, register on login, job/advance triggers, tap → tab |
+| **Job detail screen** `app/job/[id].tsx` | ⏳ Later | Tap-through detail, map, timeline (see `docs/09_MOBILE_APP.md`) |
+| **GPS auto-arrive at job** | ⏳ Later | TRAVEL → ON_SITE_JOB via job-site geofence (manual ARRIVED works today) |
+| **Real-device GPS QA** | ⏳ Later | Workshop enter/exit, background tracking, dev build on physical phone |
+| Profile polish (notification settings, etc.) | ⏳ Later | Optional |
 
 ---
 
@@ -98,6 +118,7 @@
 | `migrations/20260625140000_hr_extensions.sql` | 16 | `posts`, `staff_payments`, `salary_deposits`; extend `users` (address, post_id, joining_date, account_no, ifsc_code); ledger ref `salary_deposit`, `staff_payment` |
 | `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
+| `migrations/20260625200000_push_tokens.sql` | 8 | `push_tokens` table — Expo push tokens per user/device + RLS (own tokens only) |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -298,6 +319,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `protected-action.ts` | 7/18 | `protectedAction()` HOF — auth, roles, try/catch; optional `audit` config auto-logs successful writes |
+| `push-notifications.ts` | 8 | `sendPushToUser()` — sends Expo push to all registered tokens via admin client (fails silently) |
 
 #### Validation Schemas (`src/lib/validations/`)
 
@@ -363,8 +385,8 @@
 | `staff-payment.actions.ts` | 16 | `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4/16 | Manual sessions + `bulkMarkAttendance()` for daily present marking |
-| `job.actions.ts` | 5 | `createJob()` — create job with location/assignment; `updateJob()` — update details/status; `deleteJob()` |
-| `advance.actions.ts` | 7 | `createAdvance()` — create advance request; `approveAdvance()` — approve with notes; `rejectAdvance()` — reject with notes; `deleteAdvance()` |
+| `job.actions.ts` | 5/8 | `createJob()` / `updateJob()` — push "New job assigned" to assignee; `deleteJob()` |
+| `advance.actions.ts` | 7/8 | `createAdvance()`; `approveAdvance()` / `rejectAdvance()` — push advance status to employee; `deleteAdvance()` |
 | `settings.actions.ts` | 7/Extras | Work schedule + `setDataLockPin`, `removeDataLockPin`, `verifyDataLockPinAction` |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
@@ -427,15 +449,15 @@
 
 ---
 
-### Mobile App (`apps/mobile/`) — 🚧 Core Connected (Phase 8 in progress)
+### Mobile App (`apps/mobile/`) — 🟡 Mostly Done (Phase 8 — deferred items above)
 
 #### Config
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `package.json` | 8 | Expo SDK 54 app (iOS Expo Go compatible), deps: expo-router, expo-location, Supabase, Zustand, Lucide RN |
+| `package.json` | 8 | Expo SDK 54 app, deps: expo-router, expo-location, expo-notifications, expo-device, Supabase, Zustand, Lucide RN |
 | `tsconfig.json` | 1 | TypeScript config |
-| `app.json` | 8 | Expo config: light UI mode, scheme, plugins (expo-router, expo-location), iOS/Android location permissions |
+| `app.json` | 8 | Expo config: light UI mode, scheme, plugins (expo-router, expo-location, expo-notifications), iOS/Android location permissions, EAS projectId |
 | `.env` | 1 | Mobile env vars — NOT committed |
 | `.env.example` | 1 | Template for `.env` |
 
@@ -444,7 +466,7 @@
 | File | Phase | Status | Description |
 |------|-------|--------|-------------|
 | `app/index.tsx` | 8.5 | ✅ Functional | Root index — redirects to login or home based on auth state (fixes "unmatched route" error) |
-| `app/_layout.tsx` | 8.5 | ✅ Functional | Root layout: 2-second branded splash screen, auth session guard, location permission modal prompt, GPS tracking init |
+| `app/_layout.tsx` | 8/8.5 | ✅ Functional | Root layout: splash, auth guard, location permission modal, GPS tracking init, push token registration, notification tap → tab navigation |
 | `app/(auth)/_layout.tsx` | 1 | ✅ Functional | Auth stack layout |
 | `app/(auth)/login.tsx` | 8 | ✅ Functional | Real Supabase email/password login, error message, loading state |
 | `app/(tabs)/_layout.tsx` | 8.5 | ✅ Functional | Tab navigator: Home, Attendance, History, Salary, Requests, Profile — Lucide icons |
@@ -455,6 +477,7 @@
 | `app/(tabs)/jobs.tsx` | 8 | ✅ Functional | Active/All tabs, job cards with status badge, Navigate + Call + START/ARRIVED/FINISH buttons, live HH:MM:SS timers for travel & on-site, time summary, auto-refresh every 15s, job status auto-updates (in_progress/completed) |
 | `app/(tabs)/salary.tsx` | 8 | ✅ Functional | Monthly salary breakdown + advance request form + advance history |
 | `app/(tabs)/profile.tsx` | 8 | ✅ Functional | Logged-in employee profile + logout |
+| `app/job/[id].tsx` | 8 | ⏳ Later | Job detail screen — not built yet |
 
 #### Libraries, Services & Stores
 
@@ -467,15 +490,22 @@
 | `lib/services/advance.service.ts` | 8 | `requestAdvance()` + `getMyAdvances()` |
 | `lib/services/workshop.service.ts` | 3 | `getActiveWorkshops()`, `getDistanceMeters()` (Haversine), `findNearestWorkshop()` — geofence helpers |
 | `lib/services/job.service.ts` | 8 | `getMyJobs()`, `getActiveJobs()`, `getJobTimeSummary()` — travel/on-site/total time per job with active session detection, `updateJobStatus()` — mark in_progress/completed |
-| `lib/services/location.service.ts` | 8 | GPS permission helpers, `startBackgroundTracking()`, `stopBackgroundTracking()`, `getCurrentLocation()` — expo-location wrapper |
+| `lib/services/location.service.ts` | 8 | GPS helpers + `applyTrackingProfile()` — 60s/50m off-duty, 30s/20m active |
+| `lib/services/session.service.ts` | 8 | Open/close attendance sessions with offline queue + AsyncStorage cache |
+| `lib/services/sync.service.ts` | 8 | Sync offline queue and refresh today's attendance summary |
+| `lib/services/notification.service.ts` | 8 | `registerForPushNotifications()` — permission + Expo token upsert; `unregisterPushNotifications()` on logout; `getRouteForNotificationScreen()` for tap navigation |
 | `lib/services/geofence.service.ts` | 8.5 | **Core attendance engine**: `processLocation()` — auto workshop enter/exit with grace period + workshop location change detection; `startTravel()`, `arriveAtJob()`, `completeJob()`, `finishJob()`, `endShift()`, `startBreak()`, `endBreak()` — manual hybrid transitions; `forceRefreshWorkshops()` — cache invalidation; 2-min workshop cache TTL |
 | `lib/services/history.service.ts` | 8.5 | `getAttendanceHistory()` — fetch sessions for date range; `groupSessionsByDate()` — group into day summaries |
 | `lib/services/correction.service.ts` | 8.5 | `getMyCorrectionRequests()`, `submitBreakCorrection()`, `submitSessionCorrection()` — correction request CRUD |
 | `lib/services/calendar.service.ts` | 8 | Monthly attendance calendar data |
 | `lib/tasks/background-location.ts` | 8.5 | TaskManager background task — processes GPS updates + refreshes attendance summary in background (lightweight, battery efficient) |
-| `lib/stores/auth.store.ts` | 8 | Zustand auth/session store with initialize, login, logout, refresh |
+| `lib/stores/auth.store.ts` | 8 | Zustand auth/session store — login registers push token, logout unregisters before sign-out |
 | `lib/stores/attendance.store.ts` | 8.5 | Zustand attendance summary store — includes breakMinutes + currentSessionStart for live counter |
 | `lib/stores/location.store.ts` | 8 | Zustand GPS tracking store — permission state, tracking on/off, last location |
+| `lib/stores/offline.store.ts` | 8 | Offline action queue with ordered sync (local session ID → server ID mapping) |
+| `lib/stores/network.store.ts` | 8 | NetInfo connectivity state |
+| `lib/types/attendance-engine.ts` | 8 | Shared `EngineState` union type |
+| `components/OfflineBanner.tsx` | 8 | Home screen offline / pending-sync indicator |
 | `lib/utils/formatting.ts` | 8 | Mobile helpers: `formatMinutes()`, `formatCurrency()`, `getCurrentMonthString()` |
 
 ---
@@ -501,6 +531,7 @@
 | `invoice_line_items` | 13 | Line items per tax invoice |
 | `audit_logs` | 18 | Action trail (user, action, entity_type/id, summary); owner read, owner/admin insert |
 | `sticky_notes` | Extras | Dashboard reminders (title, description, note_date); owner/admin CRUD |
+| `push_tokens` | 8 | Expo push tokens per user/device (user_id, company_id, expo_push_token, platform) |
 
 ---
 
@@ -527,6 +558,7 @@ Mobile History:  app/(tabs)/history.tsx → history.service.ts → attendance_se
 Mobile Requests: app/(tabs)/requests.tsx → correction.service.ts → correction_requests table → admin reviews on web
 Web History:     dashboard/history → history.queries.ts → employee summaries with live duration + all sessions
 Web Requests:    dashboard/requests → correction.queries.ts + correction.actions.ts → approve (auto-updates session) / reject
+Push Notify:     job.actions.ts / advance.actions.ts → push-notifications.ts → Expo Push API → mobile device; token stored via notification.service.ts → push_tokens
 ```
 
 ---
@@ -543,5 +575,7 @@ Web Requests:    dashboard/requests → correction.queries.ts + correction.actio
 | `zustand` | web, mobile | State management |
 | `expo-location` | mobile | GPS access |
 | `expo-task-manager` | mobile | Background GPS tracking |
+| `expo-notifications` | mobile | Push notification permissions, token, tap handling |
+| `expo-device` | mobile | Physical device check for push registration |
 | `@radix-ui/*` | packages/ui | Accessible UI primitives |
 | `class-variance-authority` | packages/ui | Component variant system |

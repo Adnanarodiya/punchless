@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import { sendPushToUser } from "@/lib/server/push-notifications";
 import { createAdvanceSchema } from "@/lib/validations/advance.schema";
 
 function revalidateAdvancePages() {
@@ -52,6 +53,12 @@ export const approveAdvance = protectedAction<FormData>({
 
   if (!advanceId) return { success: false, error: "Advance ID required" };
 
+  const { data: advance } = await supabase
+    .from("salary_advances")
+    .select("employee_id, amount")
+    .eq("id", advanceId)
+    .single();
+
   const { error } = await supabase
     .from("salary_advances")
     .update({
@@ -63,6 +70,14 @@ export const approveAdvance = protectedAction<FormData>({
     .eq("id", advanceId);
 
   if (error) return { success: false, error: error.message };
+
+  if (advance?.employee_id) {
+    void sendPushToUser(advance.employee_id, {
+      title: "Advance approved",
+      body: `Your advance of ₹${advance.amount} has been approved`,
+      data: { type: "advance_approved", screen: "salary" },
+    });
+  }
 
   revalidateAdvancePages();
   return { success: true };
@@ -77,6 +92,12 @@ export const rejectAdvance = protectedAction<FormData>({
 
   if (!advanceId) return { success: false, error: "Advance ID required" };
 
+  const { data: advance } = await supabase
+    .from("salary_advances")
+    .select("employee_id, amount")
+    .eq("id", advanceId)
+    .single();
+
   const { error } = await supabase
     .from("salary_advances")
     .update({
@@ -88,6 +109,14 @@ export const rejectAdvance = protectedAction<FormData>({
     .eq("id", advanceId);
 
   if (error) return { success: false, error: error.message };
+
+  if (advance?.employee_id) {
+    void sendPushToUser(advance.employee_id, {
+      title: "Advance rejected",
+      body: `Your advance request of ₹${advance.amount} was rejected`,
+      data: { type: "advance_rejected", screen: "salary" },
+    });
+  }
 
   revalidateAdvancePages();
   return { success: true };

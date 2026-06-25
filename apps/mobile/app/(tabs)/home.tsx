@@ -24,6 +24,8 @@ import {
 } from "@/lib/services/geofence.service";
 import { getActiveJobs, type MyJob } from "@/lib/services/job.service";
 import { formatMinutes } from "@/lib/utils/formatting";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { applyTrackingProfile } from "@/lib/services/location.service";
 
 const STATE_LABEL: Record<string, string> = {
   off_duty: "OFF DUTY",
@@ -97,6 +99,13 @@ export default function HomeScreen() {
     const interval = setInterval(() => void load(), 30_000);
     return () => clearInterval(interval);
   }, [load]);
+
+  // Slower GPS when off duty to save battery
+  useEffect(() => {
+    const profile =
+      attendance.currentState === "off_duty" ? "idle" : "active";
+    void applyTrackingProfile(profile);
+  }, [attendance.currentState]);
 
   // Live counter — ticks every second
   useEffect(() => {
@@ -237,6 +246,8 @@ export default function HomeScreen() {
       }
       contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 32 }}
     >
+      <OfflineBanner />
+
       {/* GPS Status Banner */}
       {lastBackgroundError ? (
         <TouchableOpacity

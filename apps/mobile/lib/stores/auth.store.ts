@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
 import { getSessionUserProfile, signInWithEmail, signOutUser, type MobileUser } from "@/lib/services/auth.service";
+import {
+  registerForPushNotifications,
+  unregisterPushNotifications,
+} from "@/lib/services/notification.service";
 
 type AuthState = {
   user: MobileUser | null;
@@ -49,11 +53,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const profile = await getSessionUserProfile();
     set({ user: profile, loading: false });
+
+    if (profile) {
+      void registerForPushNotifications(profile.id, profile.company_id);
+    }
+
     return { success: true };
   },
 
   logout: async () => {
+    const userId = get().user?.id;
     set({ loading: true });
+
+    if (userId) {
+      await unregisterPushNotifications(userId);
+    }
+
     await signOutUser();
     set({ user: null, loading: false });
   },

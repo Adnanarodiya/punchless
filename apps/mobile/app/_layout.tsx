@@ -4,7 +4,15 @@ import { Stack, usePathname, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "@/lib/stores/auth.store";
 import { useLocationStore, syncTrackingState } from "@/lib/stores/location.store";
+import { useNetworkStore } from "@/lib/stores/network.store";
+import { useOfflineStore } from "@/lib/stores/offline.store";
 import { clearEngineCache } from "@/lib/services/geofence.service";
+import { syncOfflineQueueAndRefresh } from "@/lib/services/sync.service";
+import * as Notifications from "expo-notifications";
+import {
+  getRouteForNotificationScreen,
+  registerForPushNotifications,
+} from "@/lib/services/notification.service";
 
 // Register background task (must be at top level, outside component)
 try {
@@ -17,6 +25,7 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, initialized, initialize } = useAuthStore();
+  const isOnline = useNetworkStore((s) => s.isOnline);
   const {
     startTracking,
     stopTracking,
@@ -30,11 +39,20 @@ export default function RootLayout() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationAsked, setLocationAsked] = useState(false);
 
-  // Initialize auth
+  // Initialize auth, network, and offline queue
   useEffect(() => {
     void initialize();
+    void useOfflineStore.getState().loadQueue();
     syncTrackingState().catch(() => {});
+    const unsubscribeNetwork = useNetworkStore.getState().initialize();
+    return unsubscribeNetwork;
   }, [initialize]);
+
+  // Sync queued attendance actions when back online
+  useEffect(() => {
+    if (!user || !isOnline) return;
+    void syncOfflineQueueAndRefresh(user.id);
+  }, [user?.id, isOnline]);
 
   // Splash screen timer — show for at least 2 seconds
   useEffect(() => {
@@ -65,11 +83,38 @@ export default function RootLayout() {
 
     if (user) {
       void startTracking();
+      void registerForPushNotifications(user.id, user.company_id);
     } else {
       void stopTracking();
       clearEngineCache();
     }
-  }, [initialized, user?.id]);
+  }, [initialized, user?.id, user?.company_id]);
+
+  // Navigate when user taps a push notification
+  useEffect(() => {
+    if (!user) return;
+
+    function handleNotificationResponse(
+      response: Notifications.NotificationResponse | null
+    ) {
+      if (!response) return;
+      const screen = response.notification.request.content.data?.screen;
+      const route = getRouteForNotificationScreen(
+        typeof screen === "string" ? screen : undefined
+      );
+      if (route) router.push(route);
+    }
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      handleNotificationResponse
+    );
+
+    void Notifications.getLastNotificationResponseAsync().then(
+      handleNotificationResponse
+    );
+
+    return () => subscription.remove();
+  }, [user?.id, router]);
 
   // Navigation guard — redirect based on auth
   useEffect(() => {

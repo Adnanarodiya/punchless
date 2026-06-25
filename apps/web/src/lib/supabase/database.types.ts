@@ -1016,6 +1016,48 @@ export type Database = {
           },
         ]
       }
+      push_tokens: {
+        Row: {
+          company_id: string
+          expo_push_token: string
+          id: string
+          platform: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          expo_push_token: string
+          id?: string
+          platform?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          expo_push_token?: string
+          id?: string
+          platform?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_tokens_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_advances: {
         Row: {
           amount: number

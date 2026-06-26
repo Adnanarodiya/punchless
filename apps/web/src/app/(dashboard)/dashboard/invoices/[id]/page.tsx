@@ -4,7 +4,7 @@ import { ArrowLeft, Pencil, Printer } from "lucide-react";
 
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 
 import { getInvoiceById } from "@/lib/queries/invoice.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";

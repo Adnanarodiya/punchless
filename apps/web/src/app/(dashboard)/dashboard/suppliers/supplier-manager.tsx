@@ -15,7 +15,7 @@ import {
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { cn } from "@punchless/ui/lib/utils";

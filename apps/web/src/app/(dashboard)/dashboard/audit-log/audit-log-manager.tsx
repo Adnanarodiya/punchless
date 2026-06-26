@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@punchless/ui/components/button";
 import { DataTable } from "@punchless/ui/components/data-table";
 import { Download } from "lucide-react";

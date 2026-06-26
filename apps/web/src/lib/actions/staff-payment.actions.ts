@@ -3,9 +3,35 @@
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
 import {
+  getEmployeeSalaryPayable,
+  type EmployeeSalaryPayable,
+} from "@/lib/queries/salary.queries";
+import {
   createSalaryDepositSchema,
   createStaffPaymentSchema,
 } from "@/lib/validations/staff-payment.schema";
+
+export async function fetchEmployeeSalaryPayable(
+  employeeId: string,
+  monthStr: string
+): Promise<
+  | { success: true; data: EmployeeSalaryPayable }
+  | { success: false; error: string }
+> {
+  if (!employeeId?.trim()) {
+    return { success: false, error: "Select an employee" };
+  }
+  if (!monthStr?.trim()) {
+    return { success: false, error: "Select a salary month" };
+  }
+
+  const data = await getEmployeeSalaryPayable(employeeId, monthStr);
+  if (!data) {
+    return { success: false, error: "Employee not found" };
+  }
+
+  return { success: true, data };
+}
 
 function revalidateStaffFinancePages(employeeId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/salary/payments");

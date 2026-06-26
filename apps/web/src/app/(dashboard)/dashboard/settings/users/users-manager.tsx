@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Plus, Shield, Trash2 } from "lucide-react";
 
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@punchless/ui/components/button";
 import { DataTable } from "@punchless/ui/components/data-table";
 

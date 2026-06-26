@@ -461,6 +461,7 @@ export type Database = {
           logo_url: string | null
           name: string
           phone: string | null
+          salary_mode: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -481,6 +482,7 @@ export type Database = {
           logo_url?: string | null
           name: string
           phone?: string | null
+          salary_mode?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -501,6 +503,7 @@ export type Database = {
           logo_url?: string | null
           name?: string
           phone?: string | null
+          salary_mode?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -1632,6 +1635,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_daily_attendance_payroll: {
+        Args: {
+          p_company_id: string
+          p_end_date: string
+          p_grace_minutes: number
+          p_start_date: string
+          p_work_start_time: string
+        }
+        Returns: {
+          day_credit: number
+          employee_id: string
+          first_punch_at: string
+          total_minutes: number
+          work_date: string
+        }[]
+      }
       get_monthly_attendance_summary: {
         Args: { p_company_id: string; p_end_time: string; p_start_time: string }
         Returns: {

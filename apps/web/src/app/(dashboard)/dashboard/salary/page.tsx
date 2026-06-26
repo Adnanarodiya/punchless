@@ -1,4 +1,5 @@
 import { getSalaryReport } from "@/lib/queries/salary.queries";
+import { DashboardPageTitle } from "@/components/dashboard-page-title";
 import { SalaryManager } from "./salary-manager";
 
 interface Props {
@@ -14,12 +15,17 @@ export default async function SalaryPage({ searchParams }: Props) {
   const monthStr = params.month || defaultMonth;
   const page = Number(params.page || "1");
 
-  const report = await getSalaryReport(monthStr, page, 50);
+  const { reports, salaryMode } = await getSalaryReport(monthStr, page, 50);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Salary</h1>
-      <SalaryManager report={report} currentMonth={monthStr} page={page} />
+      <DashboardPageTitle title="Salary" />
+      <SalaryManager
+        report={reports}
+        salaryMode={salaryMode}
+        currentMonth={monthStr}
+        page={page}
+      />
     </div>
   );
 }

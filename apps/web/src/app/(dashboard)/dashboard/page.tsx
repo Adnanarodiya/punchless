@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Users, Clock, Briefcase, Wallet } from "lucide-react";
 
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 
 import {
   getDashboardStats,

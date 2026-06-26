@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 
 const reports = [
   {

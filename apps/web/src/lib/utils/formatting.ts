@@ -33,6 +33,16 @@ export function formatDate(isoString: string | null): string {
   });
 }
 
+/** Month picker value (YYYY-MM) → "June 2026" */
+export function formatMonthYear(monthStr: string): string {
+  const [year, month] = monthStr.split("-").map(Number);
+  if (!year || !month) return monthStr;
+  return new Date(year, month - 1, 1).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** Statement date format: DD-MMM-YYYY (e.g. 01-Apr-2025) */
 export function formatStatementDate(isoString: string | null): string {
   if (!isoString) return "—";

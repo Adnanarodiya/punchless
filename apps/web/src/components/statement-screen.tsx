@@ -12,6 +12,8 @@ import type { StatementTableLabels } from "@punchless/ui/components/statement-ta
 import { StatementToolbar } from "@punchless/ui/components/statement-toolbar";
 import { Button } from "@punchless/ui/components/button";
 
+import { LearnPageHelp } from "@/components/learn-page-help";
+
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { StatementResult } from "@/lib/utils/statement";
 
@@ -77,7 +79,7 @@ export function StatementScreen({
 
   return (
     <div className="space-y-6">
-      <div className="print:hidden">
+      <div className="flex items-start justify-between gap-3 print:hidden">
         <Breadcrumbs
           linkComponent={({ href, children, className }) => (
             <Link href={href} className={className}>
@@ -86,6 +88,7 @@ export function StatementScreen({
           )}
           items={breadcrumbs}
         />
+        <LearnPageHelp />
       </div>
 
       <form

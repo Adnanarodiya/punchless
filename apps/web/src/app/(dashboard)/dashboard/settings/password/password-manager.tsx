@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@punchless/ui/components/button";
 
 import { changePassword } from "@/lib/actions/admin.actions";

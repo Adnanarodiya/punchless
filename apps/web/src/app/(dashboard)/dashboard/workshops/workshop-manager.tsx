@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { cn } from "@punchless/ui/lib/utils";
 import {
   MapPin,

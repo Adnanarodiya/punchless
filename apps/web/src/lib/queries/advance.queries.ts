@@ -62,16 +62,39 @@ export async function getApprovedAdvancesForMonth(
 ): Promise<number> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("salary_advances")
-    .select("amount")
-    .eq("employee_id", employeeId)
-    .eq("status", "approved")
-    .eq("salary_month", monthStr);
+  const [year, month] = monthStr.split("-").map(Number);
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthEnd = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-  if (error || !data) return 0;
+  const [{ data: advancesData }, { data: staffAdvanceData }] = await Promise.all([
+    supabase
+      .from("salary_advances")
+      .select("amount")
+      .eq("employee_id", employeeId)
+      .eq("status", "approved")
+      .eq("salary_month", monthStr),
+    supabase
+      .from("staff_payments")
+      .select("amount")
+      .eq("employee_id", employeeId)
+      .eq("payment_type", "advance")
+      .gte("payment_date", monthStart)
+      .lte("payment_date", monthEnd),
+  ]);
 
-  return (data as unknown as { amount: number }[]).reduce((sum, row) => sum + (row.amount ?? 0), 0);
+  const approvedTotal =
+    (advancesData as { amount: number }[] | null)?.reduce(
+      (sum, row) => sum + Number(row.amount ?? 0),
+      0
+    ) ?? 0;
+  const staffTotal =
+    (staffAdvanceData as { amount: number }[] | null)?.reduce(
+      (sum, row) => sum + Number(row.amount ?? 0),
+      0
+    ) ?? 0;
+
+  return approvedTotal + staffTotal;
 }
 
 /**

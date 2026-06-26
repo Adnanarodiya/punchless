@@ -1,5 +1,6 @@
 import { getHistorySessions, getEmployeeSummaries } from "@/lib/queries/history.queries";
 import { getEmployees } from "@/lib/queries/employee.queries";
+import { DashboardPageTitle } from "@/components/dashboard-page-title";
 import { HistoryManager } from "./history-manager";
 
 export default async function HistoryPage() {
@@ -17,7 +18,7 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">History</h1>
+      <DashboardPageTitle title="History" />
       <HistoryManager
         initialSessions={sessions}
         initialSummaries={summaries}

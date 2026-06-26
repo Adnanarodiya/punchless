@@ -11,7 +11,7 @@ import {
 
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { cn } from "@punchless/ui/lib/utils";
 
 import { getJobById } from "@/lib/queries/job.queries";

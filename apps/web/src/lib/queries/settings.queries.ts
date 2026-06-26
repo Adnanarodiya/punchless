@@ -9,9 +9,12 @@ export type CompanyProfile = {
   logo_url: string | null;
 };
 
+export type SalaryMode = "hourly" | "fixed";
+
 export type CompanySettings = {
   id: string;
   name: string;
+  salary_mode: SalaryMode;
   work_start_time: string;
   grace_period_minutes: number;
   daily_work_hours: number;
@@ -46,7 +49,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, data_lock_pin_hash, tagline, address, phone, email, logo_url"
+      "id, name, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, data_lock_pin_hash, tagline, address, phone, email, logo_url"
     )
     .eq("id", (userData as { company_id: string }).company_id)
     .single();
@@ -58,6 +61,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   return {
     id: row.id,
     name: row.name,
+    salary_mode: row.salary_mode === "fixed" ? "fixed" : "hourly",
     work_start_time: row.work_start_time ?? "10:00",
     grace_period_minutes: row.grace_period_minutes ?? 5,
     daily_work_hours: row.daily_work_hours ?? 8,

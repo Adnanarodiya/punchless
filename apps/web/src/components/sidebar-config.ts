@@ -18,10 +18,11 @@ import {
   ArrowLeftRight,
   Landmark,
   Banknote,
-  PiggyBank,
+
   BarChart3,
   ScrollText,
   Shield,
+  GraduationCap,
 } from "lucide-react";
 
 export type NavItem = {
@@ -45,6 +46,12 @@ export const navGroups: NavGroup[] = [
         label: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
+        roles: ["owner", "admin"],
+      },
+      {
+        label: "Learn",
+        href: "/dashboard/learn",
+        icon: GraduationCap,
         roles: ["owner", "admin"],
       },
     ],
@@ -162,12 +169,7 @@ export const navGroups: NavGroup[] = [
         icon: Banknote,
         roles: ["owner", "admin"],
       },
-      {
-        label: "Deposits",
-        href: "/dashboard/salary/deposits",
-        icon: PiggyBank,
-        roles: ["owner", "admin"],
-      },
+
       {
         label: "Advances",
         href: "/dashboard/advances",

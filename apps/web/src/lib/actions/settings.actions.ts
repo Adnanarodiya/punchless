@@ -20,6 +20,7 @@ export const updateCompanySettings = protectedAction<FormData>({
   audit: { action: "update_company_settings", entityType: "settings" },
 })(async (formData, { supabase, me }) => {
   const parsed = companySettingsSchema.safeParse({
+    salaryMode: formData.get("salaryMode"),
     workStartTime: formData.get("workStartTime"),
     gracePeriodMinutes: formData.get("gracePeriodMinutes"),
     dailyWorkHours: formData.get("dailyWorkHours"),
@@ -31,11 +32,18 @@ export const updateCompanySettings = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { workStartTime, gracePeriodMinutes, dailyWorkHours, workingDaysPerMonth } = parsed.data;
+  const {
+    salaryMode,
+    workStartTime,
+    gracePeriodMinutes,
+    dailyWorkHours,
+    workingDaysPerMonth,
+  } = parsed.data;
 
   const { error } = await supabase
     .from("companies")
     .update({
+      salary_mode: salaryMode,
       work_start_time: workStartTime,
       grace_period_minutes: gracePeriodMinutes,
       daily_work_hours: dailyWorkHours,

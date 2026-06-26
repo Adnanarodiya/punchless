@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Plus, X, Pencil } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 import { cn } from "@punchless/ui/lib/utils";
 

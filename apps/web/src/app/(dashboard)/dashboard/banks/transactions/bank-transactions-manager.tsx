@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
 import { DataTable } from "@punchless/ui/components/data-table";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 
 import { recordBankTransaction } from "@/lib/actions/bank.actions";
 import type {

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { cn } from "@punchless/ui/lib/utils";
 import {
   Plus,
@@ -491,7 +491,9 @@ function EmployeeCard({
 
       <div className="flex items-center justify-between border-t border-border pt-3">
         <div className="flex gap-0.5">
-          <Link href={`/dashboard/salary/payments?employee=${emp.id}`}>
+          <Link
+            href={`/dashboard/salary/payments?employee=${emp.id}&openForm=1`}
+          >
             <Button variant="ghost" size="icon" className="size-8" title="Quick payment">
               <Banknote className="size-3.5" />
             </Button>

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Plus, Pencil, RotateCcw, UserCircle, X } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 import type { Database } from "@punchless/types/database.types";
 

@@ -1,6 +1,7 @@
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 import { getCurrentUser } from "@/lib/queries/auth.queries";
 import { redirect } from "next/navigation";
+import { DashboardPageTitle } from "@/components/dashboard-page-title";
 import { SettingsManager } from "./settings-manager";
 
 export default async function SettingsPage() {
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
   if (!settings) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+        <DashboardPageTitle title="Settings" />
         <p className="text-muted-foreground">Could not load company settings.</p>
       </div>
     );
@@ -24,7 +25,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <DashboardPageTitle title="Settings" />
       <SettingsManager settings={settings} />
     </div>
   );

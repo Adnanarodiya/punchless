@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { protectedAction } from "@/lib/server/protected-action";
 import { createEmployeeSchema, updateEmployeeSchema } from "@/lib/validations/employee.schema";
-import { syncMonthlySalaryDeposit } from "@/lib/utils/salary-deposit-sync";
+
 
 function revalidateEmployeePages(employeeId?: string) {
   revalidatePath("/dashboard/employees");
@@ -110,16 +110,6 @@ export const createEmployee = protectedAction<FormData>({
     return { success: false, error: profileError.message };
   }
 
-  if (monthlySalary > 0) {
-    await syncMonthlySalaryDeposit(supabase, {
-      companyId: me.company_id,
-      employeeId: createdAuth.user.id,
-      employeeName: fullName,
-      monthlySalary,
-      createdBy: me.id,
-    });
-  }
-
   revalidateEmployeePages(createdAuth.user.id);
   return { success: true };
 });
@@ -189,16 +179,6 @@ export const updateEmployee = protectedAction<FormData>({
     .eq("id", employeeId);
 
   if (error) return { success: false, error: error.message };
-
-  if (monthlySalary > 0) {
-    await syncMonthlySalaryDeposit(supabase, {
-      companyId: me.company_id,
-      employeeId,
-      employeeName: fullName,
-      monthlySalary,
-      createdBy: me.id,
-    });
-  }
 
   revalidateEmployeePages(employeeId);
   return { success: true };

@@ -7,7 +7,7 @@ import { Download, FileSpreadsheet, Printer } from "lucide-react";
 
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { cn } from "@punchless/ui/lib/utils";
 
 import { downloadCsv } from "@/lib/utils/export-csv";

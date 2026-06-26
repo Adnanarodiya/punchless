@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-26 (Statement demo seed data — all statement views)
+> **Last updated:** 2026-06-26 (Learn system — module guides + testing steps)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -95,6 +95,7 @@
 | `migrations/20260624180000_fix_ledger_delete_policy.sql` | 13 | Admin can delete `ledger_entries` (invoice ledger resync) |
 | `migrations/20260625120000_banks_and_transactions.sql` | 14 | `bank_accounts`, `bank_transactions`, `bank_transfers`, `transactions` + ledger ref types |
 | `migrations/20260626120000_company_profile_fields.sql` | 13.5 | `companies` letterhead fields: `tagline`, `address`, `phone`, `email`, `logo_url` |
+| `migrations/20260627120000_salary_mode_and_daily_payroll.sql` | 6 | `companies.salary_mode` (hourly/fixed) + `get_daily_attendance_payroll()` RPC (grace half-days, IST) |
 | `migrations/20260625140000_hr_extensions.sql` | 16 | `posts`, `staff_payments`, `salary_deposits`; extend `users` (address, post_id, joining_date, account_no, ifsc_code); ledger ref `salary_deposit`, `staff_payment` |
 | `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
@@ -136,7 +137,7 @@
 | `src/components/modal.tsx` | 1 | Reusable modal wrapper |
 | `src/components/confirm-modal.tsx` | 1 | Confirm/cancel modal with actions |
 | `src/components/visually-hidden.tsx` | 1 | Accessibility helper for screen readers |
-| `src/components/page-header.tsx` | 11A | Page title + description + actions slot |
+| `src/components/page-header.tsx` | 11A/9 | Page title + optional `titleAddon` + description + actions slot |
 | `src/components/breadcrumbs.tsx` | 11A | Accessible breadcrumb navigation |
 | `src/components/collapsible-nav-group.tsx` | 11A | Collapsible sidebar section group |
 | `src/components/data-table.tsx` | 11A | Reusable data table with optional search |
@@ -232,7 +233,8 @@
 | `dashboard/posts/page.tsx` | 16 | Posts (job titles) list page |
 | `dashboard/posts/post-manager.tsx` | 16 | Post CRUD with soft delete/recover |
 | `dashboard/salary/payments/page.tsx` | 16 | Staff payments list page |
-| `dashboard/salary/payments/staff-payment-manager.tsx` | 16 | Advance / salary paid / deduction entry — controlled employee select, explicit FormData fields, submit guard |
+| `dashboard/salary/payments/page.tsx` | 16 | Staff payments page — reads `?employee=&month=&openForm=` URL params, prefetches salary payable |
+| `dashboard/salary/payments/staff-payment-manager.tsx` | 16 | Staff payment form + employee-filtered table when `?employee=` (summary cards, hide Employee column, show-all link) |
 | `dashboard/salary/deposits/page.tsx` | 16 | Salary deposits list page |
 | `dashboard/salary/deposits/salary-deposit-manager.tsx` | 16 | Accrual deposits; amount prefills from employee `monthly_salary` |
 | `dashboard/workshops/page.tsx` | 3 | Server component: fetches workshops, renders `WorkshopManager` |
@@ -242,11 +244,11 @@
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
 | `dashboard/salary/page.tsx` | 6 | Server component: reads `?month=` search param, fetches salary report, renders `SalaryManager` |
-| `dashboard/salary/salary-manager.tsx` | 6 | **Client component**: Monthly report table, breakdown by hours/type, gross/advance deductions/net salary, month selector via URL params, search & filter |
+| `dashboard/salary/salary-manager.tsx` | 6 | Salary report — Due column (over-advanced warning / amount due / Paid); Pay enabled only when `suggested_pay > 0` |
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
 | `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
-| `dashboard/settings/settings-manager.tsx` | 7/18 | Work schedule settings + quick links to Dashboard Users and Change Password |
+| `dashboard/settings/settings-manager.tsx` | 7/18 | Work schedule + **Hourly/Fixed salary mode** toggle, grace/punch-in settings |
 | `dashboard/settings/users/page.tsx` | 18 | Owner-only: list dashboard users (owner/admin), invite admin |
 | `dashboard/settings/users/users-manager.tsx` | 18 | Invite admin form + deactivate admin (service-role create + ban) |
 | `dashboard/settings/password/page.tsx` | 18 | Change password page (owner/admin) |
@@ -266,13 +268,22 @@
 | `dashboard/requests/page.tsx` | 8.5 | Server component: fetches correction requests, renders `RequestsManager` |
 | `dashboard/requests/requests-manager.tsx` | 8.5 | **Client component**: Pending/All/Approved/Rejected filter, approve/reject with notes, auto-updates session on approval |
 | `dashboard/billing/page.tsx` | 2 | ⏳ Placeholder — Phase 10 |
+| `dashboard/learn/page.tsx` | 9 | Learn Punchless — server page wrapping `LearnManager` (role-filtered) |
+| `dashboard/learn/learn-manager.tsx` | 9 | **Client component**: module sidebar, category/search filters, detail panels (overview, sections, workflows, testing guide, tips, related modules) |
+| `lib/content/learn-types.ts` | 9 | TypeScript types for learn modules, sections, workflows, test steps |
+| `lib/content/learn-modules.ts` | 9 | Content data — 23 dashboard modules with page sections, workflows, manual test steps + expected outputs |
+| `lib/content/learn-icons.tsx` | 9 | Maps `LearnIconName` → Lucide icons for learn UI |
+| `lib/content/learn-route-map.ts` | 9 | Maps dashboard URL paths → learn module IDs for contextual help links |
+| `learn-page-help.tsx` | 9 | `CircleHelp` ? icon — auto-detects route, links to `/dashboard/learn?module=…` |
+| `page-header.tsx` | 9 | App `PageHeader` wrapper — injects `LearnPageHelp` as `titleAddon` next to every page title |
+| `dashboard-page-title.tsx` | 9 | `<h1>` + `LearnPageHelp` for server pages that use plain titles |
 
 #### Shared Components (`src/components/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
-| `sidebar-config.ts` | 11A/17/18 | Nav — Reports + Account: Users, Audit Log, Password |
+| `sidebar-config.ts` | 11A/17/18/9 | Nav — Overview: Dashboard + Learn; Reports + Account: Users, Audit Log, Password |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
@@ -291,16 +302,16 @@
 | `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
 | `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
 | `dashboard-shell.tsx` | 11A | Client layout wrapper: skip-to-content, mobile nav state |
-| `dashboard-header.tsx` | 11A | Top header: mobile menu button, user name + role + logout |
+| `dashboard-header.tsx` | 11A/9 | Top header: Learn button, search, mobile menu, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
-| `statement-screen.tsx` | 13.5 | Shared client component — date filter, search, toolbar, `#printMe` document zone |
+| `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |
 | `statement-print-document.tsx` | 13.5 | Server-friendly printable statement document (letterhead + table) |
 
 #### Utils (`src/lib/utils/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `formatting.ts` | 4/13.5 | Date/time/currency formatters + `formatStatementDate()` (DD-MMM-YYYY) |
+| `formatting.ts` | 4/13.5 | Date/time/currency formatters + `formatMonthYear()` + `formatStatementDate()` (DD-MMM-YYYY) |
 | `statement.ts` | 13.5 | `StatementResult`, `BalanceMeta`, `getBalanceMeta()`, `formatStatementAmount()` |
 | `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
 | `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
@@ -376,7 +387,7 @@
 | `employee.actions.ts` | 3/16 | Employee CRUD + auto-sync current month salary deposit on create/update |
 | `salary-deposit-sync.ts` | 16 | `syncMonthlySalaryDeposit()` — upsert deposit + ledger from `monthly_salary` |
 | `post.actions.ts` | 16 | `createPost`, `updatePost`, `softDeletePost`, `recoverPost` |
-| `staff-payment.actions.ts` | 16 | `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
+| `staff-payment.actions.ts` | 16 | `fetchEmployeeSalaryPayable`, `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4/16 | Manual sessions + `bulkMarkAttendance()` for daily present marking |
 | `job.actions.ts` | 5/8 | `createJob()` / `updateJob()` — push "New job assigned" to assignee; `deleteJob()` |
@@ -405,7 +416,8 @@
 | `job.queries.ts` | 5 | `getJobs()` — list all jobs with assigned user details; `getJobById()` — get single job details |
 | `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
 | `settings.queries.ts` | 7/13.5 | Company settings + `getCompanyProfile()` for statement letterhead |
-| `salary.queries.ts` | 6 | `getSalaryReport()` — aggregates attendance hours by type (workshop/travel/onsite) × rates per employee for a specific month, includes approved advance deductions, calculates gross/net salary |
+| `salary.queries.ts` | 6 | Unified payroll: `getSalaryReport()` + `getEmployeeSalaryPayable()` — hourly or fixed mode, grace half-days, joining-date pro-rata, advance deductions |
+| `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
 | `dashboard.queries.ts` | 15/19 | Stats, `getFinancialYearsWithData()`, FY-scoped financial summary, revenue charts |
@@ -540,7 +552,7 @@ Workshop Create: workshop-manager.tsx → workshop.actions.ts → server.ts → 
 Map Picker:      workshop-manager.tsx → map-picker.tsx (Leaflet) → lat/lng → workshop.actions.ts
 Workshop Assign: employee-manager.tsx → dropdown (if >1) or auto-assign (if 1) → employee.actions.ts
 Job Create:      job-manager.tsx → map-picker.tsx → job.actions.ts → jobs table
-Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum + advance deductions → display
+Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum + advance deductions → display; Pay → staff payments with suggested amount
 Advance Flow:    advance-manager.tsx → advance.actions.ts → salary_advances table → approve/reject → deducted in salary.queries.ts
 Mobile Login:    app/(auth)/login.tsx → auth.store.ts → auth.service.ts → supabase.auth.signInWithPassword
 Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_sessions (today summary + live state) + geofence.service.ts (manual travel/job/end-shift actions) + location.store.ts (GPS status)

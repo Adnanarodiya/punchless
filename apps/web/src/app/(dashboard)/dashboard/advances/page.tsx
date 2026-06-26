@@ -1,5 +1,6 @@
 import { getAdvances } from "@/lib/queries/advance.queries";
 import { getEmployees } from "@/lib/queries/employee.queries";
+import { DashboardPageTitle } from "@/components/dashboard-page-title";
 import { AdvanceManager } from "./advance-manager";
 
 export default async function AdvancesPage() {
@@ -13,7 +14,7 @@ export default async function AdvancesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Salary Advances</h1>
+      <DashboardPageTitle title="Salary Advances" />
       <AdvanceManager advances={advances} employees={activeEmployees} />
     </div>
   );

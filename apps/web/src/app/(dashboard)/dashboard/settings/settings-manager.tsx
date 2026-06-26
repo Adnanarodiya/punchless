@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@punchless/ui/components/button";
+import { cn } from "@punchless/ui/lib/utils";
 import {
   Clock,
   Timer,
@@ -33,6 +34,7 @@ interface Props {
 export function SettingsManager({ settings }: Props) {
   const resetDataLock = useDataLockStore((s) => s.reset);
   const [removePinOpen, setRemovePinOpen] = useState(false);
+  const [salaryMode, setSalaryMode] = useState<"hourly" | "fixed">(settings.salary_mode);
 
   const { execute: handleSubmit, loading: saving } = useAction(updateCompanySettings, {
     successMessage: "Settings saved! Employee hourly rates have been recalculated.",
@@ -240,12 +242,47 @@ export function SettingsManager({ settings }: Props) {
           </h2>
 
           <p className="text-sm text-muted-foreground">
-            These settings are used to calculate employee hourly rates from monthly salary,
-            and to determine late arrivals.
+            One salary system for the whole company. Late after grace counts as a half day;
+            absent days earn nothing.
           </p>
 
-          {/* Punch-in Time */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="flex flex-col items-center gap-2 py-2">
+            <span className="text-sm font-medium">Salary calculation mode</span>
+            <div className="inline-flex rounded-lg border border-input bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => setSalaryMode("hourly")}
+                className={cn(
+                  "rounded-md px-6 py-2 text-sm font-medium transition",
+                  salaryMode === "hourly"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Hourly
+              </button>
+              <button
+                type="button"
+                onClick={() => setSalaryMode("fixed")}
+                className={cn(
+                  "rounded-md px-6 py-2 text-sm font-medium transition",
+                  salaryMode === "fixed"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Fixed
+              </button>
+            </div>
+            <input type="hidden" name="salaryMode" value={salaryMode} />
+            <p className="max-w-md text-center text-xs text-muted-foreground">
+              {salaryMode === "hourly"
+                ? "Pay adjusted hours worked. Half-day late = 50% of that day’s hours."
+                : "Pay by day credits (full / half), capped at each employee’s monthly salary."}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
                 <Clock className="size-4 text-muted-foreground" />
@@ -328,18 +365,22 @@ export function SettingsManager({ settings }: Props) {
         </div>
 
         {/* Calculation Preview */}
-        <div className="bg-muted/50 border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-3">💡 How Salary Calculation Works</h3>
-          <div className="text-sm text-muted-foreground space-y-1">
+        <div className="rounded-xl border border-border bg-muted/50 p-5">
+          <h3 className="mb-3 text-sm font-semibold">How salary works</h3>
+          <div className="space-y-1 text-sm text-muted-foreground">
             <p>
-              Total monthly hours = <strong>{settings.daily_work_hours}h/day</strong> × <strong>{settings.working_days_per_month} days</strong> = <strong>{totalHours}h</strong>
+              Daily rate = monthly salary ÷ {settings.working_days_per_month} days · Hourly
+              rate = daily rate ÷ {settings.daily_work_hours}h
             </p>
             <p>
-              Example: Employee with ₹{exampleSalary.toLocaleString("en-IN")} monthly salary → <strong>₹{exampleHourly}/hr</strong>
+              Example ₹{exampleSalary.toLocaleString("en-IN")}/mo →{" "}
+              <strong>₹{exampleHourly}/hr</strong> · on-time by{" "}
+              {settings.work_start_time} + {settings.grace_period_minutes} min grace
             </p>
-            <p className="text-xs mt-2">
-              When you set an employee&apos;s monthly salary, we automatically calculate their per-hour rate using these settings.
-              If you change these settings, all employee hourly rates will be recalculated.
+            <p className="mt-2 text-xs">
+              {salaryMode === "hourly"
+                ? "Hourly mode pays adjusted hours. Salary page is the single source of truth — use Staff Payments to pay out."
+                : "Fixed mode pays full/half day credits up to the monthly salary cap. Use Staff Payments to pay out."}
             </p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { getCorrectionRequests } from "@/lib/queries/correction.queries";
+import { DashboardPageTitle } from "@/components/dashboard-page-title";
 import { RequestsManager } from "./requests-manager";
 
 export default async function RequestsPage() {
@@ -6,7 +7,7 @@ export default async function RequestsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Correction Requests</h1>
+      <DashboardPageTitle title="Correction Requests" />
       <RequestsManager initialRequests={requests} />
     </div>
   );

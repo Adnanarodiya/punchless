@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
-import { PageHeader } from "@punchless/ui/components/page-header";
+import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 import { Button } from "@punchless/ui/components/button";
 

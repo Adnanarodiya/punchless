@@ -12,22 +12,15 @@ export default async function EmployeesPage() {
     getPosts(),
   ]);
 
-  // Only pass active workshops for assignment
   const activeWorkshops = workshops.filter((w) => w.is_active);
 
-  const dailyWorkHours = settings?.daily_work_hours ?? 8;
-  const workingDaysPerMonth = settings?.working_days_per_month ?? 26;
-
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Employees</h1>
-      <EmployeeManager
-        employees={employees}
-        workshops={activeWorkshops}
-        posts={posts}
-        dailyWorkHours={dailyWorkHours}
-        workingDaysPerMonth={workingDaysPerMonth}
-      />
-    </div>
+    <EmployeeManager
+      employees={employees}
+      workshops={activeWorkshops}
+      posts={posts}
+      dailyWorkHours={settings?.daily_work_hours ?? 8}
+      workingDaysPerMonth={settings?.working_days_per_month ?? 26}
+    />
   );
 }

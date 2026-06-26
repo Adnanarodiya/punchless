@@ -2,7 +2,7 @@
 
 > **Created:** 2026-06-25  
 > **Priority:** 🔴 **HIGH — Do before Phase 14 (Banks)**  
-> **Status:** ☐ Not started  
+> **Status:** ✅ Done (2026-06-26)
 > **Goal:** Match the Shahin Motors statement UI (letterhead, entity box, full ledger table, print) for client and supplier statements in Punchless.
 
 ---
@@ -651,13 +651,13 @@ Total                                                   ~4–5 hrs
 
 | Step | Phase | Status |
 |------|-------|--------|
-| 1 | Phase 3 — Company profile migration + Settings | ☐ |
-| 2 | Phase 1 — Shared UI components | ☐ |
-| 3 | Phase 2 — Query enrichment | ☐ |
-| 4 | Phase 4 — Client statement UI | ☐ |
-| 5 | Phase 5 — Supplier statement UI | ☐ |
-| 6 | Phase 6 — Print polish | ☐ |
-| 7 | Testing | ☐ |
+| 1 | Phase 3 — Company profile migration + Settings | ✅ |
+| 2 | Phase 1 — Shared UI components | ✅ |
+| 3 | Phase 2 — Query enrichment | ✅ |
+| 4 | Phase 4 — Client statement UI | ✅ |
+| 5 | Phase 5 — Supplier statement UI | ✅ |
+| 6 | Phase 6 — Print polish | ✅ |
+| 7 | Testing | ☐ Manual QA pending |
 
 ---
 

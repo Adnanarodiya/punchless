@@ -1,23 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { login } from "@/lib/actions/auth.actions";
 import { Button } from "@punchless/ui/components/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
+const MIN_SIGN_IN_MS = 2000;
+
 export default function LoginPage() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setLoading(true);
     setError(null);
-    const result = await login(formData);
+
+    const formData = new FormData(event.currentTarget);
+
+    const [result] = await Promise.all([
+      login(formData),
+      new Promise<void>((resolve) => setTimeout(resolve, MIN_SIGN_IN_MS)),
+    ]);
+
     if (result?.error) {
       setError(result.error);
       setLoading(false);
+      return;
     }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -39,7 +55,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form action={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-1.5">
               Email
@@ -77,8 +93,13 @@ export default function LoginPage() {
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+          <Button
+            type="submit"
+            className="w-full"
+            loading={loading}
+            disabled={loading}
+          >
+            Sign In
           </Button>
         </form>
 

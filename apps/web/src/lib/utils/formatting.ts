@@ -33,6 +33,18 @@ export function formatDate(isoString: string | null): string {
   });
 }
 
+/** Statement date format: DD-MMM-YYYY (e.g. 01-Apr-2025) */
+export function formatStatementDate(isoString: string | null): string {
+  if (!isoString) return "—";
+  const normalized =
+    isoString.length === 10 ? `${isoString}T00:00:00` : isoString;
+  const date = new Date(normalized);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = date.toLocaleDateString("en-IN", { month: "short" });
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 /**
  * Format currency to INR (₹)
  */

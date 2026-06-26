@@ -4,16 +4,17 @@ import {
   getClientById,
   getClientStatement,
 } from "@/lib/queries/client.queries";
+import { getCompanyProfile } from "@/lib/queries/settings.queries";
+import {
+  getCurrentFinancialYearStartYear,
+  getFinancialYearRangeToDate,
+} from "@/lib/utils/financial-year";
 
 import { StatementManager } from "./statement-manager";
 
 function defaultDateRange() {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  return {
-    start: start.toISOString().slice(0, 10),
-    end: today.toISOString().slice(0, 10),
-  };
+  const range = getFinancialYearRangeToDate(getCurrentFinancialYearStartYear());
+  return { start: range.start, end: range.end };
 }
 
 export default async function ClientStatementPage({
@@ -29,19 +30,21 @@ export default async function ClientStatementPage({
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
-  const client = await getClientById(id);
-  if (!client) notFound();
+  const [client, company, statement] = await Promise.all([
+    getClientById(id),
+    getCompanyProfile(),
+    getClientStatement(id, startDate, endDate),
+  ]);
 
-  const statement = await getClientStatement(id, startDate, endDate);
+  if (!client || !company) notFound();
 
   return (
     <StatementManager
       client={client}
+      company={company}
       startDate={startDate}
       endDate={endDate}
-      openingBalance={statement.openingBalance}
-      closingBalance={statement.closingBalance}
-      lines={statement.lines}
+      statement={statement}
     />
   );
 }

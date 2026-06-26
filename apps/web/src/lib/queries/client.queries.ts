@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@punchless/types/database.types";
+import {
+  getBalanceMeta,
+  resolveStatementSource,
+  type StatementResult,
+} from "@/lib/utils/statement";
 
 type ClientRow = Database["public"]["Tables"]["clients"]["Row"];
 type LedgerRow = Database["public"]["Tables"]["ledger_entries"]["Row"];
@@ -13,17 +18,6 @@ export type ClientSummary = {
   totalDue: number;
 };
 
-export type StatementLine = {
-  id: string;
-  entry_date: string;
-  remark: string | null;
-  reference_type: string | null;
-  entry_type: string;
-  debit: number;
-  credit: number;
-  balance: number;
-};
-
 function parseLedgerAmount(value: unknown): number {
   const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -34,10 +28,12 @@ type PreparedStatementEntry = {
   entry_date: string;
   remark: string | null;
   reference_type: string | null;
+  reference_id: string | null;
   entry_type: string;
   debit: number;
   credit: number;
   created_at: string | null;
+  created_by: string | null;
 };
 
 function sumPreparedBalance(entries: Pick<PreparedStatementEntry, "debit" | "credit">[]) {
@@ -233,10 +229,12 @@ function prepareStatementEntries(
       entry_date: invoiceDebit?.entry_date ?? sortedPayments[0].entry_date,
       remark: buildInvoicePaymentRemark(baseRemark, sortedPayments, totalCredit),
       reference_type: debitAmount > 0 ? "invoice" : "payment",
+      reference_id: invoiceId,
       entry_type: debitAmount > 0 ? "debit" : "credit",
       debit: debitAmount,
       credit: totalCredit,
       created_at: invoiceDebit?.created_at ?? sortedPayments[0].created_at,
+      created_by: invoiceDebit?.created_by ?? sortedPayments[0].created_by,
     });
   }
 
@@ -248,10 +246,12 @@ function prepareStatementEntries(
       entry_date: invoiceDebit.entry_date,
       remark: invoiceDebit.remark,
       reference_type: invoiceDebit.reference_type,
+      reference_id: invoiceId,
       entry_type: invoiceDebit.entry_type,
       debit: parseLedgerAmount(invoiceDebit.amount),
       credit: 0,
       created_at: invoiceDebit.created_at,
+      created_by: invoiceDebit.created_by,
     });
   }
 
@@ -261,12 +261,14 @@ function prepareStatementEntries(
       entry_date: entry.entry_date,
       remark: entry.remark,
       reference_type: entry.reference_type,
+      reference_id: entry.reference_id,
       entry_type: entry.entry_type,
       debit:
         entry.entry_type === "debit" ? parseLedgerAmount(entry.amount) : 0,
       credit:
         entry.entry_type === "credit" ? parseLedgerAmount(entry.amount) : 0,
       created_at: entry.created_at,
+      created_by: entry.created_by,
     });
   }
 
@@ -359,15 +361,104 @@ export async function getClientsSummary(): Promise<ClientSummary> {
   };
 }
 
+async function enrichClientStatementLines(
+  entries: PreparedStatementEntry[],
+  runningStart: number
+): Promise<{
+  lines: StatementResult["lines"];
+  closingBalance: number;
+  totals: { debit: number; credit: number };
+}> {
+  const supabase = await createClient();
+
+  const invoiceIds = [
+    ...new Set(
+      entries
+        .filter((entry) => entry.reference_type === "invoice" && entry.reference_id)
+        .map((entry) => entry.reference_id as string)
+    ),
+  ];
+
+  const userIds = [
+    ...new Set(
+      entries
+        .map((entry) => entry.created_by)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const [invoiceResult, userResult] = await Promise.all([
+    invoiceIds.length > 0
+      ? supabase
+          .from("invoices")
+          .select("id, invoice_number, vehicle_number")
+          .in("id", invoiceIds)
+      : Promise.resolve({ data: [] }),
+    userIds.length > 0
+      ? supabase.from("users").select("id, full_name").in("id", userIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const invoiceMap = new Map(
+    (invoiceResult.data ?? []).map((invoice) => [invoice.id, invoice])
+  );
+  const userMap = new Map(
+    (userResult.data ?? []).map((user) => [user.id, user.full_name])
+  );
+
+  let runningBalance = runningStart;
+  let totalDebit = 0;
+  let totalCredit = 0;
+  let index = 0;
+
+  const lines = entries
+    .map((entry) => {
+      runningBalance = Math.round(
+        (runningBalance + entry.debit - entry.credit) * 100
+      ) / 100;
+      totalDebit = Math.round((totalDebit + entry.debit) * 100) / 100;
+      totalCredit = Math.round((totalCredit + entry.credit) * 100) / 100;
+      index += 1;
+
+      const invoice =
+        entry.reference_type === "invoice" && entry.reference_id
+          ? invoiceMap.get(entry.reference_id)
+          : null;
+
+      return {
+        id: entry.id,
+        index,
+        entry_date: entry.entry_date,
+        remark: entry.remark,
+        reference_type: entry.reference_type,
+        reference_id: entry.reference_id,
+        entry_type: entry.entry_type,
+        debit: entry.debit,
+        credit: entry.credit,
+        balance: runningBalance,
+        balance_meta: getBalanceMeta(runningBalance, "client"),
+        invoice_number: invoice?.invoice_number ?? null,
+        vehicle_number: invoice?.vehicle_number ?? null,
+        user_name: entry.created_by
+          ? (userMap.get(entry.created_by) ?? null)
+          : null,
+        source: resolveStatementSource(entry.reference_type),
+      };
+    })
+    .filter((line) => line.debit > 0 || line.credit > 0);
+
+  return {
+    lines,
+    closingBalance: runningBalance,
+    totals: { debit: totalDebit, credit: totalCredit },
+  };
+}
+
 export async function getClientStatement(
   clientId: string,
   startDate: string,
   endDate: string
-): Promise<{
-  openingBalance: number;
-  closingBalance: number;
-  lines: StatementLine[];
-}> {
+): Promise<StatementResult> {
   const supabase = await createClient();
 
   const { data: allEntries } = await supabase
@@ -405,30 +496,13 @@ export async function getClientStatement(
   );
 
   const openingBalance = sumPreparedBalance(beforePeriod);
-  let runningBalance = openingBalance;
-
-  const lines: StatementLine[] = inPeriod
-    .map((entry) => {
-      runningBalance = Math.round(
-        (runningBalance + entry.debit - entry.credit) * 100
-      ) / 100;
-
-      return {
-        id: entry.id,
-        entry_date: entry.entry_date,
-        remark: entry.remark,
-        reference_type: entry.reference_type,
-        entry_type: entry.entry_type,
-        debit: entry.debit,
-        credit: entry.credit,
-        balance: runningBalance,
-      };
-    })
-    .filter((line) => line.debit > 0 || line.credit > 0);
+  const opening = getBalanceMeta(openingBalance, "client");
+  const enriched = await enrichClientStatementLines(inPeriod, openingBalance);
 
   return {
-    openingBalance,
-    closingBalance: runningBalance,
-    lines,
+    opening,
+    closing: getBalanceMeta(enriched.closingBalance, "client"),
+    totals: enriched.totals,
+    lines: enriched.lines,
   };
 }

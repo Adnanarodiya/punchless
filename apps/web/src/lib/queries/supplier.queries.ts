@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@punchless/types/database.types";
+import {
+  getBalanceMeta,
+  resolveStatementSource,
+  type StatementResult,
+} from "@/lib/utils/statement";
 
 type SupplierRow = Database["public"]["Tables"]["suppliers"]["Row"];
 
@@ -10,17 +15,6 @@ export type SupplierWithPayable = SupplierRow & {
 export type SupplierSummary = {
   totalSuppliers: number;
   totalPayable: number;
-};
-
-export type SupplierStatementLine = {
-  id: string;
-  entry_date: string;
-  remark: string | null;
-  reference_type: string | null;
-  entry_type: string;
-  debit: number;
-  credit: number;
-  balance: number;
 };
 
 function sumSupplierPayable(
@@ -122,11 +116,7 @@ export async function getSupplierStatement(
   supplierId: string,
   startDate: string,
   endDate: string
-): Promise<{
-  openingBalance: number;
-  closingBalance: number;
-  lines: SupplierStatementLine[];
-}> {
+): Promise<StatementResult> {
   const supabase = await createClient();
 
   const { data: allEntries } = await supabase
@@ -145,28 +135,88 @@ export async function getSupplierStatement(
   );
 
   const openingBalance = sumSupplierPayable(beforePeriod);
-  let runningBalance = openingBalance;
+  const opening = getBalanceMeta(openingBalance, "supplier");
 
-  const lines: SupplierStatementLine[] = inPeriod.map((entry) => {
+  const purchaseIds = [
+    ...new Set(
+      inPeriod
+        .filter(
+          (entry) => entry.reference_type === "purchase" && entry.reference_id
+        )
+        .map((entry) => entry.reference_id as string)
+    ),
+  ];
+
+  const userIds = [
+    ...new Set(
+      inPeriod
+        .map((entry) => entry.created_by)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+
+  const [purchaseResult, userResult] = await Promise.all([
+    purchaseIds.length > 0
+      ? supabase
+          .from("purchase_invoices")
+          .select("id, invoice_number")
+          .in("id", purchaseIds)
+      : Promise.resolve({ data: [] }),
+    userIds.length > 0
+      ? supabase.from("users").select("id, full_name").in("id", userIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const purchaseMap = new Map(
+    (purchaseResult.data ?? []).map((purchase) => [purchase.id, purchase])
+  );
+  const userMap = new Map(
+    (userResult.data ?? []).map((user) => [user.id, user.full_name])
+  );
+
+  let runningBalance = openingBalance;
+  let totalDebit = 0;
+  let totalCredit = 0;
+  let index = 0;
+
+  const lines = inPeriod.map((entry) => {
     const debit = entry.entry_type === "debit" ? Number(entry.amount) : 0;
     const credit = entry.entry_type === "credit" ? Number(entry.amount) : 0;
-    runningBalance += credit - debit;
+    runningBalance = Math.round((runningBalance + credit - debit) * 100) / 100;
+    totalDebit = Math.round((totalDebit + debit) * 100) / 100;
+    totalCredit = Math.round((totalCredit + credit) * 100) / 100;
+    index += 1;
+
+    const purchase =
+      entry.reference_type === "purchase" && entry.reference_id
+        ? purchaseMap.get(entry.reference_id)
+        : null;
 
     return {
       id: entry.id,
+      index,
       entry_date: entry.entry_date,
       remark: entry.remark,
       reference_type: entry.reference_type,
+      reference_id: entry.reference_id,
       entry_type: entry.entry_type,
       debit,
       credit,
       balance: runningBalance,
+      balance_meta: getBalanceMeta(runningBalance, "supplier"),
+      invoice_number: purchase?.invoice_number ?? null,
+      vehicle_number: null,
+      user_name: entry.created_by
+        ? (userMap.get(entry.created_by) ?? null)
+        : null,
+      source: resolveStatementSource(entry.reference_type),
     };
   });
 
   return {
-    openingBalance,
-    closingBalance: runningBalance,
+    opening,
+    closing: getBalanceMeta(runningBalance, "supplier"),
+    totals: { debit: totalDebit, credit: totalCredit },
     lines,
   };
 }

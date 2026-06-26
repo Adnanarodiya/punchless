@@ -38,6 +38,13 @@
     --state-onsite: 24.6 95% 53.1%; /* Orange */
     --state-offduty: 240 3.8% 46.1%; /* Gray */
 
+    /* Statement UI (Phase 13.5) */
+    --statement-header-from: 217 68% 68%;
+    --statement-header-to: 204 62% 82%;
+    --statement-opening: 48 100% 96%;
+    --statement-closing: 142 76% 94%;
+    --statement-total: 231 48% 94%;
+
     /* Chart Colors */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
@@ -96,6 +103,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  select {
+    cursor: pointer;
+  }
+  select:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* Utilities for Status Colors */
@@ -118,13 +131,36 @@
   .bg-state-onsite { @apply bg-[hsl(var(--state-onsite))]; }
   .text-state-offduty { @apply text-[hsl(var(--state-offduty))]; }
   .bg-state-offduty { @apply bg-[hsl(var(--state-offduty))]; }
+
+  .statement-letterhead-banner {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--statement-header-from)),
+      hsl(var(--statement-header-to))
+    );
+  }
+
+  .statement-row-opening {
+    background-color: hsl(var(--statement-opening));
+  }
+
+  .statement-row-total {
+    background-color: hsl(var(--statement-total));
+  }
+
+  .statement-row-closing {
+    background-color: hsl(var(--statement-closing));
+  }
 }
 
-/* Print utility — hide chrome, show content (Phase 11A) */
+/* Print utility — hide chrome, show content (Phase 11A + 13.5) */
 @media print {
   aside,
   header,
+  nav,
   [data-slot="page-header"] button,
+  [data-slot="breadcrumbs"],
+  [data-slot="statement-toolbar"],
   .print\:hidden {
     display: none !important;
   }
@@ -136,6 +172,18 @@
   body {
     background: white !important;
     color: black !important;
+  }
+
+  #printMe {
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .statement-table th,
+  .statement-table td {
+    border: 1px solid hsl(var(--border));
   }
 
   table {

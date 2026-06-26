@@ -451,45 +451,60 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
           created_at: string | null
           daily_work_hours: number | null
           data_lock_pin_hash: string | null
+          email: string | null
           grace_period_minutes: number | null
           id: string
+          logo_url: string | null
           name: string
+          phone: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
+          tagline: string | null
           trial_ends_at: string | null
           updated_at: string | null
           work_start_time: string | null
           working_days_per_month: number | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
           data_lock_pin_hash?: string | null
+          email?: string | null
           grace_period_minutes?: number | null
           id?: string
+          logo_url?: string | null
           name: string
+          phone?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          tagline?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
           work_start_time?: string | null
           working_days_per_month?: number | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
           data_lock_pin_hash?: string | null
+          email?: string | null
           grace_period_minutes?: number | null
           id?: string
+          logo_url?: string | null
           name?: string
+          phone?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          tagline?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
           work_start_time?: string | null

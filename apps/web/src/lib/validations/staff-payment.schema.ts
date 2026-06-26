@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { entityId } from "@/lib/validations/common";
 
 const paymentTypeSchema = z.enum(["advance", "salary_paid", "deduction"]);
 const paymentModeSchema = z.enum(["cash", "bank"]);
 
 export const createStaffPaymentSchema = z
   .object({
-    employeeId: z.string().uuid("Select an employee"),
+    employeeId: entityId("Select an employee"),
     paymentType: paymentTypeSchema,
     amount: z.coerce.number().positive("Amount must be greater than zero"),
     paymentMode: paymentModeSchema.optional(),
@@ -34,7 +35,7 @@ export const createStaffPaymentSchema = z
   });
 
 export const createSalaryDepositSchema = z.object({
-  employeeId: z.string().uuid("Select an employee"),
+  employeeId: entityId("Select an employee"),
   amount: z.coerce.number().positive("Amount must be greater than zero"),
   depositDate: z.string().min(1, "Date is required"),
   remark: z.string().max(500).optional().or(z.literal("")),

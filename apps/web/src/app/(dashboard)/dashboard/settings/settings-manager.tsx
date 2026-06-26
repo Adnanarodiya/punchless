@@ -18,6 +18,7 @@ import {
 import {
   removeDataLockPin,
   setDataLockPin,
+  updateCompanyProfile,
   updateCompanySettings,
 } from "@/lib/actions/settings.actions";
 import { useDataLockStore } from "@/lib/stores/data-lock.store";
@@ -36,6 +37,11 @@ export function SettingsManager({ settings }: Props) {
   const { execute: handleSubmit, loading: saving } = useAction(updateCompanySettings, {
     successMessage: "Settings saved! Employee hourly rates have been recalculated.",
   });
+
+  const { execute: handleProfileSubmit, loading: savingProfile } = useAction(
+    updateCompanyProfile,
+    { successMessage: "Company profile saved for statements and letterhead." }
+  );
 
   const { execute: handleSetPin, loading: savingPin } = useAction(setDataLockPin, {
     successMessage: "Data lock PIN saved",
@@ -84,18 +90,82 @@ export function SettingsManager({ settings }: Props) {
         </Link>
       </div>
 
-      {/* Company Info */}
-      <div className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="bg-primary/10 text-primary p-2 rounded-lg">
+      <form action={handleProfileSubmit} className="space-y-5 rounded-xl border border-border bg-card p-6">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
             <Building2 className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">Company</h2>
-            <p className="text-sm text-muted-foreground">{settings.name}</p>
+            <h2 className="text-lg font-semibold">Company Profile</h2>
+            <p className="text-sm text-muted-foreground">
+              Shown on client and supplier statement letterheads.
+            </p>
           </div>
         </div>
-      </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">Company Name</label>
+          <p className="text-sm text-muted-foreground">{settings.name}</p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium">Tagline</label>
+            <input
+              name="tagline"
+              type="text"
+              defaultValue={settings.tagline ?? ""}
+              placeholder="e.g. Premium Auto Workshop"
+              className={inputClass}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium">Address</label>
+            <textarea
+              name="address"
+              rows={3}
+              defaultValue={settings.address ?? ""}
+              placeholder="Full business address"
+              className={`${inputClass} min-h-[80px] py-2`}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Phone</label>
+            <input
+              name="phone"
+              type="text"
+              defaultValue={settings.phone ?? ""}
+              placeholder="+91 98765 43210"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">Email</label>
+            <input
+              name="email"
+              type="email"
+              defaultValue={settings.email ?? ""}
+              placeholder="contact@workshop.com"
+              className={inputClass}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-medium">Logo URL</label>
+            <input
+              name="logoUrl"
+              type="url"
+              defaultValue={settings.logo_url ?? ""}
+              placeholder="https://example.com/logo.png"
+              className={inputClass}
+            />
+          </div>
+        </div>
+
+        <Button type="submit" loading={savingProfile} disabled={savingProfile}>
+          <Save className="size-4" />
+          Save Company Profile
+        </Button>
+      </form>
 
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <h2 className="text-lg font-semibold flex items-center gap-2">

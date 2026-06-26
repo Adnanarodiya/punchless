@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/utils/action-result";
 
@@ -25,30 +25,38 @@ export function useAction<TInput = FormData>(
   options: UseActionOptions = {}
 ) {
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const execute = useCallback(
     async (input: TInput): Promise<void> => {
+      if (submittingRef.current) return;
+
+      submittingRef.current = true;
       setLoading(true);
       try {
         const result = await action(input);
         if (result.success) {
-          if (options.successMessage) {
-            toast.success(options.successMessage);
+          if (optionsRef.current.successMessage) {
+            toast.success(optionsRef.current.successMessage);
           }
-          options.onSuccess?.();
+          optionsRef.current.onSuccess?.();
         } else {
-          const errorMsg = result.error || options.errorMessage || "Something went wrong";
+          const errorMsg =
+            result.error || optionsRef.current.errorMessage || "Something went wrong";
           toast.error(errorMsg);
-          options.onError?.(errorMsg);
+          optionsRef.current.onError?.(errorMsg);
         }
       } catch {
-        const errorMsg = options.errorMessage || "An unexpected error occurred";
+        const errorMsg = optionsRef.current.errorMessage || "An unexpected error occurred";
         toast.error(errorMsg);
       } finally {
+        submittingRef.current = false;
         setLoading(false);
       }
     },
-    [action, options]
+    [action]
   );
 
   return { execute, loading };

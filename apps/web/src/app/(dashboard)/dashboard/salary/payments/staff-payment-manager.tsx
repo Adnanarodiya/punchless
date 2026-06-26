@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -36,6 +36,7 @@ const typeLabels: Record<string, string> = {
 export function StaffPaymentManager({ payments, employees, banks }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [paymentType, setPaymentType] = useState<
     "advance" | "salary_paid" | "deduction"
   >("salary_paid");
@@ -59,11 +60,26 @@ export function StaffPaymentManager({ payments, employees, banks }: Props) {
     successMessage: "Staff payment recorded!",
     onSuccess: () => {
       setShowForm(false);
+      setSelectedEmployeeId("");
       setPaymentType("salary_paid");
       setPaymentMode("cash");
       router.refresh();
     },
   });
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (creating) return;
+
+    const formData = new FormData(event.currentTarget);
+    formData.set("employeeId", selectedEmployeeId);
+    formData.set("paymentType", paymentType);
+    if (needsPaymentMode) {
+      formData.set("paymentMode", paymentMode);
+    }
+
+    await execCreate(formData);
+  }
 
   const { execute: execDelete, loading: deleting } = useAction(deleteStaffPayment, {
     successMessage: "Payment deleted",
@@ -92,7 +108,11 @@ export function StaffPaymentManager({ payments, employees, banks }: Props) {
       {showForm ? (
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-4 text-lg font-semibold">New Staff Payment</h2>
-          <form action={execCreate} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form
+            onSubmit={handleSubmit}
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+          >
+            <fieldset disabled={creating} className="contents">
             <div>
               <label htmlFor="employeeId" className="mb-1 block text-sm font-medium">
                 Employee
@@ -101,6 +121,8 @@ export function StaffPaymentManager({ payments, employees, banks }: Props) {
                 id="employeeId"
                 name="employeeId"
                 required
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
               >
                 <option value="" disabled>
@@ -182,8 +204,11 @@ export function StaffPaymentManager({ payments, employees, banks }: Props) {
             )}
             <Field label="Remark" name="remark" className="md:col-span-2" />
             <div className="flex justify-end md:col-span-2">
-              <Button type="submit" loading={creating} disabled={creating}>Save</Button>
+              <Button type="submit" loading={creating} disabled={creating}>
+                Save
+              </Button>
             </div>
+            </fieldset>
           </form>
         </div>
       ) : null}

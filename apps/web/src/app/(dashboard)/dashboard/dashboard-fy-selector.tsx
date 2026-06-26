@@ -36,7 +36,7 @@ export function DashboardFySelector({ options, selectedFy }: Props) {
         value={String(selectedFy)}
         onChange={(e) => setFy(Number(e.target.value))}
         className={cn(
-          "h-9 min-w-[8.5rem] rounded-lg border border-input bg-background px-3 text-sm font-medium",
+          "h-9 min-w-[8.5rem] cursor-pointer rounded-lg border border-input bg-background px-3 text-sm font-medium",
           "focus:outline-none focus:ring-2 focus:ring-ring"
         )}
         aria-label="Financial year"

@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
-import { companySettingsSchema } from "@/lib/validations/settings.schema";
+import {
+  companyProfileSchema,
+  companySettingsSchema,
+} from "@/lib/validations/settings.schema";
 import {
   dataLockPinSchema,
   verifyDataLockPinSchema,
@@ -56,6 +59,44 @@ export const updateCompanySettings = protectedAction<FormData>({
   revalidatePath("/dashboard/settings");
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard/salary");
+  return { success: true };
+});
+
+export const updateCompanyProfile = protectedAction<FormData>({
+  roles: ["owner"],
+  audit: { action: "update_company_profile", entityType: "settings" },
+})(async (formData, { supabase, me }) => {
+  const parsed = companyProfileSchema.safeParse({
+    tagline: formData.get("tagline"),
+    address: formData.get("address"),
+    phone: formData.get("phone"),
+    email: formData.get("email"),
+    logoUrl: formData.get("logoUrl"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { tagline, address, phone, email, logoUrl } = parsed.data;
+
+  const { error } = await supabase
+    .from("companies")
+    .update({
+      tagline,
+      address,
+      phone,
+      email,
+      logo_url: logoUrl,
+    } as unknown as never)
+    .eq("id", me.company_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/suppliers");
   return { success: true };
 });
 

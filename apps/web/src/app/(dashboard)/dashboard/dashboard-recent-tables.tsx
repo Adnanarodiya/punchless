@@ -71,7 +71,7 @@ export function DashboardRecentTables({
   recentJobs,
 }: DashboardRecentTablesProps) {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6">
       <section
         className="rounded-xl border border-border bg-card p-5"
         aria-labelledby="recent-attendance-heading"

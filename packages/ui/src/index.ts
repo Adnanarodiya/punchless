@@ -56,6 +56,30 @@ export {
   type PaymentMode,
   type PaymentModeSelectProps,
 } from "./components/payment-mode-select";
+export {
+  StatementLetterhead,
+  type StatementLetterheadProps,
+} from "./components/statement-letterhead";
+export {
+  StatementEntityBox,
+  type StatementEntityBoxProps,
+} from "./components/statement-entity-box";
+export {
+  BalanceBadge,
+  type BalanceBadgeProps,
+  type BalanceMeta,
+  type BalanceStatus,
+} from "./components/balance-badge";
+export {
+  StatementToolbar,
+  type StatementToolbarProps,
+} from "./components/statement-toolbar";
+export {
+  StatementTable,
+  type StatementTableProps,
+  type StatementTableLabels,
+  type StatementTableRow,
+} from "./components/statement-table";
 
 // Utils
 export { cn } from "./lib/utils";

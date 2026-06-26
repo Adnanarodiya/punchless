@@ -4,16 +4,17 @@ import {
   getSupplierById,
   getSupplierStatement,
 } from "@/lib/queries/supplier.queries";
+import { getCompanyProfile } from "@/lib/queries/settings.queries";
+import {
+  getCurrentFinancialYearStartYear,
+  getFinancialYearRangeToDate,
+} from "@/lib/utils/financial-year";
 
 import { SupplierStatementManager } from "./statement-manager";
 
 function defaultDateRange() {
-  const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  return {
-    start: start.toISOString().slice(0, 10),
-    end: today.toISOString().slice(0, 10),
-  };
+  const range = getFinancialYearRangeToDate(getCurrentFinancialYearStartYear());
+  return { start: range.start, end: range.end };
 }
 
 export default async function SupplierStatementPage({
@@ -29,19 +30,21 @@ export default async function SupplierStatementPage({
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
-  const supplier = await getSupplierById(id);
-  if (!supplier) notFound();
+  const [supplier, company, statement] = await Promise.all([
+    getSupplierById(id),
+    getCompanyProfile(),
+    getSupplierStatement(id, startDate, endDate),
+  ]);
 
-  const statement = await getSupplierStatement(id, startDate, endDate);
+  if (!supplier || !company) notFound();
 
   return (
     <SupplierStatementManager
       supplier={supplier}
+      company={company}
       startDate={startDate}
       endDate={endDate}
-      openingBalance={statement.openingBalance}
-      closingBalance={statement.closingBalance}
-      lines={statement.lines}
+      statement={statement}
     />
   );
 }

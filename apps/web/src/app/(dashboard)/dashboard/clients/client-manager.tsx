@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   X,
@@ -11,7 +12,10 @@ import {
   Building2,
   Users,
   FileText,
+  Receipt,
 } from "lucide-react";
+
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
@@ -28,24 +32,53 @@ import {
   receiveClientPayment,
 } from "@/lib/actions/client.actions";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
+import { MaskedAmount } from "@/components/masked-amount";
+import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
+import { IconTooltip } from "@/components/icon-tooltip";
 
 interface Props {
   clients: ClientWithDue[];
   summary: { totalClients: number; totalDue: number };
+  initialClientId?: string;
+  initialOpen?: "pay" | "invoice";
 }
 
 type ViewFilter = "active" | "deleted";
 
 const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
 
-export function ClientManager({ clients, summary }: Props) {
+export function ClientManager({
+  clients,
+  summary,
+  initialClientId,
+  initialOpen,
+}: Props) {
+  const router = useRouter();
   const [mode, setMode] = useState<"list" | "add" | "edit">("list");
   const [editingClient, setEditingClient] = useState<ClientWithDue | null>(null);
   const [viewFilter, setViewFilter] = useState<ViewFilter>("active");
   const [paymentClient, setPaymentClient] = useState<ClientWithDue | null>(null);
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<FormData | null>(null);
+  const [confirmPayAmount, setConfirmPayAmount] = useState(0);
+
+  useEffect(() => {
+    if (!initialClientId) return;
+    const client = clients.find((c) => c.id === initialClientId && !c.is_deleted);
+    if (!client) return;
+
+    if (initialOpen === "pay") {
+      setPaymentClient(client);
+    } else if (initialOpen === "invoice") {
+      router.replace(`/dashboard/invoices?client=${client.id}&openForm=1`);
+      return;
+    }
+
+    router.replace("/dashboard/clients");
+  }, [initialClientId, initialOpen, clients, router]);
 
   const filteredClients = useMemo(() => {
     return clients.filter((client) =>
@@ -103,10 +136,34 @@ export function ClientManager({ clients, summary }: Props) {
     await execUpdate(formData);
   }
 
-  async function handlePayment(formData: FormData) {
+  async function submitPayment(formData: FormData) {
     if (!paymentClient) return;
     formData.set("clientId", paymentClient.id);
     await execPayment(formData);
+  }
+
+  function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!paymentClient || paying) return;
+
+    const formData = new FormData(event.currentTarget);
+    const amount = Number(formData.get("amount") || 0);
+
+    if (amount >= CLIENT_PAYMENT_CONFIRM_THRESHOLD) {
+      setPendingPayment(formData);
+      setConfirmPayAmount(amount);
+      setConfirmPayOpen(true);
+      return;
+    }
+
+    void submitPayment(formData);
+  }
+
+  async function confirmPayment() {
+    if (!pendingPayment) return;
+    await submitPayment(pendingPayment);
+    setConfirmPayOpen(false);
+    setPendingPayment(null);
   }
 
   return (
@@ -137,7 +194,9 @@ export function ClientManager({ clients, summary }: Props) {
               <Building2 className="size-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold">{formatCurrency(summary.totalDue)}</p>
+          <p className="text-3xl font-bold">
+            <MaskedAmount amount={summary.totalDue} />
+          </p>
         </div>
       </div>
 
@@ -276,27 +335,46 @@ export function ClientManager({ clients, summary }: Props) {
                   <div className="flex flex-wrap gap-1">
                     {viewFilter === "active" ? (
                       <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEdit(row)}
-                          title="Edit"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setPaymentClient(row)}
-                          title="Receive payment"
-                        >
-                          <IndianRupee className="size-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild title="Statement">
-                          <Link href={`/dashboard/clients/${row.id}/statement`}>
-                            <FileText className="size-3.5" />
-                          </Link>
-                        </Button>
+                        <IconTooltip label="Edit client">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEdit(row)}
+                            aria-label="Edit client"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label="Receive payment">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPaymentClient(row)}
+                            aria-label="Receive payment"
+                          >
+                            <IndianRupee className="size-3.5" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label="Create invoice">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link
+                              href={`/dashboard/invoices?client=${row.id}&openForm=1`}
+                              aria-label="Create invoice"
+                            >
+                              <Receipt className="size-3.5" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label="View statement">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link
+                              href={`/dashboard/clients/${row.id}/statement`}
+                              aria-label="View statement"
+                            >
+                              <FileText className="size-3.5" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
                         <DeleteConfirmButton
                           entityName={row.name}
                           entityType="client"
@@ -331,7 +409,7 @@ export function ClientManager({ clients, summary }: Props) {
         title={`Receive Payment — ${paymentClient?.name ?? ""}`}
       >
         {paymentClient ? (
-          <form action={handlePayment} className="space-y-4">
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Current due:{" "}
               <span className="font-medium text-foreground">
@@ -370,6 +448,20 @@ export function ClientManager({ clients, summary }: Props) {
           </form>
         ) : null}
       </Modal>
+
+      <ConfirmModal
+        open={confirmPayOpen}
+        onOpenChange={setConfirmPayOpen}
+        title="Confirm client payment"
+        description={
+          paymentClient
+            ? `Record payment of ${formatCurrency(confirmPayAmount)} from ${paymentClient.name}?`
+            : undefined
+        }
+        confirmText="Record payment"
+        onConfirm={() => void confirmPayment()}
+        loading={paying}
+      />
     </div>
   );
 }

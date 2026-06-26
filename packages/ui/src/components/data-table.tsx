@@ -18,8 +18,9 @@ export interface DataTableProps<T> {
   data: T[];
   searchPlaceholder?: string;
   searchFilter?: (row: T, query: string) => boolean;
-  emptyMessage?: string;
+  emptyMessage?: React.ReactNode;
   enableSearch?: boolean;
+  stickyFirstColumn?: boolean;
   className?: string;
   getRowKey: (row: T) => string;
 }
@@ -31,6 +32,7 @@ export function DataTable<T>({
   searchFilter,
   emptyMessage = "No records found.",
   enableSearch = false,
+  stickyFirstColumn = false,
   className,
   getRowKey,
 }: DataTableProps<T>) {
@@ -61,12 +63,15 @@ export function DataTable<T>({
         <table className="w-full min-w-[480px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
-              {columns.map((column) => (
+              {columns.map((column, index) => (
                 <th
                   key={column.key}
                   scope="col"
                   className={cn(
                     "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground",
+                    stickyFirstColumn &&
+                      index === 0 &&
+                      "sticky left-0 z-[2] border-r border-border bg-muted/40",
                     column.headerClassName
                   )}
                 >
@@ -89,12 +94,18 @@ export function DataTable<T>({
               filteredData.map((row) => (
                 <tr
                   key={getRowKey(row)}
-                  className="border-b border-border last:border-0 hover:bg-muted/30"
+                  className="group border-b border-border last:border-0 hover:bg-muted/30"
                 >
-                  {columns.map((column) => (
+                  {columns.map((column, index) => (
                     <td
                       key={column.key}
-                      className={cn("px-4 py-3 text-foreground", column.className)}
+                      className={cn(
+                        "px-4 py-3 text-foreground",
+                        stickyFirstColumn &&
+                          index === 0 &&
+                          "sticky left-0 z-[1] border-r border-border bg-card group-hover:bg-muted/30",
+                        column.className
+                      )}
                     >
                       {column.cell(row)}
                     </td>

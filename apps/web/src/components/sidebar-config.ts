@@ -18,7 +18,7 @@ import {
   ArrowLeftRight,
   Landmark,
   Banknote,
-
+  PiggyBank,
   BarChart3,
   ScrollText,
   Shield,
@@ -169,7 +169,12 @@ export const navGroups: NavGroup[] = [
         icon: Banknote,
         roles: ["owner", "admin"],
       },
-
+      {
+        label: "Deposits",
+        href: "/dashboard/salary/deposits",
+        icon: PiggyBank,
+        roles: ["owner", "admin"],
+      },
       {
         label: "Advances",
         href: "/dashboard/advances",
@@ -185,30 +190,6 @@ export const navGroups: NavGroup[] = [
         label: "All Reports",
         href: "/dashboard/reports",
         icon: BarChart3,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "Daily",
-        href: "/dashboard/reports/daily",
-        icon: BarChart3,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "Monthly",
-        href: "/dashboard/reports/monthly",
-        icon: BarChart3,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "GST",
-        href: "/dashboard/reports/gst",
-        icon: FileText,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "Rojmel",
-        href: "/dashboard/reports/rojmel",
-        icon: ScrollText,
         roles: ["owner", "admin"],
       },
     ],
@@ -245,6 +226,7 @@ export const navGroups: NavGroup[] = [
         href: "/dashboard/billing",
         icon: CreditCard,
         roles: ["owner"],
+        comingSoon: true,
       },
     ],
   },

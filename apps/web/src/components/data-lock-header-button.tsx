@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
+import { Lock, Unlock } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 
 import { verifyDataLockPinAction } from "@/lib/actions/settings.actions";
-import { useDataLockStore } from "@/lib/stores/data-lock.store";
+import { useDataLockStore, useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { useAction } from "@/hooks/use-action";
 
-interface Props {
-  hasDataLockPin: boolean;
-}
-
-export function DashboardDataLockControls({ hasDataLockPin }: Props) {
+/** Compact lock/unlock control for the dashboard header (all pages). */
+export function DataLockHeaderButton() {
+  const hasPin = useDataLockStore((s) => s.hasPin);
   const { isUnlocked, unlock, lock } = useDataLockStore();
+  const locked = useFinancialLocked();
   const [unlockOpen, setUnlockOpen] = useState(false);
   const [pin, setPin] = useState("");
 
@@ -28,19 +27,7 @@ export function DashboardDataLockControls({ hasDataLockPin }: Props) {
     },
   });
 
-  if (!hasDataLockPin) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        Set a data lock PIN in{" "}
-        <a href="/dashboard/settings" className="text-primary hover:underline">
-          Settings
-        </a>{" "}
-        to hide financial figures on shared PCs.
-      </p>
-    );
-  }
-
-  const locked = !isUnlocked;
+  if (!hasPin) return null;
 
   async function handleUnlock(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,37 +38,16 @@ export function DashboardDataLockControls({ hasDataLockPin }: Props) {
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        {locked ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setUnlockOpen(true)}
-          >
-            <Unlock className="size-4" />
-            Unlock financials
-          </Button>
-        ) : (
-          <Button type="button" variant="outline" size="sm" onClick={lock}>
-            <Lock className="size-4" />
-            Lock financials
-          </Button>
-        )}
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          {locked ? (
-            <>
-              <EyeOff className="size-3.5" />
-              Hidden
-            </>
-          ) : (
-            <>
-              <Eye className="size-3.5" />
-              Visible
-            </>
-          )}
-        </span>
-      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={() => (isUnlocked ? lock() : setUnlockOpen(true))}
+        title={locked ? "Unlock financial amounts" : "Lock financial amounts"}
+        aria-label={locked ? "Unlock financial amounts" : "Lock financial amounts"}
+      >
+        {locked ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+      </Button>
 
       <Modal
         open={unlockOpen}
@@ -90,7 +56,7 @@ export function DashboardDataLockControls({ hasDataLockPin }: Props) {
       >
         <form onSubmit={handleUnlock} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Enter your company data lock PIN to show financial amounts across the dashboard.
+            Enter your data lock PIN to show amounts across the dashboard.
           </p>
           <input
             type="password"

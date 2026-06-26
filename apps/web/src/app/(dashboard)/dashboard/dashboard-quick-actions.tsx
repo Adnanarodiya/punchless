@@ -4,6 +4,7 @@ import {
   Briefcase,
   Clock,
   DollarSign,
+  Banknote,
   FileEdit,
   Wallet,
   MapPin,
@@ -145,6 +146,15 @@ const quickActions: QuickAction[] = [
     iconClass: "text-success",
     bgClass: "bg-success/15 group-hover:bg-success/25",
     borderClass: "hover:border-success/40",
+  },
+  {
+    label: "Payments",
+    description: "Pay staff salary & advances",
+    href: "/dashboard/salary/payments",
+    icon: Banknote,
+    iconClass: "text-primary",
+    bgClass: "bg-primary/15 group-hover:bg-primary/25",
+    borderClass: "hover:border-primary/40",
   },
   {
     label: "Advances",

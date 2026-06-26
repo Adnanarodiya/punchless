@@ -2,104 +2,119 @@
 
 ## Overview
 
-The web dashboard is used by **Owners** and **Admins** to manage everything.
+The web dashboard is the **owner/admin control centre** for Punchless — workshop attendance, payroll, commerce (clients/suppliers/invoices), finance, and reports in one app.
 
-**Tech:** Next.js (App Router), TypeScript, Tailwind CSS, Supabase JS Client
+**Tech:** Next.js App Router, TypeScript, Tailwind CSS v4, Supabase, Zustand, `@punchless/ui` (shadcn-style components)
 
----
-
-## Page Structure
-
-```
-apps/web/
-├── app/
-│   ├── (auth)/
-│   │   ├── login/page.tsx
-│   │   ├── signup/page.tsx
-│   │   └── layout.tsx
-│   │
-│   ├── (dashboard)/
-│   │   ├── layout.tsx              ← Sidebar + Header
-│   │   ├── page.tsx                ← Dashboard Home / Overview
-│   │   │
-│   │   ├── employees/
-│   │   │   ├── page.tsx            ← Employee list
-│   │   │   ├── [id]/page.tsx       ← Employee detail
-│   │   │   └── new/page.tsx        ← Add employee
-│   │   │
-│   │   ├── attendance/
-│   │   │   ├── page.tsx            ← Live attendance view
-│   │   │   └── history/page.tsx    ← Attendance history
-│   │   │
-│   │   ├── workshops/
-│   │   │   ├── page.tsx            ← Workshop list
-│   │   │   └── new/page.tsx        ← Add workshop (with map)
-│   │   │
-│   │   ├── jobs/
-│   │   │   ├── page.tsx            ← Job list
-│   │   │   ├── [id]/page.tsx       ← Job detail
-│   │   │   └── new/page.tsx        ← Create job
-│   │   │
-│   │   ├── salary/
-│   │   │   ├── page.tsx            ← Salary overview
-│   │   │   └── [employeeId]/page.tsx ← Employee salary detail
-│   │   │
-│   │   ├── advances/
-│   │   │   └── page.tsx            ← Advance requests (approve/reject)
-│   │   │
-│   │   ├── billing/                ← Phase 10 ONLY
-│   │   │   └── page.tsx
-│   │   │
-│   │   └── settings/
-│   │       └── page.tsx            ← Company settings
-│   │
-│   ├── layout.tsx
-│   └── globals.css
-```
+**Roles:** `owner` and `admin` only. Employees use the mobile app.
 
 ---
 
-## Key Pages & Features
+## Shell & Global UX
 
-### Dashboard Home
-- Total employees (active/inactive)
-- Today's attendance summary (present, absent, on-job)
-- Pending advance requests count
-- Quick actions (add employee, create job)
+| Feature | Location | Notes |
+|---------|----------|-------|
+| Sidebar | `components/sidebar.tsx` + `sidebar-config.ts` | Grouped nav, mobile drawer |
+| Header | `components/dashboard-header.tsx` | Learn, Cmd+K search, data lock, user menu |
+| Page titles | `components/page-header.tsx` | Title + description + `?` Learn link |
+| Data lock | `data-lock.store.ts` + header button | Masks financial amounts; auto-locks after 5 min idle |
+| Global search | `components/global-search.tsx` | Ctrl+K — clients, suppliers, employees, jobs, invoices |
+| Learn | `/dashboard/learn` | 23 modules with testing guides |
 
-### Employee Management
-- List with search & filter (active/inactive, role)
-- Add new employee (name, email, phone, role, rates)
-- Edit employee details
-- Deactivate employee (don't delete — affects billing & history)
+---
 
-### Attendance
-- **Live View:** Real-time status of each employee (workshop/travel/on-site/off-duty)
-- **History:** Date-range filter, per-employee breakdown
-- Daily summary: hours at workshop, travel, on-site, overtime
+## Route Map (44 pages)
 
-### Workshop Management
-- Add workshop with map picker (Google Maps or Leaflet)
-- Set geofence radius (drag to adjust)
-- Edit/deactivate workshops
+### Overview
+| Route | Purpose |
+|-------|---------|
+| `/dashboard` | Financial HQ + operations stats, setup checklist, quick actions |
+| `/dashboard/learn` | In-app documentation browser |
 
-### Job Management
-- Create job: title, description, customer info, location (map picker)
-- Assign to employee
-- Track status: pending → assigned → in_progress → completed
-- View timeline of job (travel start, arrival, completion)
+### People
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/employees` | Employee CRUD, invite, workshop assignment |
+| `/dashboard/employees/[id]/statement` | Staff ledger (deposits, payments, advances) |
+| `/dashboard/posts` | Job titles / roles (Mechanic, Supervisor, etc.) |
+| `/dashboard/workshops` | Workshop locations with map geofence |
 
-### Salary Reports
-- Monthly summary per employee
-- Breakdown: workshop hours, travel hours, on-site hours, overtime
-- Gross pay calculation
-- Advance deductions
-- Net pay
+### Operations
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/attendance` | Live sessions, today, bulk mark, print sheet |
+| `/dashboard/history` | Employee summary + all sessions, CSV export |
+| `/dashboard/requests` | Correction requests (approve/reject) |
+| `/dashboard/jobs` | Job CRUD, map location, assignment, status |
 
-### Advance Requests
-- List of pending requests
-- Approve/reject with notes
-- History of all advance requests
+### Commerce
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/clients` | Client CRM, payments, commerce flow panel |
+| `/dashboard/clients/[id]/statement` | Client ledger (print) |
+| `/dashboard/suppliers` | Supplier CRM, payables |
+| `/dashboard/suppliers/[id]/statement` | Supplier ledger (print) |
+| `/dashboard/invoices` | GST tax invoices, split payment |
+| `/dashboard/invoices/[id]` | Invoice detail |
+| `/dashboard/invoices/[id]/print` | Printable tax invoice |
+| `/dashboard/purchases` | Purchase/sales invoices from suppliers |
+
+### Finance
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/transactions` | Income & expense entries (particular-wise) |
+| `/dashboard/banks` | Bank accounts |
+| `/dashboard/banks/transactions` | Deposits & withdrawals per bank |
+| `/dashboard/banks/transfer` | Inter-bank transfers |
+| `/dashboard/banks/[id]/statement` | Bank ledger statement |
+
+### Payroll
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/salary` | Monthly salary report, export CSV/Excel, Pay links |
+| `/dashboard/salary/payments` | Staff payments (salary paid, advance, deduction) |
+| `/dashboard/salary/deposits` | Salary accrual deposits |
+| `/dashboard/advances` | Advance requests approve/reject |
+
+### Reports
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/reports` | Reports hub (8 report types) |
+| `/dashboard/reports/daily` | Daily summary |
+| `/dashboard/reports/monthly` | Monthly P&L |
+| `/dashboard/reports/yearly` | Calendar year (not Indian FY) |
+| `/dashboard/reports/gst` | GST slab summary |
+| `/dashboard/reports/invoices` | Invoice list report |
+| `/dashboard/reports/income-expense` | Particular-wise income/expense |
+| `/dashboard/reports/expenses` | Expense-only report |
+| `/dashboard/reports/rojmel` | Full ledger with running balance |
+
+### Account (owner-heavy)
+| Route | Purpose |
+|-------|---------|
+| `/dashboard/settings` | Company profile, work schedule, salary mode, data lock PIN |
+| `/dashboard/settings/users` | Invite/deactivate admin users (owner) |
+| `/dashboard/settings/password` | Change password |
+| `/dashboard/audit-log` | Audit trail with CSV export (owner) |
+| `/dashboard/billing` | Placeholder — Stripe Phase 10 (marked Soon in nav) |
+
+---
+
+## Key Concepts
+
+### Indian Financial Year (FY)
+Dashboard home uses **Indian FY (1 Apr – 31 Mar)**. The **Yearly report** uses **calendar year (Jan – Dec)** — labels explain the difference.
+
+### Data Lock
+Owners set a PIN in Settings. When locked, currency amounts show as masked across dashboard, clients, banks, salary, etc. Unlocks from the header; **auto-locks after 5 minutes** of inactivity.
+
+### Money Flow Paths
+
+**Clients (receivables):** Add client → Invoice → Receive payment → Statement
+
+**Payroll:** Attendance + History → Fix Requests → Salary report → Payments (and Advances)
+
+**Suppliers (payables):** Add supplier → Purchase invoice → Pay supplier → Statement
 
 ---
 
@@ -107,26 +122,35 @@ apps/web/
 
 ```
 middleware.ts → Check Supabase session
-  │
   ├── No session → redirect to /login
-  ├── Has session, role = employee → redirect to "use mobile app" page
-  └── Has session, role = owner/admin → allow dashboard access
+  ├── role = employee → redirect (use mobile app)
+  └── role = owner/admin → allow /dashboard/*
 ```
 
 ---
 
-## Role-Based UI
+## Role-Based Access
 
-| Feature | Owner | Admin | Employee |
-|---------|-------|-------|----------|
-| Dashboard | ✅ | ✅ | ❌ |
-| Employees | ✅ | ✅ | ❌ |
-| Attendance | ✅ | ✅ | ❌ |
-| Jobs | ✅ | ✅ | ❌ |
-| Salary | ✅ | ✅ (view only) | ❌ |
-| Advances | ✅ | ✅ | ❌ |
-| Billing | ✅ | ❌ | ❌ |
-| Settings | ✅ | ❌ | ❌ |
+| Area | Owner | Admin |
+|------|-------|-------|
+| Dashboard, Learn, People, Operations, Commerce, Finance, Payroll, Reports | ✅ | ✅ |
+| Settings, Users, Audit Log | ✅ | ❌ |
+| Password | ✅ | ✅ |
+| Billing (soon) | ✅ (placeholder) | ❌ |
+
+---
+
+## File Organization (`apps/web/src/`)
+
+```
+app/(dashboard)/dashboard/     ← One folder per feature/page
+components/                    ← App-specific layout (sidebar, shell, panels)
+lib/actions/                   ← Server actions (write) — one file per feature
+lib/queries/                   ← Data fetching (read) — one file per feature
+lib/stores/                    ← Zustand (data lock, navigation)
+lib/content/                   ← Learn module content
+packages/ui/                   ← Shared UI primitives (Button, DataTable, Tooltip, etc.)
+```
 
 ---
 
@@ -134,4 +158,7 @@ middleware.ts → Check Supabase session
 
 - Architecture → `02_ARCHITECTURE.md`
 - Database → `05_DATABASE_SCHEMA.md`
-- Build phases → `04_BUILD_PHASES.md`
+- Attendance engine → `06_ATTENDANCE_ENGINE.md`
+- Salary → `08_SALARY_CALCULATION.md`
+- Theming → `11_THEMING_AND_COLORS.md`
+- Statement UI → `12_STATEMENT_UI_PLAN.md`

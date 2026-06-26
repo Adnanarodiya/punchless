@@ -1,10 +1,9 @@
 import { getHistorySessions, getEmployeeSummaries } from "@/lib/queries/history.queries";
 import { getEmployees } from "@/lib/queries/employee.queries";
-import { DashboardPageTitle } from "@/components/dashboard-page-title";
+import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { HistoryManager } from "./history-manager";
 
 export default async function HistoryPage() {
-  // Default: today's data
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
@@ -18,7 +17,10 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageTitle title="History" />
+      <DashboardPageHeader
+        title="History"
+        description="Past attendance by employee or session — review and export CSV before running monthly salary."
+      />
       <HistoryManager
         initialSessions={sessions}
         initialSummaries={summaries}

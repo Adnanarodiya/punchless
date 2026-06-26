@@ -31,12 +31,13 @@ export default async function YearlyReportPage({
   return (
     <ReportLayout
       title="Yearly Report"
-      description="Month-by-month income vs expense for the calendar year."
+      description="Month-by-month income vs expense for the calendar year (January–December)."
       basePath="/dashboard/reports/yearly"
       period={period}
       periodMode="year"
       exportRows={exportRows}
       exportFilename={`yearly-report-${year}`}
+      periodNotice="This report uses the calendar year (Jan–Dec). The dashboard financial overview uses the Indian financial year (1 Apr – 31 Mar). Numbers may differ between the two."
     >
       <ReportSummaryGrid
         items={[

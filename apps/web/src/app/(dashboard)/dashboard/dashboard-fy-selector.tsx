@@ -30,9 +30,10 @@ export function DashboardFySelector({ options, selectedFy }: Props) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="sr-only">Financial year</span>
-      <select
+    <div className="flex flex-col items-end gap-0.5">
+      <label className="flex items-center gap-2 text-sm">
+        <span className="text-xs text-muted-foreground">Indian FY</span>
+        <select
         value={String(selectedFy)}
         onChange={(e) => setFy(Number(e.target.value))}
         className={cn(
@@ -46,7 +47,9 @@ export function DashboardFySelector({ options, selectedFy }: Props) {
             {opt.label}
           </option>
         ))}
-      </select>
-    </label>
+        </select>
+      </label>
+      <p className="text-[10px] text-muted-foreground">1 Apr – 31 Mar</p>
+    </div>
   );
 }

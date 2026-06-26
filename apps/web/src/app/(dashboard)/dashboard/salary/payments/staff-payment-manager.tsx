@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Plus } from "lucide-react";
@@ -18,9 +18,12 @@ import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { EmployeeSalaryPayable } from "@/lib/queries/salary.queries";
 import type { StaffPaymentWithDetails } from "@/lib/queries/staff-payment.queries";
+import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency, formatDate, formatMonthYear } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
+import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import { toast } from "sonner";
 
 interface Props {
@@ -74,6 +77,8 @@ export function StaffPaymentManager({
   const [payable, setPayable] = useState<EmployeeSalaryPayable | null>(initialPayable);
   const [loadingPayable, setLoadingPayable] = useState(false);
   const [amountTouched, setAmountTouched] = useState(false);
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
 
   const filterEmployeeId = initialEmployeeId || undefined;
   const filterEmployeeName = employees.find((e) => e.id === filterEmployeeId)?.full_name;
@@ -187,7 +192,24 @@ export function StaffPaymentManager({
       formData.set("paymentMode", paymentMode);
     }
 
+    const amountNum = parseFloat(amount) || 0;
+    const needsConfirm =
+      paymentType === "salary_paid" || amountNum >= CLIENT_PAYMENT_CONFIRM_THRESHOLD;
+
+    if (needsConfirm) {
+      setPendingFormData(formData);
+      setConfirmPayOpen(true);
+      return;
+    }
+
     await execCreate(formData);
+  }
+
+  async function confirmPayment() {
+    if (!pendingFormData) return;
+    await execCreate(pendingFormData);
+    setConfirmPayOpen(false);
+    setPendingFormData(null);
   }
 
   function handleEmployeeChange(employeeId: string) {
@@ -229,8 +251,14 @@ export function StaffPaymentManager({
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryCard label="Total paid out" value={formatCurrency(summary.totalPaid)} />
-        <SummaryCard label="Total deductions" value={formatCurrency(summary.totalDeductions)} />
+        <SummaryCard
+          label="Total paid out"
+          value={<MaskedAmount amount={summary.totalPaid} />}
+        />
+        <SummaryCard
+          label="Total deductions"
+          value={<MaskedAmount amount={summary.totalDeductions} />}
+        />
         <SummaryCard label="Entries" value={String(summary.count)} />
       </div>
 
@@ -567,11 +595,24 @@ export function StaffPaymentManager({
           ]}
         />
       </div>
+      <ConfirmModal
+        open={confirmPayOpen}
+        onOpenChange={setConfirmPayOpen}
+        title="Confirm staff payment"
+        description={
+          selectedEmployeeName
+            ? `Pay ${formatCurrency(parseFloat(amount) || 0)} to ${selectedEmployeeName} (${typeLabels[paymentType] ?? paymentType})?`
+            : undefined
+        }
+        confirmText="Confirm payment"
+        onConfirm={() => void confirmPayment()}
+        loading={creating}
+      />
     </div>
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>

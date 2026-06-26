@@ -138,7 +138,7 @@ export function GlobalSearch({ open, onOpenChange }: Props) {
               const meta = TYPE_META[item.type];
               const Icon = meta.icon;
               return (
-                <li key={`${item.type}-${item.id}`}>
+                <li key={item.id}>
                   <button
                     type="button"
                     onClick={() => navigate(item)}

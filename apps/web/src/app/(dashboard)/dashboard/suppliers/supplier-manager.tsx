@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   X,
@@ -28,26 +29,55 @@ import {
   paySupplier,
 } from "@/lib/actions/supplier.actions";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
+import { MaskedAmount } from "@/components/masked-amount";
+import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
+import { IconTooltip } from "@/components/icon-tooltip";
 
 interface Props {
   suppliers: SupplierWithPayable[];
   summary: { totalSuppliers: number; totalPayable: number };
+  initialSupplierId?: string;
+  initialOpen?: "pay";
 }
 
 type ViewFilter = "active" | "deleted";
 
 const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
 
-export function SupplierManager({ suppliers, summary }: Props) {
+export function SupplierManager({
+  suppliers,
+  summary,
+  initialSupplierId,
+  initialOpen,
+}: Props) {
+  const router = useRouter();
   const [mode, setMode] = useState<"list" | "add" | "edit">("list");
   const [editingSupplier, setEditingSupplier] =
     useState<SupplierWithPayable | null>(null);
   const [viewFilter, setViewFilter] = useState<ViewFilter>("active");
   const [paymentSupplier, setPaymentSupplier] =
     useState<SupplierWithPayable | null>(null);
+  const [confirmPayOpen, setConfirmPayOpen] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<FormData | null>(null);
+  const [confirmPayAmount, setConfirmPayAmount] = useState(0);
+
+  useEffect(() => {
+    if (!initialSupplierId) return;
+    const supplier = suppliers.find(
+      (s) => s.id === initialSupplierId && !s.is_deleted
+    );
+    if (!supplier) return;
+
+    if (initialOpen === "pay") {
+      setPaymentSupplier(supplier);
+    }
+
+    router.replace("/dashboard/suppliers");
+  }, [initialSupplierId, initialOpen, suppliers, router]);
 
   const filteredSuppliers = useMemo(() => {
     return suppliers.filter((s) =>
@@ -77,6 +107,36 @@ export function SupplierManager({ suppliers, summary }: Props) {
     onSuccess: () => setPaymentSupplier(null),
   });
 
+  async function submitPayment(formData: FormData) {
+    if (!paymentSupplier) return;
+    formData.set("supplierId", paymentSupplier.id);
+    await execPayment(formData);
+  }
+
+  function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!paymentSupplier || paying) return;
+
+    const formData = new FormData(event.currentTarget);
+    const amount = Number(formData.get("amount") || 0);
+
+    if (amount >= CLIENT_PAYMENT_CONFIRM_THRESHOLD) {
+      setPendingPayment(formData);
+      setConfirmPayAmount(amount);
+      setConfirmPayOpen(true);
+      return;
+    }
+
+    void submitPayment(formData);
+  }
+
+  async function confirmPayment() {
+    if (!pendingPayment) return;
+    await submitPayment(pendingPayment);
+    setConfirmPayOpen(false);
+    setPendingPayment(null);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -105,7 +165,9 @@ export function SupplierManager({ suppliers, summary }: Props) {
               <Truck className="size-4" />
             </div>
           </div>
-          <p className="text-3xl font-bold">{formatCurrency(summary.totalPayable)}</p>
+          <p className="text-3xl font-bold">
+            <MaskedAmount amount={summary.totalPayable} />
+          </p>
         </div>
       </div>
 
@@ -196,17 +258,36 @@ export function SupplierManager({ suppliers, summary }: Props) {
                   <div className="flex flex-wrap gap-1">
                     {viewFilter === "active" ? (
                       <>
-                        <Button variant="ghost" size="sm" onClick={() => { setMode("edit"); setEditingSupplier(row); }} title="Edit">
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setPaymentSupplier(row)} title="Pay now">
-                          <IndianRupee className="size-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild title="Statement">
-                          <Link href={`/dashboard/suppliers/${row.id}/statement`}>
-                            <FileText className="size-3.5" />
-                          </Link>
-                        </Button>
+                        <IconTooltip label="Edit supplier">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setMode("edit"); setEditingSupplier(row); }}
+                            aria-label="Edit supplier"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label="Pay supplier">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPaymentSupplier(row)}
+                            aria-label="Pay supplier"
+                          >
+                            <IndianRupee className="size-3.5" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label="View statement">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link
+                              href={`/dashboard/suppliers/${row.id}/statement`}
+                              aria-label="View statement"
+                            >
+                              <FileText className="size-3.5" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
                         <DeleteConfirmButton
                           entityName={row.name}
                           entityType="supplier"
@@ -241,7 +322,7 @@ export function SupplierManager({ suppliers, summary }: Props) {
         title={`Pay Now — ${paymentSupplier?.name ?? ""}`}
       >
         {paymentSupplier ? (
-          <form action={async (fd) => { fd.set("supplierId", paymentSupplier.id); await execPayment(fd); }} className="space-y-4">
+          <form onSubmit={handlePaymentSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Current payable:{" "}
               <span className="font-medium text-foreground">{formatCurrency(paymentSupplier.payable_amount)}</span>
@@ -259,6 +340,20 @@ export function SupplierManager({ suppliers, summary }: Props) {
           </form>
         ) : null}
       </Modal>
+
+      <ConfirmModal
+        open={confirmPayOpen}
+        onOpenChange={setConfirmPayOpen}
+        title="Confirm supplier payment"
+        description={
+          paymentSupplier
+            ? `Pay ${formatCurrency(confirmPayAmount)} to ${paymentSupplier.name}?`
+            : undefined
+        }
+        confirmText="Confirm payment"
+        onConfirm={() => void confirmPayment()}
+        loading={paying}
+      />
     </div>
   );
 }

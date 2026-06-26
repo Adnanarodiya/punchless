@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 
@@ -11,6 +11,7 @@ import { DataTable } from "@punchless/ui/components/data-table";
 import { createTransaction, deleteTransaction } from "@/lib/actions/transaction.actions";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { TransactionWithDetails } from "@/lib/queries/transaction.queries";
+import { MaskedAmount, MaskedAmountText } from "@/components/masked-amount";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
@@ -93,17 +94,33 @@ export function TransactionManager({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <SummaryCard
           label="Total Income"
-          value={formatCurrency(summary.totalIncome)}
-          hint={`Cash ${formatCurrency(summary.cashIncome)} · Bank ${formatCurrency(summary.bankIncome)}`}
+          value={<MaskedAmount amount={summary.totalIncome} className="text-2xl font-bold" />}
+          hint={
+            <MaskedHint
+              cash={summary.cashIncome}
+              bank={summary.bankIncome}
+            />
+          }
         />
         <SummaryCard
           label="Total Expense"
-          value={formatCurrency(summary.totalExpense)}
-          hint={`Cash ${formatCurrency(summary.cashExpense)} · Bank ${formatCurrency(summary.bankExpense)}`}
+          value={<MaskedAmount amount={summary.totalExpense} className="text-2xl font-bold" />}
+          hint={
+            <MaskedHint
+              cash={summary.cashExpense}
+              bank={summary.bankExpense}
+            />
+          }
         />
         <SummaryCard
           label="Net (Income − Expense)"
-          value={formatNetAmount(summary.netBalance)}
+          value={
+            <MaskedAmount
+              amount={summary.netBalance}
+              format={formatNetAmount}
+              className="text-2xl font-bold"
+            />
+          }
           hint="Business result only — bank balance is on Banks page"
         />
       </div>
@@ -293,19 +310,27 @@ function formatNetAmount(amount: number) {
   return formatCurrency(amount);
 }
 
+function MaskedHint({ cash, bank }: { cash: number; bank: number }) {
+  return (
+    <span>
+      Cash <MaskedAmountText amount={cash} /> · Bank <MaskedAmountText amount={bank} />
+    </span>
+  );
+}
+
 function SummaryCard({
   label,
   value,
   hint,
 }: {
   label: string;
-  value: string;
-  hint?: string;
+  value: ReactNode;
+  hint?: ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <div className="mt-1">{value}</div>
       {hint ? (
         <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       ) : null}

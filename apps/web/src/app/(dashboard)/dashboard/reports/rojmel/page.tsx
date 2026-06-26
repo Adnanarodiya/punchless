@@ -32,7 +32,8 @@ export default async function RojmelReportPage({
   return (
     <ReportLayout
       title="Rojmel Report"
-      description="Full company ledger with running balance (Gujarati-style Rojmel)."
+      description="Daily cash book — every income and expense with a running balance (traditional Rojmel ledger)."
+      periodNotice="Rojmel lists all ledger movements in date order. For particular-wise totals only, use Income / Expense report. For bank account balances, use Finance → Banks."
       basePath="/dashboard/reports/rojmel"
       period={period}
       exportRows={exportRows}

@@ -27,6 +27,7 @@ import type { JobWithDetails } from "@/lib/queries/job.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
+import { InfoHint } from "@/components/info-hint";
 
 const GST_SLABS = [0, 5, 12, 18, 28] as const;
 
@@ -61,6 +62,7 @@ export function InvoiceManager({
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("credit");
   const [cashAmount, setCashAmount] = useState("");
   const [bankAmount, setBankAmount] = useState("");
+  const [formClientId, setFormClientId] = useState("");
 
   const preview = useMemo(() => {
     const taxable = parseFloat(taxableAmount) || 0;
@@ -113,11 +115,13 @@ export function InvoiceManager({
     setPaymentMode("credit");
     setCashAmount("");
     setBankAmount("");
+    setFormClientId("");
   }
 
-  function openAdd() {
+  function openAdd(clientId?: string) {
     setEditingInvoice(null);
     resetForm();
+    if (clientId) setFormClientId(clientId);
     setShowForm(true);
   }
 
@@ -133,11 +137,18 @@ export function InvoiceManager({
 
   useEffect(() => {
     const invoiceId = searchParams.get("invoice");
-    if (!invoiceId) return;
-    const invoice = invoices.find((row) => row.id === invoiceId);
-    if (!invoice) return;
-    openEdit(invoice);
-  }, [searchParams, invoices]);
+    if (invoiceId) {
+      const invoice = invoices.find((row) => row.id === invoiceId);
+      if (invoice) openEdit(invoice);
+      return;
+    }
+
+    const clientId = searchParams.get("client");
+    const openForm = searchParams.get("openForm");
+    if (clientId && openForm === "1" && clients.some((c) => c.id === clientId)) {
+      openAdd(clientId);
+    }
+  }, [searchParams, invoices, clients]);
 
   return (
     <div className="space-y-6">
@@ -145,7 +156,7 @@ export function InvoiceManager({
         title="Tax Invoices"
         description="GST tax invoices for clients — cash, bank, credit, or split payment."
       >
-        <Button onClick={openAdd}>
+        <Button onClick={() => openAdd()}>
           <Plus className="size-4" /> New Invoice
         </Button>
       </PageHeader>
@@ -169,7 +180,12 @@ export function InvoiceManager({
           >
             <div>
               <label htmlFor="clientId" className="mb-1 block text-sm font-medium">Client</label>
-              <select id="clientId" name="clientId" required defaultValue={editingInvoice?.client_id ?? ""}
+              <select
+                id="clientId"
+                name="clientId"
+                required
+                value={editingInvoice?.client_id ?? formClientId}
+                onChange={(e) => setFormClientId(e.target.value)}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
                 <option value="" disabled>Select client</option>
                 {clients.map((c) => (
@@ -244,6 +260,14 @@ export function InvoiceManager({
             )}
 
             <Field label="Remark" name="remark" defaultValue={editingInvoice?.remark ?? ""} className="md:col-span-2" />
+
+            <div className="md:col-span-2">
+              <InfoHint title="Payment modes">
+                <strong>Cash / Bank</strong> — customer paid now; counts as income today.{" "}
+                <strong>Credit</strong> — customer pays later; adds to their due on Clients.{" "}
+                <strong>Split</strong> — part cash, part bank; extra amount can clear older client dues.
+              </InfoHint>
+            </div>
 
             <div className="rounded-lg border border-border bg-muted/30 p-4 md:col-span-2">
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">

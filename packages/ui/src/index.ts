@@ -51,6 +51,12 @@ export {
 } from "./components/collapsible-nav-group";
 export { DataTable, type DataTableProps, type DataTableColumn } from "./components/data-table";
 export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "./components/tooltip";
+export {
   PaymentModeSelect,
   PAYMENT_MODES,
   type PaymentMode,

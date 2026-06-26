@@ -30,7 +30,7 @@ export default async function IncomeExpenseReportPage({
   return (
     <ReportLayout
       title="Income / Expense Report"
-      description="Particular-wise breakdown from Income & Expense transactions."
+      description="Particular-wise totals from Finance → Income & Expense — not the same as bank balances or the full Rojmel ledger."
       basePath="/dashboard/reports/income-expense"
       period={period}
       exportRows={exportRows}

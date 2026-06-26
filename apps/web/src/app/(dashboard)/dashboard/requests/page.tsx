@@ -1,5 +1,5 @@
 import { getCorrectionRequests } from "@/lib/queries/correction.queries";
-import { DashboardPageTitle } from "@/components/dashboard-page-title";
+import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { RequestsManager } from "./requests-manager";
 
 export default async function RequestsPage() {
@@ -7,7 +7,10 @@ export default async function RequestsPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageTitle title="Correction Requests" />
+      <DashboardPageHeader
+        title="Correction Requests"
+        description="Staff ask to fix wrong hours — approve or reject before you run monthly payroll."
+      />
       <RequestsManager initialRequests={requests} />
     </div>
   );

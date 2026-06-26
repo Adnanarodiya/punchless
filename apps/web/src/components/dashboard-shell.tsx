@@ -9,11 +9,15 @@ import {
   useGlobalSearchShortcut,
 } from "@/components/global-search";
 import { PageNavigationLoader } from "@/components/page-navigation-loader";
+import { useDataLockIdle } from "@/hooks/use-data-lock-idle";
+import { useDataLockStore } from "@/lib/stores/data-lock.store";
+import { TooltipProvider } from "@punchless/ui/components/tooltip";
 
 interface DashboardShellProps {
   role: string;
   userName: string;
   companyName: string;
+  hasDataLockPin: boolean;
   children: React.ReactNode;
 }
 
@@ -21,15 +25,27 @@ export function DashboardShell({
   role,
   userName,
   companyName,
+  hasDataLockPin,
   children,
 }: DashboardShellProps) {
+  const setHasPin = React.useCallback(
+    (pin: boolean) => useDataLockStore.getState().setHasPin(pin),
+    []
+  );
+
+  React.useEffect(() => {
+    setHasPin(hasDataLockPin);
+  }, [hasDataLockPin, setHasPin]);
+
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   const openSearch = React.useCallback(() => setSearchOpen(true), []);
   useGlobalSearchShortcut(openSearch);
+  useDataLockIdle(hasDataLockPin);
 
   return (
+    <TooltipProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <PageNavigationLoader />
       <a
@@ -60,5 +76,6 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@punchless/ui/components/button";
-import { Plus, X, Pencil, MapPin, User, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Plus, X, Pencil, MapPin, User, CheckCircle, AlertCircle, Clock, Briefcase } from "lucide-react";
+import { TableEmptyState } from "@/components/table-empty-state";
 import { createJob, updateJob } from "@/lib/actions/job.actions";
 import type { JobWithDetails } from "@/lib/queries/job.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
@@ -237,9 +238,17 @@ export function JobManager({ jobs, employees }: Props) {
         </div>
 
         {jobs.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl p-8 text-center">
-            <p className="text-muted-foreground">No jobs created yet.</p>
-            <Button variant="link" onClick={startAdd}>Create your first job</Button>
+          <div className="rounded-xl border border-border bg-card">
+            <TableEmptyState
+              icon={Briefcase}
+              title="No jobs yet"
+              description="Create a job when work happens off-site. Assign an employee, set the location on the map, and track status from pending to completed."
+              action={
+                <Button variant="link" onClick={startAdd}>
+                  Create your first job
+                </Button>
+              }
+            />
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">

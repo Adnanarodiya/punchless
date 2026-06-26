@@ -1,13 +1,36 @@
-import { DashboardPageTitle } from "@/components/dashboard-page-title";
+import Link from "next/link";
+import { CreditCard, GraduationCap } from "lucide-react";
+
+import { Button } from "@punchless/ui/components/button";
+import { DashboardPageHeader } from "@/components/dashboard-page-header";
+import { InfoHint } from "@/components/info-hint";
+import { TableEmptyState } from "@/components/table-empty-state";
 
 export default function BillingPage() {
   return (
-    <div>
-      <DashboardPageTitle title="Billing" />
-      <div className="bg-card border border-border rounded-xl p-6">
-        <p className="text-muted-foreground">
-          Billing management will be built in upcoming phases.
-        </p>
+    <div className="space-y-6">
+      <DashboardPageHeader
+        title="Billing"
+        description="Subscription and plan management — coming in a future release."
+      />
+      <InfoHint title="Not available yet">
+        Billing is not connected yet. Your workshop can use the full dashboard without a
+        subscription payment flow for now.
+      </InfoHint>
+      <div className="rounded-xl border border-border bg-card">
+        <TableEmptyState
+          icon={CreditCard}
+          title="Billing is not set up"
+          description="Stripe subscriptions are planned for a later phase. Everything else — attendance, payroll, clients, and reports — works without billing today."
+          action={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/learn?module=settings">
+                <GraduationCap className="size-4" />
+                Learn what is available now
+              </Link>
+            </Button>
+          }
+        />
       </div>
     </div>
   );

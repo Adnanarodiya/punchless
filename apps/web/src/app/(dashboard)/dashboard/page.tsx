@@ -34,6 +34,9 @@ import {
   DashboardRevenueChart,
   type ChartRange,
 } from "./dashboard-revenue-chart";
+import { SetupChecklist } from "@/components/setup-checklist";
+import { getSetupChecklistStatus } from "@/lib/queries/setup-checklist.queries";
+
 import { DashboardStickyNotes } from "./dashboard-sticky-notes";
 import { DashboardTodaysPayments } from "./dashboard-todays-payments";
 
@@ -46,7 +49,7 @@ export default async function DashboardPage({
   const chartRange: ChartRange = params.chart === "6m" ? "6m" : "7d";
   const currentFy = getCurrentFinancialYearStartYear();
 
-  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, recentAttendance, recentJobs, dataLock, stickyNotes] =
+  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, recentAttendance, recentJobs, dataLock, stickyNotes, setupChecklist] =
     await Promise.all([
     getFinancialYearsWithData(),
     getDashboardStats(),
@@ -58,6 +61,7 @@ export default async function DashboardPage({
     getRecentJobs(10),
     getDataLockStatus(),
     getStickyNotes(),
+    getSetupChecklistStatus(),
   ]);
 
   const fyStartYear = resolveDashboardFinancialYear(
@@ -125,6 +129,8 @@ export default async function DashboardPage({
           <DashboardDataLockControls hasDataLockPin={hasDataLockPin} />
         </div>
       </PageHeader>
+
+      <SetupChecklist status={setupChecklist} />
 
       <DashboardFinancialCards
         summary={financial}

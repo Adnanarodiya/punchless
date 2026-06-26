@@ -9,6 +9,7 @@ import {
   RotateCcw,
   FileText,
   ArrowLeftRight,
+  Landmark,
 } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
@@ -23,9 +24,11 @@ import {
   recoverBank,
 } from "@/lib/actions/bank.actions";
 import type { BankSummary, BankWithBalance } from "@/lib/queries/bank.queries";
+import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
+import { InfoHint } from "@/components/info-hint";
 
 interface Props {
   banks: BankWithBalance[];
@@ -85,6 +88,39 @@ export function BankManager({ banks, summary }: Props) {
         </div>
       </PageHeader>
 
+      <InfoHint title="Banks vs Income & Expense">
+        This page shows <strong>where money sits</strong> (HDFC, Kotak, cash in bank).{" "}
+        <strong>Finance → Income &amp; Expense</strong> tracks business profit &amp; loss — a different view.
+        Salary and invoice payouts update both when paid via bank.
+      </InfoHint>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Link
+          href="/dashboard/banks/transactions"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-accent/30"
+        >
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <ArrowLeftRight className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Bank transactions</p>
+            <p className="text-xs text-muted-foreground">Deposits and withdrawals per account</p>
+          </div>
+        </Link>
+        <Link
+          href="/dashboard/banks/transfer"
+          className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition hover:border-primary/30 hover:bg-accent/30"
+        >
+          <div className="rounded-lg bg-state-travel/10 p-2 text-state-travel">
+            <Landmark className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Transfer between banks</p>
+            <p className="text-xs text-muted-foreground">Move money from one account to another</p>
+          </div>
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Active Banks</p>
@@ -93,7 +129,7 @@ export function BankManager({ banks, summary }: Props) {
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-sm text-muted-foreground">Total Bank Balance</p>
           <p className="mt-1 text-3xl font-bold">
-            {formatCurrency(summary.totalBalance)}
+            <MaskedAmount amount={summary.totalBalance} />
           </p>
         </div>
       </div>

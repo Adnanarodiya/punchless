@@ -4,6 +4,7 @@ import Link from "next/link";
 import { GraduationCap, LogOut, Menu, Search } from "lucide-react";
 import { Button } from "@punchless/ui/components/button";
 import { logout } from "@/lib/actions/auth.actions";
+import { DataLockHeaderButton } from "@/components/data-lock-header-button";
 
 interface DashboardHeaderProps {
   userName: string;
@@ -36,6 +37,7 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
+        <DataLockHeaderButton />
         <Button variant="outline" size="sm" asChild className="gap-2">
           <Link href="/dashboard/learn">
             <GraduationCap className="size-4" />

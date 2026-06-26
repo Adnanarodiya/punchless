@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
+import { InfoHint } from "@/components/info-hint";
 
 const reports = [
   {
@@ -46,7 +47,7 @@ const reports = [
   {
     href: "/dashboard/reports/income-expense",
     title: "Income / Expense",
-    description: "Particular-wise income and expense (Rojmel-style).",
+    description: "Particular-wise income and expense from manual entries.",
     icon: TrendingUp,
   },
   {
@@ -58,7 +59,7 @@ const reports = [
   {
     href: "/dashboard/reports/rojmel",
     title: "Rojmel",
-    description: "Full ledger with running balance.",
+    description: "Daily cash book — every money movement with running balance.",
     icon: ScrollText,
   },
 ];
@@ -68,8 +69,15 @@ export default function ReportsIndexPage() {
     <div className="space-y-6">
       <PageHeader
         title="Reports"
-        description="Shahin-style financial reports — filter by period, print, or export CSV."
+        description="Financial reports — pick a period, print, or export CSV and Excel."
       />
+
+      <InfoHint title="Quick glossary">
+        <strong>Rojmel</strong> = traditional daily cash book (every debit/credit with running balance).{" "}
+        <strong>Income &amp; Expense</strong> (Transactions page) = manual business P&amp;L entries — different from{" "}
+        <strong>Bank balance</strong> (Banks page). <strong>Yearly report</strong> uses calendar year (Jan–Dec); the
+        dashboard overview uses Indian FY (Apr–Mar).
+      </InfoHint>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => {

@@ -55,8 +55,8 @@ export const learnModules: LearnModule[] = [
     overview:
       "The Dashboard is your command centre. It combines money (income, expense, dues, revenue chart), payroll (today's payments), and operations (who is working, active jobs, pending advances) in one screen. Use the financial year selector to switch FY views; use the data lock PIN to hide sensitive amounts when someone is watching your screen.",
     howItWorks: [
-      "Financial year selector loads income, expense, and net for the selected FY (April–March).",
-      "Financial cards show total income, expense, net profit, and cash/bank split — masked until you unlock with the data lock PIN.",
+      "Indian financial year selector (1 Apr – 31 Mar) filters the six financial overview cards.",
+      "Financial cards show Income, Expense, Cash (net), Bank balance, Client credit, and Supplier payable — masked until you unlock with the data lock PIN from the header or dashboard.",
       "Quick actions jump you to common tasks: add invoice, record payment, add employee, etc.",
       "Today's payments lists salary and staff payouts recorded today.",
       "Pending dues shows top client balances you need to collect.",
@@ -64,8 +64,15 @@ export const learnModules: LearnModule[] = [
       "Sticky notes are personal reminders pinned on the dashboard.",
       "Operations cards link to Employees, Attendance, Jobs, and Advances with live counts.",
       "Recent tables show the latest attendance sessions and jobs.",
+      "Setup checklist (dismissible) guides new owners through profile, workshop, posts, and employees.",
+      "Press Ctrl+K (Cmd+K on Mac) anywhere to search clients, suppliers, invoices, jobs, and jump straight to statements.",
     ],
     pageSections: [
+      {
+        title: "Setup checklist",
+        description:
+          "Appears until dismissed or all setup steps are done — links to Settings, Workshops, Posts, Employees, and Learn.",
+      },
       {
         title: "Page header",
         description:
@@ -74,7 +81,7 @@ export const learnModules: LearnModule[] = [
       {
         title: "Financial cards",
         description:
-          "Four cards: Income, Expense, Net, and Cash/Bank breakdown for the selected FY.",
+          "Six cards for the selected Indian FY: Income, Expense, Cash (net), Bank balance, Client credit, Supplier payable.",
       },
       {
         title: "Quick actions",
@@ -119,9 +126,9 @@ export const learnModules: LearnModule[] = [
       {
         title: "Unlock financial data",
         steps: [
-          "If amounts show as masked (••••), click the lock icon in the header.",
+          "If amounts show as masked (••••), click the lock icon in the top header (any page).",
           "Enter your data lock PIN (set in Settings → Data Lock).",
-          "Financial cards, chart, and payment amounts become visible until you lock again.",
+          "Dashboard cards, salary totals, client dues, bank balances, and related amounts become visible until you lock again or leave the app idle for 5 minutes.",
         ],
       },
     ],
@@ -152,6 +159,16 @@ export const learnModules: LearnModule[] = [
         step: 5,
         action: "Toggle revenue chart from 7D to 6M.",
         expected: "Chart switches to monthly bars; URL updates with ?chart=6m.",
+      },
+      {
+        step: 6,
+        action: "Dismiss the setup checklist with the X button, refresh the page.",
+        expected: "Checklist stays hidden for this browser session.",
+      },
+      {
+        step: 7,
+        action: "Press Ctrl+K, search a client name, open the statement result.",
+        expected: "Global search opens the client ledger statement page.",
       },
     ],
     tips: [
@@ -579,13 +596,17 @@ export const learnModules: LearnModule[] = [
     overview:
       "Clients are your customers. Track contact info, GST, opening balance, and running due amount. Record payments (cash/bank), view Shahin-style ledger statements, and soft-delete inactive clients.",
     howItWorks: [
+      "Client money flow panel at the top: Add client → invoice → receive payment → statement.",
       "Creating a client can include an opening balance (starting due).",
       "Tax invoices add to client due; payments reduce it.",
-      "Receive Payment modal: cash or bank, amount, date, remark.",
+      "Receive Payment modal: cash or bank, amount, date, remark. Payments of ₹5,000+ ask for confirmation.",
+      "Row actions: ₹ pay, receipt icon for new invoice, statement link.",
+      "Deep links: ?client=ID&open=pay opens pay modal; ?open=invoice jumps to new invoice form.",
       "Statement page shows full ledger with running balance, print view available.",
       "Soft-delete hides client from active list without erasing history.",
     ],
     pageSections: [
+      { title: "Client money flow", description: "Four-step guided path from add client through statement." },
       { title: "Summary cards", description: "Total clients and total due across all clients." },
       { title: "Add/Edit panel", description: "Name, alias, contact, address, GST, opening balance." },
       { title: "Active/Deleted toggle", description: "Switch between active and archived clients." },
@@ -640,7 +661,8 @@ export const learnModules: LearnModule[] = [
     howItWorks: [
       "Same CRM pattern as Clients: create, edit, soft-delete, opening balance.",
       "Purchase invoices increase what you owe the supplier.",
-      "Pay Supplier records cash/bank outflow.",
+      "Pay Supplier records cash/bank outflow. Payments of ₹5,000+ ask for confirmation.",
+      "Deep link ?supplier=ID&open=pay opens the pay modal (also from Ctrl+K search).",
       "Statement shows full payable ledger with print support.",
     ],
     pageSections: [
@@ -902,7 +924,7 @@ export const learnModules: LearnModule[] = [
       "Over-advanced: employee took more advance than earned — Pay button disabled.",
       "Pay → links to Payments with employee, month, and form pre-filled.",
       "Summary cards: Gross, Advance deductions, Due to pay, Total hours/day credits.",
-      "Export button downloads the report.",
+      "Export CSV and Export Excel download the full month report (respects name search filter).",
     ],
     pageSections: [
       {
@@ -912,7 +934,7 @@ export const learnModules: LearnModule[] = [
       },
       {
         title: "Search & Export",
-        description: "Filter employees by name; export full report.",
+        description: "Filter employees by name; Export CSV or Export Excel for the selected month.",
       },
       {
         title: "Summary cards",
@@ -980,6 +1002,12 @@ export const learnModules: LearnModule[] = [
         expected:
           "Due shows 'Over-advanced' warning; Pay button disabled with tooltip reason.",
       },
+      {
+        step: 6,
+        action: "Click Export CSV then Export Excel for the month.",
+        expected:
+          "CSV and .xlsx files download with all employees and payroll columns for that month.",
+      },
     ],
     tips: [
       "Run Salary only after attendance for the month is final.",
@@ -997,7 +1025,7 @@ export const learnModules: LearnModule[] = [
     href: "/dashboard/salary/payments",
     roles: ["owner", "admin"],
     overview:
-      "Payments is where money actually leaves your hands for staff. Record salary paid (with auto-suggested amount from Salary calc), advances, or manual deductions. Cash/bank modes update Income & Expense. Supports deep links from Salary and Employee cards.",
+      "Payments is where money actually leaves your hands for staff. Record salary paid (with auto-suggested amount from Salary calc), advances, or manual deductions. Cash/bank modes update Income & Expense. Salary Deposits (sidebar) accrue owed salary without cash movement — use Payments when you actually pay out. Supports deep links from Salary and Employee cards.",
     howItWorks: [
       "Type: Advance, Salary paid, or Deduction.",
       "Pick employee — payable preview shows earnings, advances, suggested amount.",
@@ -1005,6 +1033,7 @@ export const learnModules: LearnModule[] = [
       "Cash or bank payout; bank requires account selection.",
       "Deleting a payment reverses the financial entry.",
       "Summary: total paid, deductions, entry count.",
+      "Salary paid and payments of ₹5,000+ show a confirmation dialog before saving.",
     ],
     pageSections: [
       { title: "Summary cards", description: "Total paid, deductions, number of entries." },
@@ -1181,7 +1210,7 @@ export const learnModules: LearnModule[] = [
       "Company profile: name, tagline, address, phone, email, logo URL → used on prints.",
       "Work schedule: start time, grace minutes, daily hours, working days/month → drives hourly rate calc.",
       "Salary mode toggle: Hourly or Fixed monthly — changes Salary page columns and formulas.",
-      "Data lock PIN: 4-digit PIN to hide/show money on dashboard.",
+      "Data lock PIN: 4-digit PIN to hide/show money across the dashboard; auto-locks after 5 minutes idle.",
       "Quick links to Users and Password pages.",
     ],
     pageSections: [
@@ -1189,7 +1218,7 @@ export const learnModules: LearnModule[] = [
       { title: "Company profile form", description: "Letterhead fields for statements and invoices." },
       { title: "Work schedule form", description: "Timing rules for attendance and hourly rate." },
       { title: "Salary mode", description: "Hourly vs Fixed monthly with explanation." },
-      { title: "Data lock PIN", description: "Set, change, or remove masking PIN." },
+      { title: "Data lock PIN", description: "Set, change, or remove masking PIN. Unlocked data re-locks after 5 min idle." },
     ],
     workflows: [
       {

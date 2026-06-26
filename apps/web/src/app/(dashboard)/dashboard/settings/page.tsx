@@ -1,13 +1,12 @@
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 import { getCurrentUser } from "@/lib/queries/auth.queries";
 import { redirect } from "next/navigation";
-import { DashboardPageTitle } from "@/components/dashboard-page-title";
+import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { SettingsManager } from "./settings-manager";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
 
-  // Only owner can access settings
   if (!user || user.role !== "owner") {
     redirect("/dashboard");
   }
@@ -16,8 +15,11 @@ export default async function SettingsPage() {
 
   if (!settings) {
     return (
-      <div>
-        <DashboardPageTitle title="Settings" />
+      <div className="space-y-6">
+        <DashboardPageHeader
+          title="Settings"
+          description="Company profile, work schedule, salary mode, and data lock PIN."
+        />
         <p className="text-muted-foreground">Could not load company settings.</p>
       </div>
     );
@@ -25,7 +27,10 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <DashboardPageTitle title="Settings" />
+      <DashboardPageHeader
+        title="Settings"
+        description="Company letterhead, work hours, hourly vs fixed salary mode, and PIN to hide financial figures."
+      />
       <SettingsManager settings={settings} />
     </div>
   );

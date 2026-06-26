@@ -22,6 +22,7 @@ import {
 } from "@/lib/actions/advance.actions";
 import type { AdvanceWithEmployee } from "@/lib/queries/advance.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
+import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
@@ -149,7 +150,7 @@ export function AdvanceManager({ advances, employees }: Props) {
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-sm text-muted-foreground">Total Approved</p>
           <p className="text-2xl font-bold text-primary">
-            {formatCurrency(totalApprovedAmount)}
+            <MaskedAmount amount={totalApprovedAmount} />
           </p>
         </div>
       </div>

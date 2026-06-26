@@ -23,6 +23,9 @@ import {
   getLiveDurationMinutes,
   STATE_CONFIG,
 } from "@/lib/utils/formatting";
+import { TableEmptyState } from "@/components/table-empty-state";
+import { stickyFirstTdClass, stickyFirstThClass } from "@/lib/constants/table-styles";
+import { cn } from "@punchless/ui/lib/utils";
 
 /** Labels for current activity */
 const ACTIVITY_LABEL: Record<string, string> = {
@@ -229,9 +232,9 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
   return (
     <div className="space-y-6">
       {/* Top Bar: Left = Tabs, Right = Period Filter */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         {/* Left: View Tabs or Employee Detail Header */}
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           {selectedEmployee ? (
             <>
               <Button variant="ghost" size="sm" onClick={handleBackToList}>
@@ -247,7 +250,8 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
               )}
             </>
           ) : (
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+            <div className="flex w-max gap-1 rounded-lg bg-muted p-1">
               <button
                 onClick={() => handleTabChange("employees")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -271,16 +275,18 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
                 All Sessions
               </button>
             </div>
+            </div>
           )}
         </div>
 
         {/* Right: Period Filter + Export */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCsv} disabled={loading}>
             <Download className="size-4" />
             Export CSV
           </Button>
-          <div className="flex gap-1 bg-muted rounded-lg p-1">
+          <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+          <div className="flex w-max gap-1 rounded-lg bg-muted p-1">
             {(["1day", "7days", "month"] as FilterPeriod[]).map((p) => (
               <button
                 key={p}
@@ -294,6 +300,7 @@ export function HistoryManager({ initialSessions, initialSummaries, employees }:
                 {periodLabel[p]}
               </button>
             ))}
+          </div>
           </div>
         </div>
       </div>
@@ -385,8 +392,12 @@ function EmployeeSummaryTable({
 }) {
   if (summaries.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
-        No attendance data found for this period.
+      <div className="rounded-xl border border-border bg-card">
+        <TableEmptyState
+          icon={Users}
+          title="No attendance for this period"
+          description="Staff must punch in on the mobile app or you can add sessions manually from Attendance. Try a wider date range."
+        />
       </div>
     );
   }
@@ -397,7 +408,7 @@ function EmployeeSummaryTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="p-3 font-medium">Employee</th>
+              <th className={cn("p-3 font-medium", stickyFirstThClass)}>Employee</th>
               <th className="p-3 font-medium">Workshop</th>
               <th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Sessions</th>
@@ -415,8 +426,6 @@ function EmployeeSummaryTable({
               const stateConfig = s.current_state
                 ? STATE_CONFIG[s.current_state] ?? STATE_CONFIG.off_duty
                 : STATE_CONFIG.off_duty;
-
-              // Calculate real-time live duration for the current session
               const liveMins = s.live_session_start
                 ? getLiveDurationMinutes(s.live_session_start)
                 : 0;
@@ -432,8 +441,8 @@ function EmployeeSummaryTable({
               const isLiveOnsite = s.is_active_now && s.current_state === "on_site_job";
 
               return (
-                <tr key={s.employee_id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                  <td className="p-3">
+                <tr key={s.employee_id} className="group border-b border-border last:border-0 hover:bg-muted/50">
+                  <td className={cn("p-3", stickyFirstTdClass)}>
                     <p className="font-medium">{s.employee_name}</p>
                     <p className="text-xs text-muted-foreground">{s.employee_email}</p>
                   </td>
@@ -592,8 +601,12 @@ function StatCard({
 function SessionsTable({ sessions }: { sessions: HistorySession[] }) {
   if (sessions.length === 0) {
     return (
-      <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
-        No sessions found for this period.
+      <div className="rounded-xl border border-border bg-card">
+        <TableEmptyState
+          icon={Clock}
+          title="No sessions in this period"
+          description="Attendance appears here after staff punch in on mobile or you add manual sessions. Widen the date filter or check Attendance → Today."
+        />
       </div>
     );
   }
@@ -604,7 +617,7 @@ function SessionsTable({ sessions }: { sessions: HistorySession[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="p-3 font-medium">Employee</th>
+              <th className={cn("p-3 font-medium", stickyFirstThClass)}>Employee</th>
               <th className="p-3 font-medium">Date</th>
               <th className="p-3 font-medium">State</th>
               <th className="p-3 font-medium">Location / Job</th>
@@ -622,8 +635,8 @@ function SessionsTable({ sessions }: { sessions: HistorySession[] }) {
                 : s.duration_minutes;
 
               return (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/50">
-                  <td className="p-3">
+                <tr key={s.id} className="group border-b border-border last:border-0 hover:bg-muted/50">
+                  <td className={cn("p-3", stickyFirstTdClass)}>
                     <p className="font-medium">{s.employee_name}</p>
                     <p className="text-xs text-muted-foreground">{s.employee_email}</p>
                   </td>

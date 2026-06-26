@@ -81,8 +81,9 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
       </div>
 
       {/* Tabs + Add button */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="-mx-1 overflow-x-auto px-1 sm:mx-0 sm:overflow-visible sm:px-0">
+        <div className="flex w-max min-w-full gap-1 rounded-lg bg-muted p-1 sm:w-auto">
           <button
             onClick={() => setTab("live")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -119,6 +120,7 @@ export function AttendanceManager({ todaySessions, activeSessions, employees, wo
             <Printer className="size-4 inline mr-1.5" />
             Sheet
           </button>
+        </div>
         </div>
 
         {tab !== "bulk" ? (

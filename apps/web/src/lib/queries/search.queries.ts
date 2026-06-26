@@ -143,10 +143,17 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
     const r = row as { id: string; name: string; alias: string | null; contact: string | null };
     const meta = [r.alias, r.contact].filter(Boolean).join(" · ");
     results.push({
-      id: r.id,
+      id: `${r.id}-manage`,
       type: "client",
       label: r.name,
-      subtitle: meta ? `${meta} · Statement` : "Open client statement",
+      subtitle: meta ? `${meta} · Clients — pay or invoice` : "Clients — pay or invoice",
+      href: `/dashboard/clients?client=${r.id}`,
+    });
+    results.push({
+      id: `${r.id}-statement`,
+      type: "client",
+      label: r.name,
+      subtitle: "Ledger statement",
       href: `/dashboard/clients/${r.id}/statement`,
     });
   }
@@ -178,10 +185,17 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
     const r = row as { id: string; name: string; alias: string | null; contact: string | null };
     const meta = [r.alias, r.contact].filter(Boolean).join(" · ");
     results.push({
-      id: r.id,
+      id: `${r.id}-manage`,
       type: "supplier",
       label: r.name,
-      subtitle: meta ? `${meta} · Statement` : "Open supplier statement",
+      subtitle: meta ? `${meta} · Suppliers — pay or edit` : "Suppliers — pay or edit",
+      href: `/dashboard/suppliers?supplier=${r.id}`,
+    });
+    results.push({
+      id: `${r.id}-statement`,
+      type: "supplier",
+      label: r.name,
+      subtitle: "Ledger statement",
       href: `/dashboard/suppliers/${r.id}/statement`,
     });
   }

@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-26 (Learn system — module guides + testing steps)
+> **Last updated:** 2026-06-26 (Phase 4 polish — mobile tables, tooltips, auto-lock, empty states, docs)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -68,7 +68,7 @@
 | `04_BUILD_PHASES.md` | 1 | All 10 phases with detailed tasks |
 | `05_DATABASE_SCHEMA.md` | 1 | Table definitions, relationships, RLS policies |
 | `06_ATTENDANCE_ENGINE.md` | 1 | GPS geofence logic, state machine, background tracking |
-| `07_WEB_DASHBOARD.md` | 1 | Dashboard pages, role-based access |
+| `07_WEB_DASHBOARD.md` | 1/4 | Full dashboard route map (44 pages), shell UX, money flows, roles |
 | `08_SALARY_CALCULATION.md` | 1 | Hourly/travel rates, overtime, deductions |
 | `09_MOBILE_APP.md` | 1 | Expo app screens, GPS permissions |
 | `10_STRIPE_BILLING.md` | 1 | Subscription model, webhooks, usage metering |
@@ -140,7 +140,8 @@
 | `src/components/page-header.tsx` | 11A/9 | Page title + optional `titleAddon` + description + actions slot |
 | `src/components/breadcrumbs.tsx` | 11A | Accessible breadcrumb navigation |
 | `src/components/collapsible-nav-group.tsx` | 11A | Collapsible sidebar section group |
-| `src/components/data-table.tsx` | 11A | Reusable data table with optional search |
+| `src/components/data-table.tsx` | 11A/4 | Data table — search, ReactNode empty state, optional sticky first column |
+| `src/components/tooltip.tsx` | 4 | Radix tooltip primitive (TooltipProvider, Trigger, Content) |
 | `src/components/payment-mode-select.tsx` | 11B | Cash/Bank/Credit payment mode select |
 | `src/components/statement-letterhead.tsx` | 13.5 | Company gradient letterhead for printable statements |
 | `src/components/statement-entity-box.tsx` | 13.5 | Dashed "Statement To" entity box with date range |
@@ -186,7 +187,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `layout.tsx` | 2 | Dashboard shell: Sidebar + Header + content area, fetches current user |
-| `dashboard/page.tsx` | 15/19 | Financial HQ + operations stats; FY selector (`?fy=`), revenue chart range (`?chart=7d\|6m`) |
+| `dashboard/page.tsx` | 15/3 | Financial HQ + operations; `SetupChecklist`; FY selector (`?fy=`), chart range (`?chart=7d\|6m`) |
 | `dashboard-fy-selector.tsx` | 19 | FY `<select>` — only years with transaction data (newest first); default current FY |
 | `dashboard-revenue-chart.tsx` | 15/19 | 7-day / 6-month income vs expense toggle |
 | `invoices/[id]/page.tsx` | 19 | Dedicated invoice detail view (summary, line items, print/edit links) |
@@ -198,14 +199,14 @@
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
 | `dashboard/dashboard-quick-actions.tsx` | 15 | Quick actions after financial cards — colorful icon tiles (commerce, finance, ops, payroll) |
 | `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables (stacked full-width) |
-| `dashboard/clients/page.tsx` | 11B | Server component: fetches clients + summary, renders `ClientManager` |
-| `dashboard/clients/client-manager.tsx` | 11B | **Client component**: CRUD, receive payment modal, soft delete/recover |
+| `dashboard/clients/page.tsx` | 11B/3 | Server component: clients + summary; `CommerceFlowPanel`; `?client=&open=pay\|invoice` deep links |
+| `dashboard/clients/client-manager.tsx` | 11B/3 | CRUD, receive payment (₹5k+ confirm), invoice row action, `?client=&open=` deep links, soft delete/recover |
 | `dashboard/clients/[id]/statement/page.tsx` | 11B | Server component: client statement with date range |
 | `dashboard/clients/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style statement — letterhead, entity box, ledger table, search, print |
 | `dashboard/clients/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable client statement (minimal chrome) |
 | `dashboard/clients/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for client statement print route |
-| `dashboard/suppliers/page.tsx` | 12 | Server component: suppliers + summary |
-| `dashboard/suppliers/supplier-manager.tsx` | 12 | CRUD, Pay Now modal, statement link, soft delete/recover |
+| `dashboard/suppliers/page.tsx` | 12/3 | Server component: suppliers + summary; `?supplier=&open=pay` deep links |
+| `dashboard/suppliers/supplier-manager.tsx` | 12/3 | CRUD, Pay Now modal (₹5k+ confirm), statement link, `?supplier=` deep link, soft delete/recover |
 | `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
 | `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style supplier statement — same components, payable labels |
 | `dashboard/suppliers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable supplier statement |
@@ -213,7 +214,7 @@
 | `dashboard/purchases/page.tsx` | 12 | Server component: purchases + active suppliers |
 | `dashboard/purchases/purchase-manager.tsx` | 12 | Purchase/sales invoices with GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
-| `dashboard/invoices/invoice-manager.tsx` | 13 | Tax invoice CRUD, GST preview, split payment, pending credit highlight, print link |
+| `dashboard/invoices/invoice-manager.tsx` | 13/3 | Tax invoice CRUD, GST preview, split payment; `?client=&openForm=1` opens new-invoice form with client selected |
 | `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice with payment summary + pending balance due |
 | `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
 | `dashboard/banks/page.tsx` | 14 | Server component: bank accounts + summary |
@@ -234,7 +235,7 @@
 | `dashboard/posts/post-manager.tsx` | 16 | Post CRUD with soft delete/recover |
 | `dashboard/salary/payments/page.tsx` | 16 | Staff payments list page |
 | `dashboard/salary/payments/page.tsx` | 16 | Staff payments page — reads `?employee=&month=&openForm=` URL params, prefetches salary payable |
-| `dashboard/salary/payments/staff-payment-manager.tsx` | 16 | Staff payment form + employee-filtered table when `?employee=` (summary cards, hide Employee column, show-all link) |
+| `dashboard/salary/payments/staff-payment-manager.tsx` | 16/3 | Staff payment form + table; salary_paid and ₹5k+ confirm modal; `?employee=&openForm=1` deep link |
 | `dashboard/salary/deposits/page.tsx` | 16 | Salary deposits list page |
 | `dashboard/salary/deposits/salary-deposit-manager.tsx` | 16 | Accrual deposits; amount prefills from employee `monthly_salary` |
 | `dashboard/workshops/page.tsx` | 3 | Server component: fetches workshops, renders `WorkshopManager` |
@@ -244,7 +245,11 @@
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
 | `dashboard/salary/page.tsx` | 6 | Server component: reads `?month=` search param, fetches salary report, renders `SalaryManager` |
-| `dashboard/salary/salary-manager.tsx` | 6 | Salary report — Due column (over-advanced warning / amount due / Paid); Pay enabled only when `suggested_pay > 0` |
+| `dashboard/salary/salary-manager.tsx` | 6/9 | Salary report + Export CSV/Excel (full month via API); summary/table amounts respect data lock |
+| `lib/utils/salary-export.ts` | 9 | Build salary report rows for CSV/Excel export |
+| `app/api/salary/export/route.ts` | 9 | GET full-month salary report JSON for export |
+| `masked-amount.tsx` | 9 | Client component — masks currency when data lock active |
+| `data-lock-header-button.tsx` | 9 | Lock/unlock icon in dashboard header (all pages) |
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
 | `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
@@ -258,7 +263,9 @@
 | `audit-pill.tsx` | 18 | Reusable rounded pill badge for audit log tones |
 | `dashboard-sticky-notes.tsx` | Extras | Dashboard sticky notes CRUD widget |
 | `dashboard-data-lock-controls.tsx` | Extras | Lock/unlock financials + PIN modal |
-| `global-search.tsx` | Extras | Cmd+K palette — deep links to statements/details |
+| `global-search.tsx` | Extras/3 | Cmd+K palette — 2 results per client/supplier (manage + statement); unique `item.id` keys |
+| `setup-checklist.tsx` | 3 | Dismissible onboarding checklist on dashboard home (sessionStorage) |
+| `commerce-flow-panel.tsx` | 3 | 4-step client money flow panel on Clients page |
 | `delete-confirm-button.tsx` | UX | Reusable delete trigger + ConfirmModal ("Are you sure?") |
 | `page-navigation-loader.tsx` | UX | Full-screen loader overlay on internal navigation |
 | `navigation.store.ts` | UX | Zustand — navigation loading state |
@@ -274,16 +281,25 @@
 | `lib/content/learn-modules.ts` | 9 | Content data — 23 dashboard modules with page sections, workflows, manual test steps + expected outputs |
 | `lib/content/learn-icons.tsx` | 9 | Maps `LearnIconName` → Lucide icons for learn UI |
 | `lib/content/learn-route-map.ts` | 9 | Maps dashboard URL paths → learn module IDs for contextual help links |
+| `info-hint.tsx` | 9/2 | Inline help box for jargon and page explanations |
+| `payroll-flow-panel.tsx` | 2 | 4-step payroll path on Salary page with links |
+| `lib/constants/payment-confirm.ts` | 3 | `CLIENT_PAYMENT_CONFIRM_THRESHOLD` (₹5000) for client/supplier/staff payment confirms |
+| `lib/constants/data-lock.ts` | 4 | `DATA_LOCK_IDLE_MS` (5 min) — auto-lock financials after idle |
+| `lib/constants/table-styles.ts` | 4 | Sticky first-column Tailwind classes for wide scroll tables |
+| `hooks/use-data-lock-idle.ts` | 4 | Auto-lock hook — listens for activity, locks + toast after idle |
+| `table-empty-state.tsx` | 4 | Friendly empty table/card state with icon, description, optional action |
+| `icon-tooltip.tsx` | 4 | Wraps icon-only buttons with Radix tooltip labels |
+| `dashboard-page-header.tsx` | 2 | Standard title + description + ? help for plain dashboard pages |
 | `learn-page-help.tsx` | 9 | `CircleHelp` ? icon — auto-detects route, links to `/dashboard/learn?module=…` |
 | `page-header.tsx` | 9 | App `PageHeader` wrapper — injects `LearnPageHelp` as `titleAddon` next to every page title |
-| `dashboard-page-title.tsx` | 9 | `<h1>` + `LearnPageHelp` for server pages that use plain titles |
+| `dashboard-page-header.tsx` | 2 | Title + description + `LearnPageHelp` for Attendance, Salary, History, etc. |
 
 #### Shared Components (`src/components/`)
 
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
-| `sidebar-config.ts` | 11A/17/18/9 | Nav — Overview: Dashboard + Learn; Reports + Account: Users, Audit Log, Password |
+| `sidebar-config.ts` | 11A/17/18/9/2 | Nav — Payroll: Salary, Payments, Deposits, Advances; Reports: All Reports only; Billing comingSoon |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
@@ -301,7 +317,7 @@
 | `dashboard/reports/income-expense/page.tsx` | 17 | Particular-wise income/expense |
 | `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
 | `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
-| `dashboard-shell.tsx` | 11A | Client layout wrapper: skip-to-content, mobile nav state |
+| `dashboard-shell.tsx` | 11A/4 | Shell: skip-to-content, mobile nav, TooltipProvider, data-lock idle auto-lock |
 | `dashboard-header.tsx` | 11A/9 | Top header: Learn button, search, mobile menu, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
 | `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |
@@ -351,7 +367,7 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `data-lock.store.ts` | Extras | Zustand — financial unlock state (sessionStorage persist) |
+| `data-lock.store.ts` | Extras/9 | Zustand — `hasPin` + financial unlock state (sessionStorage persist) |
 
 #### UI/UX Polish (`packages/ui/` + dashboard)
 
@@ -430,7 +446,8 @@
 | `audit.queries.ts` | 18 | `getAuditLogs()` — owner-only, date range + user join |
 | `admin-user.queries.ts` | 18 | `getDashboardUsers()` — owner/admin accounts for company |
 | `sticky-note.queries.ts` | Extras | `getStickyNotes()` |
-| `search.queries.ts` | Extras/19 | `globalSearch()` — clients, employees, suppliers, jobs, invoices (number + client name), purchases (number + supplier) |
+| `search.queries.ts` | Extras/3 | `globalSearch()` — dual client/supplier hits (manage + statement), employees, jobs, invoices, purchases |
+| `setup-checklist.queries.ts` | 3 | `getSetupChecklistStatus()` — profile, workshop, posts, employees completion for dashboard checklist |
 
 #### Supabase Clients (`src/lib/supabase/`)
 

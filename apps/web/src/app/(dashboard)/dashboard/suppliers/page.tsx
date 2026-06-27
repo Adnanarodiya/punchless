@@ -1,4 +1,6 @@
 import { getSuppliers, getSuppliersSummary } from "@/lib/queries/supplier.queries";
+import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
+import { SupplierFlowPanel } from "@/components/supplier-flow-panel";
 import { SupplierManager } from "./supplier-manager";
 
 export default async function SuppliersPage({
@@ -13,11 +15,15 @@ export default async function SuppliersPage({
   ]);
 
   return (
-    <SupplierManager
-      suppliers={suppliers}
-      summary={summary}
-      initialSupplierId={params.supplier}
-      initialOpen={params.open === "pay" ? "pay" : undefined}
-    />
+    <div className="space-y-6">
+      <PageFirstVisitTip pageId="suppliers" />
+      <SupplierFlowPanel />
+      <SupplierManager
+        suppliers={suppliers}
+        summary={summary}
+        initialSupplierId={params.supplier}
+        initialOpen={params.open === "pay" ? "pay" : undefined}
+      />
+    </div>
   );
 }

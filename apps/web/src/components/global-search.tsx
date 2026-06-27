@@ -22,12 +22,12 @@ const TYPE_META: Record<
   SearchResultItem["type"],
   { label: string; icon: typeof Users }
 > = {
-  client: { label: "Client", icon: Building2 },
+  client: { label: "Customer", icon: Building2 },
   employee: { label: "Employee", icon: Users },
   invoice: { label: "Invoice", icon: FileText },
   supplier: { label: "Supplier", icon: UserCircle },
   job: { label: "Job", icon: Briefcase },
-  purchase: { label: "Purchase", icon: Receipt },
+  purchase: { label: "Supplier bill", icon: Receipt },
 };
 
 interface Props {
@@ -114,7 +114,7 @@ export function GlobalSearch({ open, onOpenChange }: Props) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Search clients, invoices, purchases, jobs…"
+          placeholder="Search customers, invoices, supplier bills, jobs…"
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>

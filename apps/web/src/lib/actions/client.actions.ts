@@ -1,18 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { protectedAction } from "@/lib/server/protected-action";
 import {
   createClientSchema,
+  quickCustomerSchema,
   receiveClientPaymentSchema,
   updateClientSchema,
 } from "@/lib/validations/client.schema";
 
 function revalidateClientPages(clientId?: string) {
-  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard");
   if (clientId) {
-    revalidatePath(`/dashboard/clients/${clientId}/statement`);
+    revalidatePath(`/dashboard/customers/${clientId}/statement`);
   }
 }
 
@@ -78,6 +80,50 @@ export const createClient = protectedAction<FormData>({
   return { success: true };
 });
 
+/** Create customer from quick bill — name only, returns id for immediate selection. */
+export const createQuickCustomer = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_client", entityType: "client" },
+})(async (formData, { supabase, me }) => {
+  const parsed = quickCustomerSchema.safeParse({
+    name: formData.get("name"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { name } = parsed.data;
+
+  const { data: client, error } = await supabase
+    .from("clients")
+    .insert({
+      company_id: me.company_id,
+      name,
+      alias: null,
+      contact: null,
+      address: null,
+      gst_number: null,
+      opening_balance: 0,
+    } as never)
+    .select(
+      "id, name, alias, contact, address, gst_number, opening_balance, is_deleted, deleted_at, company_id, created_at, updated_at"
+    )
+    .single();
+
+  if (error || !client) {
+    return { success: false, error: error?.message || "Failed to create customer" };
+  }
+
+  const row = client as Omit<ClientWithDue, "due_amount">;
+  revalidateClientPages(row.id);
+  return {
+    success: true,
+    data: { ...row, due_amount: 0 },
+  };
+});
+
 export const updateClient = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "update_client", entityType: "client" },
@@ -121,7 +167,7 @@ export const softDeleteClient = protectedAction<FormData>({
   audit: { action: "soft_delete_client", entityType: "client" },
 })(async (formData, { supabase }) => {
   const clientId = String(formData.get("clientId") || "");
-  if (!clientId) return { success: false, error: "Client ID required" };
+  if (!clientId) return { success: false, error: "Customer ID required" };
 
   const { error } = await supabase
     .from("clients")
@@ -142,7 +188,7 @@ export const recoverClient = protectedAction<FormData>({
   audit: { action: "recover_client", entityType: "client" },
 })(async (formData, { supabase }) => {
   const clientId = String(formData.get("clientId") || "");
-  if (!clientId) return { success: false, error: "Client ID required" };
+  if (!clientId) return { success: false, error: "Customer ID required" };
 
   const { error } = await supabase
     .from("clients")

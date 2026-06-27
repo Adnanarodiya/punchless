@@ -593,6 +593,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           daily_work_hours: number | null
+          dashboard_experience: string
           data_lock_pin_hash: string | null
           email: string | null
           grace_period_minutes: number | null
@@ -607,6 +608,7 @@ export type Database = {
           subscription_status: string | null
           tagline: string | null
           trial_ends_at: string | null
+          ui_language: string
           updated_at: string | null
           work_start_time: string | null
           working_days_per_month: number | null
@@ -615,6 +617,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
+          dashboard_experience?: string
           data_lock_pin_hash?: string | null
           email?: string | null
           grace_period_minutes?: number | null
@@ -629,6 +632,7 @@ export type Database = {
           subscription_status?: string | null
           tagline?: string | null
           trial_ends_at?: string | null
+          ui_language?: string
           updated_at?: string | null
           work_start_time?: string | null
           working_days_per_month?: number | null
@@ -637,6 +641,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
+          dashboard_experience?: string
           data_lock_pin_hash?: string | null
           email?: string | null
           grace_period_minutes?: number | null
@@ -651,6 +656,7 @@ export type Database = {
           subscription_status?: string | null
           tagline?: string | null
           trial_ends_at?: string | null
+          ui_language?: string
           updated_at?: string | null
           work_start_time?: string | null
           working_days_per_month?: number | null
@@ -1392,6 +1398,8 @@ export type Database = {
           payment_mode: string | null
           payment_type: string
           remark: string | null
+          salary_month: string | null
+          slip_snapshot: Json | null
         }
         Insert: {
           amount: number
@@ -1405,6 +1413,8 @@ export type Database = {
           payment_mode?: string | null
           payment_type: string
           remark?: string | null
+          salary_month?: string | null
+          slip_snapshot?: Json | null
         }
         Update: {
           amount?: number
@@ -1418,6 +1428,8 @@ export type Database = {
           payment_mode?: string | null
           payment_type?: string
           remark?: string | null
+          salary_month?: string | null
+          slip_snapshot?: Json | null
         }
         Relationships: [
           {

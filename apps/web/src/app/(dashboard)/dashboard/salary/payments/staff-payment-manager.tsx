@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Plus } from "lucide-react";
+import { AlertCircle, FileText, Plus } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@/components/page-header";
@@ -21,10 +21,19 @@ import type { StaffPaymentWithDetails } from "@/lib/queries/staff-payment.querie
 import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency, formatDate, formatMonthYear } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
+import type { ActionResult } from "@/lib/utils/action-result";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
+import { cn } from "@punchless/ui/lib/utils";
 import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import { toast } from "sonner";
+
+type StaffPaymentVariant = "page" | "hub-embedded" | "hub-history" | "modal";
+
+type CreateStaffPaymentResult = {
+  paymentId: string;
+  slipUrl: string | null;
+};
 
 interface Props {
   payments: StaffPaymentWithDetails[];
@@ -36,6 +45,11 @@ interface Props {
   initialPayable?: EmployeeSalaryPayable | null;
   initialAmount?: number;
   lockEmployee?: boolean;
+  variant?: StaffPaymentVariant;
+  showHistory?: boolean;
+  returnPath?: string;
+  showAllLinkHref?: string;
+  onFormClose?: () => void;
 }
 
 const defaultDate = () => new Date().toISOString().slice(0, 10);
@@ -61,6 +75,11 @@ export function StaffPaymentManager({
   initialPayable = null,
   initialAmount,
   lockEmployee = false,
+  variant = "page",
+  showHistory = true,
+  returnPath,
+  showAllLinkHref = "/dashboard/salary/payments",
+  onFormClose,
 }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(initialOpenForm);
@@ -84,7 +103,20 @@ export function StaffPaymentManager({
   const [confirmPayOpen, setConfirmPayOpen] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
 
-  const filterEmployeeId = initialEmployeeId || undefined;
+  const [historyEmployeeFilter, setHistoryEmployeeFilter] = useState(
+    variant === "hub-history" ? initialEmployeeId : ""
+  );
+
+  useEffect(() => {
+    if (variant === "hub-history") {
+      setHistoryEmployeeFilter(initialEmployeeId);
+    }
+  }, [initialEmployeeId, variant]);
+
+  const filterEmployeeId =
+    variant === "hub-history"
+      ? historyEmployeeFilter || undefined
+      : initialEmployeeId || undefined;
   const filterEmployeeName = employees.find((e) => e.id === filterEmployeeId)?.full_name;
 
   const visiblePayments = useMemo(() => {
@@ -145,9 +177,16 @@ export function StaffPaymentManager({
   const salaryNothingDue =
     paymentType === "salary_paid" && payable != null && payable.suggestedAmount <= 0;
 
-  const { execute: execCreate, loading: creating } = useAction(createStaffPayment, {
+  const { execute: execCreate, loading: creating } = useAction<
+    FormData,
+    CreateStaffPaymentResult
+  >(
+    createStaffPayment as (
+      input: FormData
+    ) => Promise<ActionResult<CreateStaffPaymentResult>>,
+    {
     successMessage: "Staff payment recorded!",
-    onSuccess: () => {
+    onSuccess: (data) => {
       setShowForm(false);
       setSelectedEmployeeId("");
       setSalaryMonth(currentMonthStr());
@@ -157,7 +196,13 @@ export function StaffPaymentManager({
       setRemark("");
       setPayable(null);
       setAmountTouched(false);
-      router.push("/dashboard/salary/payments");
+      onFormClose?.();
+      if (data?.slipUrl) {
+        window.open(data.slipUrl, "_blank", "noopener,noreferrer");
+      }
+      if (returnPath) {
+        router.replace(returnPath);
+      }
       router.refresh();
     },
   });
@@ -192,6 +237,9 @@ export function StaffPaymentManager({
     formData.set("paymentType", paymentType);
     formData.set("amount", amount);
     formData.set("remark", remark);
+    if (paymentType === "salary_paid" && salaryMonth) {
+      formData.set("salaryMonth", salaryMonth);
+    }
     if (needsPaymentMode) {
       formData.set("paymentMode", paymentMode);
     }
@@ -239,21 +287,60 @@ export function StaffPaymentManager({
     employees.find((e) => e.id === selectedEmployeeId)?.full_name ??
     payable?.employeeName;
 
+  const showPageHeader = variant === "page";
+  const showSummaryCards = variant !== "hub-embedded" && variant !== "modal";
+  const isModal = variant === "modal";
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={filterEmployeeName ? `Payments — ${filterEmployeeName}` : "Staff Payments"}
-        description={
-          filterEmployeeName
-            ? `Payment history and new entries for ${filterEmployeeName}. Cash/bank payouts also appear in Income & Expense.`
-            : "Record advances, salary paid, and deductions. Cash/bank payouts also appear in Income & Expense."
-        }
-      >
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="size-4" /> New Payment
-        </Button>
-      </PageHeader>
+      {showPageHeader ? (
+        <PageHeader
+          title={filterEmployeeName ? `Payments — ${filterEmployeeName}` : "Staff Payments"}
+          description={
+            filterEmployeeName
+              ? `Payment history and new entries for ${filterEmployeeName}. Cash/bank payouts also appear in Income & Expense.`
+              : "Record advances, salary paid, and deductions. Cash/bank payouts also appear in Income & Expense."
+          }
+        >
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="size-4" /> New Payment
+          </Button>
+        </PageHeader>
+      ) : variant === "hub-history" ? (
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-[200px] flex-1 space-y-3 sm:max-w-xs">
+            <div>
+              <h2 className="text-lg font-semibold">Payment history</h2>
+              <p className="text-sm text-muted-foreground">
+                All payouts — filter by employee or re-print salary slips.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="historyEmployee" className="mb-1 block text-sm font-medium">
+                Employee
+              </label>
+              <select
+                id="historyEmployee"
+                value={historyEmployeeFilter}
+                onChange={(e) => setHistoryEmployeeFilter(e.target.value)}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                <option value="">All employees</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.full_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="size-4" /> New payment
+          </Button>
+        </div>
+      ) : null}
 
+      {showSummaryCards ? (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <SummaryCard
           label="Total paid out"
@@ -265,17 +352,23 @@ export function StaffPaymentManager({
         />
         <SummaryCard label="Entries" value={String(summary.count)} />
       </div>
+      ) : null}
 
       {showForm ? (
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-4 text-lg font-semibold">
-            {lockEmployee && selectedEmployeeName
-              ? `Pay ${selectedEmployeeName}`
-              : "New Staff Payment"}
-          </h2>
+        <div className={isModal ? "space-y-4" : "rounded-xl border border-border bg-card p-5"}>
+          {variant !== "hub-embedded" && !isModal ? (
+            <h2 className="mb-4 text-lg font-semibold">
+              {lockEmployee && selectedEmployeeName
+                ? `Pay ${selectedEmployeeName}`
+                : "New Staff Payment"}
+            </h2>
+          ) : null}
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            className={cn(
+              "grid grid-cols-1 gap-4",
+              isModal ? "sm:grid-cols-2" : "md:grid-cols-2"
+            )}
           >
             <fieldset disabled={creating} className="contents">
               <div>
@@ -385,15 +478,15 @@ export function StaffPaymentManager({
                       {payable.salaryMode === "fixed" ? (
                         <>
                           {payable.fullDays} full · {payable.halfDays} half · {payable.absentDays}{" "}
-                          absent · Gross {formatCurrency(payable.grossSalary)}
+                          absent · Earned {formatCurrency(payable.grossSalary)}
                         </>
                       ) : (
-                        <>Gross {formatCurrency(payable.grossSalary)}</>
+                        <>Earned {formatCurrency(payable.grossSalary)}</>
                       )}
                       {" "}− Advances {formatCurrency(payable.advanceDeduction)} − Already paid{" "}
                       {formatCurrency(payable.alreadyPaid)} ={" "}
                       <span className="font-medium text-foreground">
-                        {formatCurrency(payable.suggestedAmount)} due
+                        Pay this month {formatCurrency(payable.suggestedAmount)}
                       </span>
                     </p>
                   )}
@@ -479,7 +572,10 @@ export function StaffPaymentManager({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    setShowForm(false);
+                    onFormClose?.();
+                  }}
                   disabled={creating}
                 >
                   Cancel
@@ -496,7 +592,7 @@ export function StaffPaymentManager({
                       : undefined
                   }
                 >
-                  Save
+                  {isModal ? "Pay & print slip" : "Save"}
                 </Button>
               </div>
             </fieldset>
@@ -504,6 +600,7 @@ export function StaffPaymentManager({
         </div>
       ) : null}
 
+      {showHistory ? (
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold">
@@ -513,7 +610,7 @@ export function StaffPaymentManager({
           </h3>
           {filterEmployeeId ? (
             <Button variant="link" size="sm" className="h-auto px-0" asChild>
-              <Link href="/dashboard/salary/payments">Show all employees</Link>
+              <Link href={showAllLinkHref}>Show all employees</Link>
             </Button>
           ) : null}
         </div>
@@ -576,9 +673,30 @@ export function StaffPaymentManager({
               cell: (row) => formatDate(row.payment_date),
             },
             {
+              key: "month",
+              header: "Salary month",
+              cell: (row) =>
+                row.salary_month ? formatMonthYear(row.salary_month) : "—",
+            },
+            {
               key: "remark",
               header: "Remark",
               cell: (row) => row.remark ?? "—",
+            },
+            {
+              key: "slip",
+              header: "Slip",
+              cell: (row) =>
+                row.slip_snapshot ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/dashboard/salary/payments/${row.id}/slip`} target="_blank">
+                      <FileText className="size-4" />
+                      Print
+                    </Link>
+                  </Button>
+                ) : (
+                  "—"
+                ),
             },
             {
               key: "actions",
@@ -599,6 +717,8 @@ export function StaffPaymentManager({
           ]}
         />
       </div>
+      ) : null}
+
       <ConfirmModal
         open={confirmPayOpen}
         onOpenChange={setConfirmPayOpen}

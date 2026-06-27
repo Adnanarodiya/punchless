@@ -64,8 +64,8 @@ export default async function SupplierStatementPrintPage({
         endDate={endDate}
         statement={statement}
         tableLabels={{
-          invoiceColumn: "Purchase No.",
-          debitColumn: "Dr (Purchases)",
+          invoiceColumn: "Bill No.",
+          debitColumn: "Dr (Supplier bills)",
           creditColumn: "Cr (Paid)",
           showVehicleColumn: false,
           dueBadgePrefix: "Payable",

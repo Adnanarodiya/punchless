@@ -61,13 +61,13 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
       href: "/dashboard/banks",
     },
     {
-      label: "Client credit",
-      sublabel: "Total due from clients",
+      label: "Customer credit",
+      sublabel: "Total due from customers",
       value: maskAmount(locked, formatCurrency(summary.clientCredit)),
       icon: Building2,
       color: "text-warning",
       bg: "bg-warning/10",
-      href: "/dashboard/clients",
+      href: "/dashboard/customers",
     },
     {
       label: "Supplier payable",

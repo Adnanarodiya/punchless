@@ -19,7 +19,7 @@ export const learnCategories: LearnCategory[] = [
   {
     id: "commerce",
     label: "Commerce",
-    description: "Clients, suppliers, invoices, and purchases.",
+    description: "Customers, suppliers, invoices, and supplier bills.",
   },
   {
     id: "finance",
@@ -56,16 +56,16 @@ export const learnModules: LearnModule[] = [
       "The Dashboard is your command centre. It combines money (income, expense, dues, revenue chart), payroll (today's payments), and operations (who is working, active jobs, pending advances) in one screen. Use the financial year selector to switch FY views; use the data lock PIN to hide sensitive amounts when someone is watching your screen.",
     howItWorks: [
       "Indian financial year selector (1 Apr – 31 Mar) filters the six financial overview cards.",
-      "Financial cards show Income, Expense, Cash (net), Bank balance, Client credit, and Supplier payable — masked until you unlock with the data lock PIN from the header or dashboard.",
+      "Financial cards show Income, Expense, Cash (net), Bank balance, Customer credit, and Supplier payable — masked until you unlock with the data lock PIN from the header or dashboard.",
       "Quick actions jump you to common tasks: add invoice, record payment, add employee, etc.",
       "Today's payments lists salary and staff payouts recorded today.",
-      "Pending dues shows top client balances you need to collect.",
+      "Pending dues shows top customer balances you need to collect.",
       "Revenue chart toggles between last 7 days and last 6 months.",
       "Sticky notes are personal reminders pinned on the dashboard.",
       "Operations cards link to Employees, Attendance, Jobs, and Advances with live counts.",
       "Recent tables show the latest attendance sessions and jobs.",
       "Setup checklist (dismissible) guides new owners through profile, workshop, posts, and employees.",
-      "Press Ctrl+K (Cmd+K on Mac) anywhere to search clients, suppliers, invoices, jobs, and jump straight to statements.",
+      "Press Ctrl+K (Cmd+K on Mac) anywhere to search customers, suppliers, invoices, jobs, and jump straight to statements.",
     ],
     pageSections: [
       {
@@ -81,7 +81,7 @@ export const learnModules: LearnModule[] = [
       {
         title: "Financial cards",
         description:
-          "Six cards for the selected Indian FY: Income, Expense, Cash (net), Bank balance, Client credit, Supplier payable.",
+          "Six cards for the selected Indian FY: Income, Expense, Cash (net), Bank balance, Customer credit, Supplier payable.",
       },
       {
         title: "Quick actions",
@@ -89,11 +89,11 @@ export const learnModules: LearnModule[] = [
       },
       {
         title: "Today's payments",
-        description: "All staff/client/supplier payments recorded today with amounts.",
+        description: "All staff/customer/supplier payments recorded today with amounts.",
       },
       {
         title: "Pending dues",
-        description: "Top clients with outstanding balances — click to open their statement.",
+        description: "Top customers with outstanding balances — click to open their statement.",
       },
       {
         title: "Revenue chart",
@@ -119,7 +119,7 @@ export const learnModules: LearnModule[] = [
         steps: [
           "Open Dashboard and confirm how many employees are Currently Working.",
           "Review Today's payments to see what was already paid out.",
-          "Check Pending dues for clients to follow up today.",
+          "Check Pending dues for customers to follow up today.",
           "Glance at Active Jobs to see field work in progress.",
         ],
       },
@@ -128,7 +128,7 @@ export const learnModules: LearnModule[] = [
         steps: [
           "If amounts show as masked (••••), click the lock icon in the top header (any page).",
           "Enter your data lock PIN (set in Settings → Data Lock).",
-          "Dashboard cards, salary totals, client dues, bank balances, and related amounts become visible until you lock again or leave the app idle for 5 minutes.",
+          "Dashboard cards, salary totals, customer dues, bank balances, and related amounts become visible until you lock again or leave the app idle for 5 minutes.",
         ],
       },
     ],
@@ -582,43 +582,43 @@ export const learnModules: LearnModule[] = [
         expected: "Status badge updates; job moves out of active count on dashboard.",
       },
     ],
-    tips: ["Link jobs to clients when you plan to invoice — saves re-typing customer info."],
+    tips: ["Link jobs to customers when you plan to invoice — saves re-typing customer info."],
     relatedModuleIds: ["attendance", "invoices", "employees"],
   },
   {
     id: "clients",
-    title: "Clients",
+    title: "Customers",
     category: "commerce",
     icon: "building2",
     summary: "Customer CRM with dues tracking, payments, and ledger statements.",
-    href: "/dashboard/clients",
+    href: "/dashboard/customers",
     roles: ["owner", "admin"],
     overview:
-      "Clients are your customers. Track contact info, GST, opening balance, and running due amount. Record payments (cash/bank), view Shahin-style ledger statements, and soft-delete inactive clients.",
+      "Customers are people or businesses who owe you money for workshop work. Track contact info, GST, opening balance, and running due amount. Record payments (cash/bank), view Shahin-style ledger statements, and soft-delete inactive customers.",
     howItWorks: [
-      "Client money flow panel at the top: Add client → invoice → receive payment → statement.",
-      "Creating a client can include an opening balance (starting due).",
-      "Tax invoices add to client due; payments reduce it.",
+      "Customer money flow panel at the top: Add customer → invoice → receive payment → statement.",
+      "Creating a customer can include an opening balance (starting due).",
+      "Tax invoices add to customer due; payments reduce it.",
       "Receive Payment modal: cash or bank, amount, date, remark. Payments of ₹5,000+ ask for confirmation.",
       "Row actions: ₹ pay, receipt icon for new invoice, statement link.",
-      "Deep links: ?client=ID&open=pay opens pay modal; ?open=invoice jumps to new invoice form.",
+      "Deep links: ?customer=ID&open=pay opens pay modal; ?open=invoice jumps to new invoice form.",
       "Statement page shows full ledger with running balance, print view available.",
-      "Soft-delete hides client from active list without erasing history.",
+      "Soft-delete hides customer from active list without erasing history.",
     ],
     pageSections: [
-      { title: "Client money flow", description: "Four-step guided path from add client through statement." },
-      { title: "Summary cards", description: "Total clients and total due across all clients." },
+      { title: "Customer money flow", description: "Four-step guided path from add customer through statement." },
+      { title: "Summary cards", description: "Total customers and total due across all customers." },
       { title: "Add/Edit panel", description: "Name, alias, contact, address, GST, opening balance." },
-      { title: "Active/Deleted toggle", description: "Switch between active and archived clients." },
+      { title: "Active/Deleted toggle", description: "Switch between active and archived customers." },
       { title: "Data table", description: "Searchable list with due amounts and action buttons." },
-      { title: "Receive payment modal", description: "Record client payment against their balance." },
-      { title: "Statement link", description: "Opens ledger at /dashboard/clients/[id]/statement." },
+      { title: "Receive payment modal", description: "Record customer payment against their balance." },
+      { title: "Statement link", description: "Opens ledger at /dashboard/customers/[id]/statement." },
     ],
     workflows: [
       {
-        title: "Collect payment from client",
+        title: "Collect payment from customer",
         steps: [
-          "Find client in table (or Ctrl+K search).",
+          "Find customer in table (or Ctrl+K search).",
           "Click Receive Payment.",
           "Enter amount, mode (cash/bank), date, remark → Save.",
           "Due amount decreases; payment appears on statement and in reports.",
@@ -628,7 +628,7 @@ export const learnModules: LearnModule[] = [
     testing: [
       {
         step: 1,
-        action: "Create client with ₹5,000 opening balance.",
+        action: "Create customer with ₹5,000 opening balance.",
         expected: "Due shows ₹5,000; statement shows opening B/F row.",
       },
       {
@@ -657,10 +657,10 @@ export const learnModules: LearnModule[] = [
     href: "/dashboard/suppliers",
     roles: ["owner", "admin"],
     overview:
-      "Suppliers mirror Clients but for money you owe. Track payables, record payments to suppliers, and view statements. Purchases increase payable; supplier payments decrease it.",
+      "Suppliers mirror Customers but for money you owe. Track payables, record payments to suppliers, and view statements. Supplier bills increase payable; supplier payments decrease it.",
     howItWorks: [
-      "Same CRM pattern as Clients: create, edit, soft-delete, opening balance.",
-      "Purchase invoices increase what you owe the supplier.",
+      "Same CRM pattern as Customers: create, edit, soft-delete, opening balance.",
+      "Supplier bills increase what you owe the supplier.",
       "Pay Supplier records cash/bank outflow. Payments of ₹5,000+ ask for confirmation.",
       "Deep link ?supplier=ID&open=pay opens the pay modal (also from Ctrl+K search).",
       "Statement shows full payable ledger with print support.",
@@ -674,9 +674,9 @@ export const learnModules: LearnModule[] = [
     ],
     workflows: [
       {
-        title: "Pay supplier after purchase",
+        title: "Pay supplier after bill",
         steps: [
-          "Record purchase invoice in Purchases module.",
+          "Record supplier bill in Supplier bills module.",
           "Open Suppliers → find vendor → Pay.",
           "Enter payment amount and mode → payable decreases.",
         ],
@@ -685,7 +685,7 @@ export const learnModules: LearnModule[] = [
     testing: [
       {
         step: 1,
-        action: "Create supplier; add purchase of ₹10,000.",
+        action: "Create supplier; add supplier bill of ₹10,000.",
         expected: "Supplier payable shows ₹10,000.",
       },
       {
@@ -694,7 +694,7 @@ export const learnModules: LearnModule[] = [
         expected: "Payable zero; bank/expense entries reflect payment.",
       },
     ],
-    tips: ["Match supplier GST with purchase invoices for GST report accuracy."],
+    tips: ["Match supplier GST with supplier bills for GST report accuracy."],
     relatedModuleIds: ["purchases", "banks", "reports"],
   },
   {
@@ -706,17 +706,17 @@ export const learnModules: LearnModule[] = [
     href: "/dashboard/invoices",
     roles: ["owner", "admin"],
     overview:
-      "Create professional GST tax invoices for clients. Add line items with GST slabs, link optional job/vehicle, choose payment mode (cash, bank, credit, or split), and print. Credit invoices increase client due; paid invoices write to income and client ledger automatically.",
+      "Create professional GST tax invoices for customers. Add line items with GST slabs, link optional job/vehicle, choose payment mode (cash, bank, credit, or split), and print. Credit invoices increase customer due; paid invoices write to income and customer ledger automatically.",
     howItWorks: [
-      "Select client → add line items (description, qty, rate, GST %).",
+      "Select customer → add line items (description, qty, rate, GST %).",
       "Live preview shows taxable, GST, and total.",
       "Payment: full cash, full bank, full credit (due), or split cash+bank.",
-      "Excess payment on split can clear older client dues.",
+      "Excess payment on split can clear older customer dues.",
       "Soft-delete reverses ledger impact.",
       "Print view at /dashboard/invoices/[id]/print.",
     ],
     pageSections: [
-      { title: "Invoice form", description: "Client, date, vehicle, line items, GST, payment mode." },
+      { title: "Invoice form", description: "Customer, date, vehicle, line items, GST, payment mode." },
       { title: "Live totals preview", description: "Taxable, CGST/SGST, grand total, due effect." },
       { title: "Invoice table", description: "All invoices with search and edit/delete." },
       { title: "Detail & print", description: "View invoice; print-friendly layout." },
@@ -726,7 +726,7 @@ export const learnModules: LearnModule[] = [
         title: "Invoice a completed job",
         steps: [
           "Open Invoices → New Invoice.",
-          "Select client (from job if linked).",
+          "Select customer (from job if linked).",
           "Add labour and parts line items with correct GST slab.",
           "Choose payment: credit if paying later, or cash/bank if paid now.",
           "Save → print receipt for customer.",
@@ -737,12 +737,12 @@ export const learnModules: LearnModule[] = [
       {
         step: 1,
         action: "Create ₹11,800 invoice (₹10,000 + 18% GST) on credit.",
-        expected: "Client due increases by ₹11,800; invoice in table.",
+        expected: "Customer due increases by ₹11,800; invoice in table.",
       },
       {
         step: 2,
         action: "Create paid invoice with split ₹5,000 cash + ₹5,000 bank.",
-        expected: "Income recorded in both modes; client due updated correctly.",
+        expected: "Income recorded in both modes; customer due updated correctly.",
       },
       {
         step: 3,
@@ -758,30 +758,30 @@ export const learnModules: LearnModule[] = [
   },
   {
     id: "purchases",
-    title: "Purchases",
+    title: "Supplier bills",
     category: "commerce",
     icon: "shopping-cart",
-    summary: "Supplier purchase bills and sales/credit notes.",
+    summary: "Supplier bills and credit notes.",
     href: "/dashboard/purchases",
     roles: ["owner", "admin"],
     overview:
-      "Record purchase invoices from suppliers (parts, materials) and sales/credit notes. Each entry updates supplier payable and feeds GST/expense reports.",
+      "Record supplier bills (parts, materials) and credit notes. Each entry updates supplier payable and feeds GST/expense reports.",
     howItWorks: [
-      "Type: Purchase (increases payable) or Sales/Credit note (decreases payable).",
+      "Type: Supplier bill (increases payable) or Credit note (decreases payable).",
       "Select supplier, invoice number, date, taxable amount, GST slab.",
       "Total auto-calculated; remark optional.",
       "Edit or soft-delete updates supplier balance accordingly.",
     ],
     pageSections: [
-      { title: "Purchase form", description: "Supplier, type, invoice #, amounts, GST." },
-      { title: "Purchase table", description: "History with edit and delete." },
+      { title: "Bill form", description: "Supplier, type, invoice #, amounts, GST." },
+      { title: "Bill table", description: "History with edit and delete." },
     ],
     workflows: [
       {
-        title: "Record parts purchase",
+        title: "Record parts bill",
         steps: [
           "Select supplier.",
-          "Type = Purchase, enter bill details and GST.",
+          "Type = Supplier bill, enter bill details and GST.",
           "Save → supplier payable increases → pay later via Suppliers.",
         ],
       },
@@ -789,16 +789,16 @@ export const learnModules: LearnModule[] = [
     testing: [
       {
         step: 1,
-        action: "Add purchase ₹5,900 (₹5,000 + GST) from supplier.",
-        expected: "Supplier payable +₹5,900; entry in purchase table.",
+        action: "Add supplier bill ₹5,900 (₹5,000 + GST) from supplier.",
+        expected: "Supplier payable +₹5,900; entry in bill table.",
       },
       {
         step: 2,
-        action: "Add sales/credit note ₹1,000.",
+        action: "Add credit note ₹1,000.",
         expected: "Supplier payable decreases by ₹1,000.",
       },
     ],
-    tips: ["Enter purchases when bill arrives — don't wait until payment."],
+    tips: ["Enter supplier bills when the bill arrives — don't wait until payment."],
     relatedModuleIds: ["suppliers", "reports"],
   },
   {
@@ -810,7 +810,7 @@ export const learnModules: LearnModule[] = [
     href: "/dashboard/transactions",
     roles: ["owner", "admin"],
     overview:
-      "Record miscellaneous income and expenses not tied to invoices or purchases — rent, tea, petty cash, etc. Separate from bank balances: this is your profit-and-loss view (Rojmel style). Cash and bank modes supported.",
+      "Record miscellaneous income and expenses not tied to invoices or supplier bills — rent, tea, petty cash, etc. Separate from bank balances: this is your profit-and-loss view (Rojmel style). Cash and bank modes supported.",
     howItWorks: [
       "Choose Income or Expense.",
       "Enter particular (description), amount, cash or bank, date, remark.",
@@ -1144,7 +1144,7 @@ export const learnModules: LearnModule[] = [
     href: "/dashboard/reports",
     roles: ["owner", "admin"],
     overview:
-      "Reports index links to eight report types. Each uses a consistent layout: pick a date/period, view summary + detail table, export CSV, or print. Data comes from invoices, purchases, transactions, payments, and ledger entries.",
+      "Reports index links to eight report types. Each uses a consistent layout: pick a date/period, view summary + detail table, export CSV, or print. Data comes from invoices, supplier bills, transactions, payments, and ledger entries.",
     howItWorks: [
       "Daily: single-day income, expense, net + breakdown tables.",
       "Monthly: month-wise P&L summary.",
@@ -1234,7 +1234,7 @@ export const learnModules: LearnModule[] = [
       {
         step: 1,
         action: "Update company address and save profile.",
-        expected: "Client statement letterhead shows new address.",
+        expected: "Customer statement letterhead shows new address.",
       },
       {
         step: 2,

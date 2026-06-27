@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/queries/auth.queries";
+import { redirectUnlessFullDashboard } from "@/lib/utils/dashboard-experience-guard";
 import { getAuditLogs } from "@/lib/queries/audit.queries";
 import { resolveReportPeriod } from "@/lib/utils/report-period";
 
@@ -11,6 +12,8 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ period?: string; start?: string; end?: string }>;
 }) {
+  await redirectUnlessFullDashboard("/dashboard");
+
   const user = await getCurrentUser();
   if (!user || user.role !== "owner") {
     redirect("/dashboard");

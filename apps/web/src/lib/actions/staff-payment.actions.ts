@@ -2,10 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import { getFingerprintSalaryReport } from "@/lib/queries/attendance-import.queries";
 import {
   getEmployeeSalaryPayable,
   type EmployeeSalaryPayable,
 } from "@/lib/queries/salary.queries";
+import type { StaffPaymentSlipSnapshot } from "@/lib/types/staff-payment-slip";
+import { buildSlipSnapshotFromFingerprintLine } from "@/lib/utils/staff-payment-slip";
 import {
   createSalaryDepositSchema,
   createStaffPaymentSchema,
@@ -37,6 +40,7 @@ function revalidateStaffFinancePages(employeeId?: string, bankId?: string | null
   revalidatePath("/dashboard/salary/payments");
   revalidatePath("/dashboard/salary/deposits");
   revalidatePath("/dashboard/salary");
+
   revalidatePath("/dashboard/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/employees");
@@ -139,6 +143,7 @@ export const createStaffPayment = protectedAction<FormData>({
     paymentMode: formData.get("paymentMode") || undefined,
     bankId: formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
+    salaryMonth: formData.get("salaryMonth") || undefined,
     remark: formData.get("remark"),
   });
 
@@ -159,6 +164,55 @@ export const createStaffPayment = protectedAction<FormData>({
 
   const employeeName = (employee as { full_name: string } | null)?.full_name ?? "Employee";
 
+  let salaryMonth: string | null = null;
+  let slipSnapshot: StaffPaymentSlipSnapshot | null = null;
+
+  if (data.paymentType === "salary_paid" && data.salaryMonth?.trim()) {
+    salaryMonth = data.salaryMonth.trim();
+    const report = await getFingerprintSalaryReport(salaryMonth);
+    const line = report?.lines.find(
+      (row) => row.employeeId === data.employeeId && row.isMatched
+    );
+    if (line) {
+      slipSnapshot = buildSlipSnapshotFromFingerprintLine(line, {
+        salaryMonth,
+        amountPaid: data.amount,
+        paymentDate: data.paymentDate,
+        paymentMode,
+        remark: data.remark?.trim() || null,
+        otRateMultiplier: report?.otRateMultiplier ?? 1,
+        eligibleDays: report?.eligibleDays ?? line.eligibleDays,
+      });
+    } else {
+      const payable = await getEmployeeSalaryPayable(data.employeeId, salaryMonth);
+      if (payable) {
+        slipSnapshot = {
+          employeeName: payable.employeeName,
+          designation: null,
+          salaryMonth,
+          monthlySalary: payable.grossSalary,
+          workingDays: payable.fullDays + payable.halfDays * 0.5,
+          absentDays: payable.absentDays,
+          sundaysExcluded: 0,
+          eligibleDays:
+            payable.fullDays + payable.halfDays + payable.absentDays || 30,
+          otHours: 0,
+          otRateMultiplier: 1,
+          earnedSalary: payable.grossSalary,
+          otPay: 0,
+          totalSalary: payable.grossSalary,
+          advanceDeduction: payable.advanceDeduction,
+          alreadyPaidBefore: payable.alreadyPaid,
+          netPayment: payable.netSalary,
+          amountPaid: data.amount,
+          paymentDate: data.paymentDate,
+          paymentMode,
+          remark: data.remark?.trim() || null,
+        };
+      }
+    }
+  }
+
   const { data: payment, error: paymentError } = await supabase
     .from("staff_payments")
     .insert({
@@ -169,6 +223,8 @@ export const createStaffPayment = protectedAction<FormData>({
       payment_mode: paymentMode,
       bank_id: bankId,
       payment_date: data.paymentDate,
+      salary_month: salaryMonth,
+      slip_snapshot: slipSnapshot,
       remark: data.remark || null,
       created_by: me.id,
     } as never)
@@ -227,7 +283,16 @@ export const createStaffPayment = protectedAction<FormData>({
   }
 
   revalidateStaffFinancePages(data.employeeId, bankId);
-  return { success: true };
+  revalidatePath(`/dashboard/salary/payments/${payment.id}/slip`);
+  return {
+    success: true,
+    data: {
+      paymentId: payment.id as string,
+      slipUrl: slipSnapshot
+        ? `/dashboard/salary/payments/${payment.id}/slip`
+        : null,
+    },
+  };
 });
 
 export const createSalaryDeposit = protectedAction<FormData>({

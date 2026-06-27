@@ -420,7 +420,7 @@ export async function getExpenseReport(
 }
 
 const ROJMEL_CATEGORY: Record<string, string> = {
-  client: "Client",
+  client: "Customer",
   supplier: "Supplier",
   staff: "Staff",
   bank: "Bank",
@@ -434,7 +434,7 @@ const ROJMEL_REF: Record<string, string> = {
   salary: "Salary",
   expense: "Expense",
   opening_balance: "Opening",
-  purchase: "Purchase",
+  purchase: "Supplier bill",
   transfer: "Transfer",
   bank_transaction: "Bank Tx",
   salary_deposit: "Salary deposit",

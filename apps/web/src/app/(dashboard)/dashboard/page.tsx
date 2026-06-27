@@ -13,7 +13,7 @@ import {
   getTodaysPayments,
   getTopPendingDues,
 } from "@/lib/queries/dashboard.queries";
-import { getDataLockStatus } from "@/lib/queries/settings.queries";
+import { getCompanySettings, getDataLockStatus } from "@/lib/queries/settings.queries";
 import { getStickyNotes } from "@/lib/queries/sticky-note.queries";
 import {
   buildFinancialYearSelectOptions,
@@ -25,16 +25,22 @@ import { DashboardDataLockControls } from "@/components/dashboard-data-lock-cont
 import { DashboardFinancialCards } from "./dashboard-financial-cards";
 import { DashboardFySelector } from "./dashboard-fy-selector";
 import { DashboardLiveClock } from "./dashboard-live-clock";
+import { DashboardMoneyHero } from "./dashboard-money-hero";
 import { DashboardPendingDues } from "./dashboard-pending-dues";
+import { DashboardPrimaryActions } from "./dashboard-primary-actions";
 import { DashboardQuickActions } from "./dashboard-quick-actions";
-// GPS attendance tables — paused
-// import { DashboardRecentTables } from "./dashboard-recent-tables";
+import { DashboardShowMore } from "./dashboard-show-more";
 import {
   DashboardRevenueChart,
   type ChartRange,
 } from "./dashboard-revenue-chart";
 import { SetupChecklist } from "@/components/setup-checklist";
 import { getSetupChecklistStatus } from "@/lib/queries/setup-checklist.queries";
+import { getBanks } from "@/lib/queries/bank.queries";
+import { getActiveClients } from "@/lib/queries/client.queries";
+import { getActiveSuppliers } from "@/lib/queries/supplier.queries";
+import { DashboardHomeModals } from "@/components/dashboard-home-modals";
+import { FyCalendarHint } from "@/components/fy-calendar-hint";
 
 import { DashboardStickyNotes } from "./dashboard-sticky-notes";
 import { DashboardTodaysPayments } from "./dashboard-todays-payments";
@@ -48,8 +54,23 @@ export default async function DashboardPage({
   const chartRange: ChartRange = params.chart === "6m" ? "6m" : "7d";
   const currentFy = getCurrentFinancialYearStartYear();
 
-  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, dataLock, stickyNotes, setupChecklist] =
-    await Promise.all([
+  const settings = await getCompanySettings();
+  const isFullExperience = settings?.dashboard_experience === "full";
+
+  const [
+    yearsWithData,
+    stats,
+    todaysPayments,
+    pendingDues,
+    revenueChart7d,
+    revenueChart6m,
+    dataLock,
+    stickyNotes,
+    setupChecklist,
+    clients,
+    suppliers,
+    banks,
+  ] = await Promise.all([
     getFinancialYearsWithData(),
     getDashboardStats(),
     getTodaysPayments(),
@@ -57,8 +78,11 @@ export default async function DashboardPage({
     getRevenueChart(7),
     getRevenueChartByMonth(6),
     getDataLockStatus(),
-    getStickyNotes(),
+    isFullExperience ? getStickyNotes() : Promise.resolve([]),
     getSetupChecklistStatus(),
+    getActiveClients(),
+    getActiveSuppliers(),
+    getBanks(),
   ]);
 
   const fyStartYear = resolveDashboardFinancialYear(
@@ -105,78 +129,93 @@ export default async function DashboardPage({
   ];
 
   return (
-    <div className="space-y-8">
+    <Suspense fallback={<div className="space-y-8 animate-pulse rounded-xl bg-muted/30 p-8" />}>
+      <DashboardHomeModals clients={clients} suppliers={suppliers} banks={banks}>
+        <div className="space-y-8">
       <PageHeader
-        title="Dashboard"
-        description="Money in, money out, and monthly fingerprint payroll at a glance."
+        title="Home"
+        description="How much customers owe, what you owe, and what to do next."
       >
         <div className="flex flex-col items-end gap-2">
           <DashboardLiveClock />
-          <Suspense fallback={null}>
-            <DashboardFySelector options={fyOptions} selectedFy={fyStartYear} />
-          </Suspense>
           <DashboardDataLockControls hasDataLockPin={hasDataLockPin} />
         </div>
       </PageHeader>
 
-      <SetupChecklist status={setupChecklist} />
+      <DashboardMoneyHero summary={financial} hasDataLockPin={hasDataLockPin} />
 
-      <DashboardFinancialCards
-        summary={financial}
-        hasDataLockPin={hasDataLockPin}
-      />
+      <DashboardPrimaryActions />
 
-      <DashboardQuickActions />
+      <DashboardPendingDues dues={pendingDues} hasDataLockPin={hasDataLockPin} />
 
-      <div className="grid grid-cols-1 gap-6">
-        <DashboardTodaysPayments
-          payments={todaysPayments}
-          hasDataLockPin={hasDataLockPin}
-        />
-        <DashboardPendingDues dues={pendingDues} hasDataLockPin={hasDataLockPin} />
-      </div>
+      <DashboardShowMore>
+        <SetupChecklist status={setupChecklist} />
 
-      <Suspense fallback={null}>
-        <DashboardRevenueChart
-          points={revenueChart}
-          chartRange={chartRange}
-          hasDataLockPin={hasDataLockPin}
-        />
-      </Suspense>
-
-      <DashboardStickyNotes notes={stickyNotes} />
-
-      <section aria-labelledby="operations-heading">
-        <h2 id="operations-heading" className="mb-4 text-lg font-semibold">
-          Operations
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {operationCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Link
-                key={stat.label}
-                href={stat.href}
-                className="rounded-xl border border-border bg-card p-5 transition hover:border-primary/30 hover:bg-accent/30"
-              >
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <div
-                    className={`rounded-lg p-2 ${stat.bgColor} ${stat.color}`}
-                  >
-                    <Icon className="size-4" />
-                  </div>
-                </div>
-                <p className="text-3xl font-bold">{stat.value}</p>
-              </Link>
-            );
-          })}
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Detailed financial overview for {financial.periodLabel}
+          </p>
+          <Suspense fallback={null}>
+            <DashboardFySelector options={fyOptions} selectedFy={fyStartYear} />
+          </Suspense>
         </div>
-      </section>
 
-      {/* GPS: Recent Attendance + Recent Jobs tables — paused
-      <DashboardRecentTables recentAttendance={recentAttendance} recentJobs={recentJobs} />
-      */}
-    </div>
+        <FyCalendarHint />
+
+        <DashboardFinancialCards
+          summary={financial}
+          hasDataLockPin={hasDataLockPin}
+        />
+
+        <DashboardQuickActions />
+
+        <div className="grid grid-cols-1 gap-6">
+          <DashboardTodaysPayments
+            payments={todaysPayments}
+            hasDataLockPin={hasDataLockPin}
+          />
+        </div>
+
+        <Suspense fallback={null}>
+          <DashboardRevenueChart
+            points={revenueChart}
+            chartRange={chartRange}
+            hasDataLockPin={hasDataLockPin}
+          />
+        </Suspense>
+
+        {isFullExperience ? <DashboardStickyNotes notes={stickyNotes} /> : null}
+
+        <section aria-labelledby="operations-heading">
+          <h2 id="operations-heading" className="mb-4 text-lg font-semibold">
+            Operations
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {operationCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <Link
+                  key={stat.label}
+                  href={stat.href}
+                  className="rounded-xl border border-border bg-card p-5 transition hover:border-primary/30 hover:bg-accent/30"
+                >
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <div
+                      className={`rounded-lg p-2 ${stat.bgColor} ${stat.color}`}
+                    >
+                      <Icon className="size-4" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold">{stat.value}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      </DashboardShowMore>
+        </div>
+      </DashboardHomeModals>
+    </Suspense>
   );
 }

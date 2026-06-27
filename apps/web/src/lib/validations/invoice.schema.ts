@@ -13,7 +13,7 @@ const paymentModeSchema = z.enum(["cash", "bank", "credit", "split"]);
 
 export const createInvoiceSchema = z
   .object({
-    clientId: z.string().uuid("Client is required"),
+    clientId: z.string().uuid("Customer is required"),
     jobId: z.string().optional().or(z.literal("")),
     invoiceNumber: z.string().max(50).optional().or(z.literal("")),
     invoiceDate: z.string().min(1, "Invoice date is required"),
@@ -66,6 +66,17 @@ export const createInvoiceSchema = z
 
 export const updateInvoiceSchema = createInvoiceSchema.extend({
   invoiceId: z.string().uuid("Invalid invoice ID"),
+});
+
+/** P1-2 — Quick bill: client + amount + cash now or udhar (credit). */
+export const quickBillSchema = z.object({
+  clientId: z.string().uuid("Customer is required"),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  paymentMode: z.enum(["cash", "credit"], {
+    message: "Choose paid now or udhar",
+  }),
+  invoiceDate: z.string().min(1, "Date is required"),
+  description: z.string().max(200).optional().or(z.literal("")),
 });
 
 export function resolvePaymentBreakdown(

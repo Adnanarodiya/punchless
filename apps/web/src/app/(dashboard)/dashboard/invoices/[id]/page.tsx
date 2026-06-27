@@ -73,7 +73,7 @@ export default async function InvoiceDetailPage({
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label="Client" value={invoice.client_name} />
+        <SummaryCard label="Customer" value={invoice.client_name} />
         <SummaryCard
           label="Total"
           value={formatCurrency(invoice.total_amount)}

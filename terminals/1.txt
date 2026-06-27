@@ -3,7 +3,7 @@ pid: 25768
 cwd: "D:\Coding\punchless"
 command: "cd \"D:\\Coding\\punchless\\apps\\web\"; pnpm dev 2>&1"
 started_at: 2026-06-27T08:02:35.648Z
-running_for_ms: 1195011  
+running_for_ms: 1555004  
 ---
 [WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
 

@@ -6,6 +6,8 @@ import {
   companyProfileSchema,
   companySettingsSchema,
 } from "@/lib/validations/settings.schema";
+import { dashboardExperienceSchema } from "@/lib/validations/dashboard-experience.schema";
+import { uiLanguageSchema } from "@/lib/validations/ui-language.schema";
 import {
   dataLockPinSchema,
   verifyDataLockPinSchema,
@@ -14,6 +16,58 @@ import {
   hashDataLockPin,
   verifyDataLockPin,
 } from "@/lib/utils/pin-hash";
+
+export const updateDashboardExperience = protectedAction<FormData>({
+  roles: ["owner"],
+  audit: { action: "update_dashboard_experience", entityType: "settings" },
+})(async (formData, { supabase, me }) => {
+  const parsed = dashboardExperienceSchema.safeParse({
+    experience: formData.get("experience"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { experience } = parsed.data;
+
+  const { error } = await supabase
+    .from("companies")
+    .update({ dashboard_experience: experience } as unknown as never)
+    .eq("id", me.company_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings");
+  return { success: true, data: { experience } };
+});
+
+export const updateUiLanguage = protectedAction<FormData>({
+  roles: ["owner"],
+  audit: { action: "update_ui_language", entityType: "settings" },
+})(async (formData, { supabase, me }) => {
+  const parsed = uiLanguageSchema.safeParse(formData.get("language"));
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const language = parsed.data;
+
+  const { error } = await supabase
+    .from("companies")
+    .update({ ui_language: language } as unknown as never)
+    .eq("id", me.company_id);
+
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/dashboard", "layout");
+  revalidatePath("/dashboard/settings");
+  return { success: true, data: { language } };
+});
 
 export const updateCompanySettings = protectedAction<FormData>({
   roles: ["owner"],
@@ -106,7 +160,7 @@ export const updateCompanyProfile = protectedAction<FormData>({
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/dashboard/settings");
-  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard/suppliers");
   return { success: true };
 });

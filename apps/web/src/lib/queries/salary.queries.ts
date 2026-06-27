@@ -143,23 +143,14 @@ async function fetchAdvanceMap(
 
 async function fetchAlreadyPaidMap(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  monthStr: string,
   monthStart: string,
   monthEnd: string
 ) {
-  const { data } = await supabase
-    .from("staff_payments")
-    .select("employee_id, amount")
-    .eq("payment_type", "salary_paid")
-    .gte("payment_date", monthStart)
-    .lte("payment_date", monthEnd);
-
-  const paidMap = new Map<string, number>();
-  for (const row of data ?? []) {
-    const empId = (row as { employee_id: string }).employee_id;
-    const amt = Number((row as { amount: number }).amount ?? 0);
-    paidMap.set(empId, (paidMap.get(empId) ?? 0) + amt);
-  }
-  return paidMap;
+  const { fetchSalaryPaidByEmployeeForMonth } = await import(
+    "@/lib/utils/salary-paid-map"
+  );
+  return fetchSalaryPaidByEmployeeForMonth(supabase, monthStr, monthStart, monthEnd);
 }
 
 function buildPayrollTotals(
@@ -222,7 +213,7 @@ export async function getSalaryReport(
   const [dailyRows, advanceMap, paidMap, sessionsData] = await Promise.all([
     fetchDailyPayrollRows(supabase, config, monthStart, monthEnd),
     fetchAdvanceMap(supabase, monthStr, monthStart, monthEnd),
-    fetchAlreadyPaidMap(supabase, monthStart, monthEnd),
+    fetchAlreadyPaidMap(supabase, monthStr, monthStart, monthEnd),
     supabase.rpc("get_monthly_attendance_summary" as any, {
       p_company_id: config.companyId,
       p_start_time: startDate,
@@ -405,16 +396,10 @@ export async function getEmployeeSalaryPayable(
     joining_date: string | null;
   };
 
-  const [dailyRows, advanceMap, { data: salaryPaid }] = await Promise.all([
+  const [dailyRows, advanceMap, paidMap] = await Promise.all([
     fetchDailyPayrollRows(supabase, config, monthStart, monthEnd),
     fetchAdvanceMap(supabase, monthStr, monthStart, monthEnd),
-    supabase
-      .from("staff_payments")
-      .select("amount")
-      .eq("employee_id", employeeId)
-      .eq("payment_type", "salary_paid")
-      .gte("payment_date", monthStart)
-      .lte("payment_date", monthEnd),
+    fetchAlreadyPaidMap(supabase, monthStr, monthStart, monthEnd),
   ]);
 
   const payroll = calculateGrossSalary(
@@ -435,12 +420,7 @@ export async function getEmployeeSalaryPayable(
   );
 
   const advanceDeduction = Math.round(advanceMap.get(employeeId) ?? 0);
-  const alreadyPaid = Math.round(
-    ((salaryPaid as { amount: number }[] | null) ?? []).reduce(
-      (sum, row) => sum + Number(row.amount ?? 0),
-      0
-    )
-  );
+  const alreadyPaid = Math.round(paidMap.get(employeeId) ?? 0);
   const { netSalary, overAdvanced, suggestedPay } = buildPayrollTotals(
     payroll.grossSalary,
     advanceDeduction,

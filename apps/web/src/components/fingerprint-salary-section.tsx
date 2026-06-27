@@ -38,12 +38,42 @@ type Props = {
   currentMonth: string;
   report: FingerprintSalaryReport | null;
   employeesForMapping: Array<{ id: string; fullName: string }>;
+  /** When true, Pay opens modal on Pay Staff hub (no page navigation). */
+  unifiedPayStaff?: boolean;
+  /** Opens pay modal with prefilled amount (Simple Pay Staff hub). */
+  onPayEmployee?: (employeeId: string, amount: number) => void;
 };
+
+function buildPayHref(
+  unifiedPayStaff: boolean,
+  employeeId: string,
+  month: string,
+  amount: number
+) {
+  if (unifiedPayStaff) {
+    const params = new URLSearchParams({
+      month,
+      employee: employeeId,
+      openPay: "1",
+      amount: String(Math.round(amount)),
+    });
+    return `/dashboard/salary?${params.toString()}`;
+  }
+  const params = new URLSearchParams({
+    employee: employeeId,
+    month,
+    openForm: "1",
+    amount: String(Math.round(amount)),
+  });
+  return `/dashboard/salary/payments?${params.toString()}`;
+}
 
 export function FingerprintSalarySection({
   currentMonth,
   report,
   employeesForMapping,
+  unifiedPayStaff = false,
+  onPayEmployee,
 }: Props) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -236,7 +266,7 @@ export function FingerprintSalarySection({
           description="Upload your monthly fingerprint export (.xlsx) to calculate working days, OT, and net salary for each employee."
         />
       ) : (
-        <>
+        <section id="salary-report" className="scroll-mt-24 space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <div className="rounded-xl border border-border bg-card p-5">
               <p className="text-sm text-muted-foreground">Earned salary</p>
@@ -260,7 +290,7 @@ export function FingerprintSalarySection({
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-5">
-              <p className="text-sm text-muted-foreground">Due to pay</p>
+              <p className="text-sm text-muted-foreground">Pay this month</p>
               <p className="text-2xl font-bold text-success">
                 <MaskedAmount amount={totalDue} />
               </p>
@@ -292,13 +322,14 @@ export function FingerprintSalarySection({
                     <th className="p-4 text-right font-medium">Total</th>
                     <th className="p-4 text-right font-medium text-destructive">Advance</th>
                     <th className="p-4 text-right font-medium">Net pay</th>
+                    <th className="p-4 text-right font-medium">Pay this month</th>
                     <th className="p-4 text-right font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {lines.length === 0 ? (
                     <tr>
-                      <td colSpan={12}>
+                      <td colSpan={13}>
                         <TableEmptyState
                           icon={Users}
                           title="No employees match your search"
@@ -351,6 +382,17 @@ export function FingerprintSalarySection({
                         <td className="p-4 text-right font-medium">
                           <MaskedAmount amount={line.netPayment} />
                         </td>
+                        <td className="p-4 text-right font-semibold text-success">
+                          {line.isMatched && line.suggestedPay > 0 ? (
+                            <MaskedAmount amount={line.suggestedPay} />
+                          ) : line.isMatched && line.alreadyPaid > 0 ? (
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Paid
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="p-4 text-right">
                           {!line.isMatched ? (
                             <Button
@@ -361,19 +403,37 @@ export function FingerprintSalarySection({
                               Map
                             </Button>
                           ) : line.suggestedPay > 0 ? (
-                            <Button variant="outline" size="sm" asChild>
-                              <Link
-                                href={`/dashboard/salary/payments?employee=${line.employeeId}&month=${currentMonth}&openForm=1&amount=${line.suggestedPay}`}
+                            unifiedPayStaff && onPayEmployee ? (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  onPayEmployee(line.employeeId!, line.suggestedPay)
+                                }
                               >
                                 <Banknote className="size-4" />
                                 Pay
-                              </Link>
-                            </Button>
+                              </Button>
+                            ) : (
+                              <Button size="sm" asChild>
+                                <Link
+                                  href={buildPayHref(
+                                    unifiedPayStaff,
+                                    line.employeeId!,
+                                    currentMonth,
+                                    line.suggestedPay
+                                  )}
+                                >
+                                  <Banknote className="size-4" />
+                                  Pay
+                                </Link>
+                              </Button>
+                            )
+                          ) : line.isMatched && line.alreadyPaid > 0 ? (
+                            <span className="inline-flex items-center rounded-md border border-success/30 bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                              Paid
+                            </span>
                           ) : (
-                            <Button variant="outline" size="sm" disabled>
-                              <Banknote className="size-4" />
-                              Pay
-                            </Button>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </td>
                       </tr>
@@ -383,7 +443,7 @@ export function FingerprintSalarySection({
               </table>
             </div>
           </div>
-        </>
+        </section>
       )}
 
       <FingerprintNameMapModal

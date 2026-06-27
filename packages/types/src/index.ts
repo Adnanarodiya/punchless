@@ -38,6 +38,11 @@ export type PurchaseInvoiceType = "purchase" | "sales";
 
 export type TaxInvoicePaymentMode = "cash" | "bank" | "credit" | "split";
 
+export type DashboardExperience = "simple" | "full";
+
+/** P2-2 — owner-facing dashboard label language */
+export type UiLanguage = "en" | "gu" | "hi";
+
 // --- Database Models ---
 
 export interface Company {

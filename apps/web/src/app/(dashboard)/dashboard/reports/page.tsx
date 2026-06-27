@@ -1,70 +1,15 @@
 import Link from "next/link";
-import {
-  BarChart3,
-  Calendar,
-  CalendarRange,
-  FileText,
-  Receipt,
-  ScrollText,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { InfoHint } from "@/components/info-hint";
+import { filterReportsForExperience } from "@/lib/content/reports-nav";
+import { getCompanySettings } from "@/lib/queries/settings.queries";
 
-const reports = [
-  {
-    href: "/dashboard/reports/daily",
-    title: "Daily Summary",
-    description: "Income, expense, invoices, and payments for a day or range.",
-    icon: BarChart3,
-  },
-  {
-    href: "/dashboard/reports/monthly",
-    title: "Monthly Report",
-    description: "Month-wise P&L and activity totals.",
-    icon: Calendar,
-  },
-  {
-    href: "/dashboard/reports/yearly",
-    title: "Yearly Report",
-    description: "12-month income vs expense overview.",
-    icon: CalendarRange,
-  },
-  {
-    href: "/dashboard/reports/gst",
-    title: "GST Report",
-    description: "Taxable amount and GST by slab for invoices.",
-    icon: Receipt,
-  },
-  {
-    href: "/dashboard/reports/invoices",
-    title: "Invoice Report",
-    description: "All tax invoices with payment split.",
-    icon: FileText,
-  },
-  {
-    href: "/dashboard/reports/income-expense",
-    title: "Income / Expense",
-    description: "Particular-wise income and expense from manual entries.",
-    icon: TrendingUp,
-  },
-  {
-    href: "/dashboard/reports/expenses",
-    title: "Expense Report",
-    description: "Expense entries only with cash/bank mode.",
-    icon: TrendingDown,
-  },
-  {
-    href: "/dashboard/reports/rojmel",
-    title: "Rojmel",
-    description: "Daily cash book — every money movement with running balance.",
-    icon: ScrollText,
-  },
-];
+export default async function ReportsIndexPage() {
+  const settings = await getCompanySettings();
+  const experience = settings?.dashboard_experience === "full" ? "full" : "simple";
+  const reports = filterReportsForExperience(experience);
 
-export default function ReportsIndexPage() {
   return (
     <div className="space-y-6">
       <PageHeader
@@ -72,12 +17,19 @@ export default function ReportsIndexPage() {
         description="Financial reports — pick a period, print, or export CSV and Excel."
       />
 
-      <InfoHint title="Quick glossary">
-        <strong>Rojmel</strong> = traditional daily cash book (every debit/credit with running balance).{" "}
-        <strong>Income &amp; Expense</strong> (Transactions page) = manual business P&amp;L entries — different from{" "}
-        <strong>Bank balance</strong> (Banks page). <strong>Yearly report</strong> uses calendar year (Jan–Dec); the
-        dashboard overview uses Indian FY (Apr–Mar).
-      </InfoHint>
+      {experience === "simple" ? (
+        <InfoHint title="Simple mode">
+          Daily and monthly reports cover most day-to-day checks. Switch to <strong>Full dashboard</strong> in
+          Settings for GST, yearly, Rojmel, and other advanced reports.
+        </InfoHint>
+      ) : (
+        <InfoHint title="Quick glossary">
+          <strong>Rojmel</strong> = traditional daily cash book (every debit/credit with running balance).{" "}
+          <strong>Income &amp; Expense</strong> (Transactions page) = manual business P&amp;L entries — different from{" "}
+          <strong>Bank balance</strong> (Banks page). <strong>Yearly report</strong> uses calendar year (Jan–Dec); the
+          dashboard overview uses Indian FY (Apr–Mar).
+        </InfoHint>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => {

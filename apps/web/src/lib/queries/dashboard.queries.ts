@@ -266,11 +266,11 @@ export async function getTodaysPayments(): Promise<TodayPaymentRow[]> {
     const client = payment.clients as { name: string } | null;
     rows.push({
       id: payment.id,
-      label: client?.name ?? "Client payment",
+      label: client?.name ?? "Customer payment",
       amount: parseAmount(payment.amount),
       direction: "in",
       paymentMode: payment.payment_mode,
-      source: "Client",
+      source: "Customer",
     });
   }
 

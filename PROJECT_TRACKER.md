@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-27 (GPS UI removed — fingerprint payroll flow only; nav/quick actions cleaned)
+> **Last updated:** 2026-06-27 (P2 complete — FY hints, Customers hub, Gujarati/Hindi, first-visit tips)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -57,9 +57,16 @@
 | `PHASE_14_TESTING.md` | 14 | **Phase 14 testing plan** — 2 dummy banks, 15 tests; Test 3 clarifies 3-page navigation flow |
 | `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
 | `DASHBOARD_USABILITY_AUDIT.md` | UX | **Web dashboard usability audit** — owner assessment + **Phase 0 fingerprint upload → Shahin salary report** (GPS/mobile paused) |
+| `OWNER_USABILITY_TEST.md` | UX | **Owner usability gate** — 6-block manual test; Block D facilitator table (supplier → purchase → pay) |
 | `may 2026 attandence.xlsx` | UX/ref | Owner fingerprint export sample (`rptMonthlyWorkDurationSummary`) — parser reference |
 | `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
+| `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
+| `lib/utils/statement-date-range.ts` | **Pay UX** | Default employee statement window — last 6 months |
+| `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
+| `scripts/e2e-p0-audit.mts` | **P0/E2E** | Automated audit — fingerprint parser, salary math, HTTP smoke, P0-1–5 source checks (`pnpm e2e:p0`) |
+| `scripts/e2e-owner-test.mts` | **§10/E2E** | Owner usability gate — 6 blocks A–F via Supabase flows (`pnpm e2e:owner`) |
+| `OWNER_USABILITY_TEST.md` | UX | Facilitator script for human owner test (Section 10) |
 | `docs/12_STATEMENT_UI_PLAN.md` | 13.5 | **🔴 Priority plan** — Shahin-style statement UI (7 phases, print, company profile migration) |
 
 ### Documentation (`/docs/`)
@@ -101,6 +108,9 @@
 | `migrations/20260626120000_company_profile_fields.sql` | 13.5 | `companies` letterhead fields: `tagline`, `address`, `phone`, `email`, `logo_url` |
 | `migrations/20260627120000_salary_mode_and_daily_payroll.sql` | 6 | `companies.salary_mode` (hourly/fixed) + `get_daily_attendance_payroll()` RPC (grace half-days, IST) |
 | `migrations/20260627140000_fingerprint_attendance_import.sql` | **Phase 0** | `companies.ot_rate_multiplier`; `attendance_imports`, `attendance_import_rows`, `employee_fingerprint_aliases` + RLS |
+| `migrations/20260627160000_dashboard_experience.sql` | **P0-1** | `companies.dashboard_experience` (`simple` \| `full`, default `simple`) — Simple Owner Mode nav filter |
+| `migrations/20260627180000_ui_language.sql` | **P2-2** | `companies.ui_language` (`en` \| `gu` \| `hi`) — owner dashboard label language |
+| `migrations/20260627200000_staff_payment_salary_slip.sql` | **Pay UX** | `staff_payments.salary_month` + `slip_snapshot` JSONB for printable salary slips |
 | `migrations/20260625140000_hr_extensions.sql` | 16 | `posts`, `staff_payments`, `salary_deposits`; extend `users` (address, post_id, joining_date, account_no, ifsc_code); ledger ref `salary_deposit`, `staff_payment` |
 | `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
@@ -117,7 +127,7 @@
 |------|-------|-------------|
 | `package.json` | 1 | Package config, name: `@punchless/types` |
 | `tsconfig.json` | 1 | TypeScript config |
-| `src/index.ts` | 1 | Barrel export of shared types (UserRole, AttendanceState, etc.) |
+| `src/index.ts` | 1 | Barrel export of shared types (UserRole, AttendanceState, `DashboardExperience`, etc.) |
 | `src/database.types.ts` | 2 | **Auto-generated** Supabase DB types (run `pnpm db:gen-types`) |
 
 #### `packages/config/` — Shared Constants
@@ -167,7 +177,7 @@
 | `tsconfig.json` | 1 | TypeScript config with path aliases (`@/`, `@punchless/*`) |
 | `.env.local` | 2 | Web env vars (Supabase URL, anon key, service role key) — NOT committed |
 | `.env.example` | 2 | Template for `.env.local` |
-| `next.config.ts` | 1 | Next.js config (transpiles `@punchless/*` packages) |
+| `next.config.ts` | 1/**UX** | Next.js config; permanent redirects `/dashboard/clients` → `/dashboard/customers` (+ statement paths) |
 | `postcss.config.mjs` | 1 | PostCSS config for Tailwind |
 | `eslint.config.mjs` | 1 | ESLint config |
 
@@ -176,7 +186,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `src/app/layout.tsx` | 1 | Root layout: Inter font, metadata, global CSS |
-| `src/app/globals.css` | 1 | **Master theme file**: CSS variables for light/dark mode, attendance states, status colors, sidebar, charts |
+| `src/app/globals.css` | 1 | **Master theme file**: CSS variables for light/dark mode, attendance states, status colors, purchase column, sidebar, charts |
 | `src/app/page.tsx` | 1 | Landing page (redirects to `/dashboard`) |
 
 #### Auth Pages (`src/app/(auth)/`)
@@ -191,35 +201,62 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `layout.tsx` | 2 | Dashboard shell: Sidebar + Header + content area, fetches current user |
-| `dashboard/page.tsx` | 15/3 | Financial HQ + operations; `SetupChecklist`; FY selector (`?fy=`), chart range (`?chart=7d\|6m`) |
+| `layout.tsx` | 2/**P0-1** | Dashboard shell: fetches user + `getDashboardShellPrefs()` (data lock + experience) |
+| `dashboard/page.tsx` | 15/**P0-5** | **Simpler home** — 3 money hero cards, 4 primary actions, pending dues; chart/FY/ops under Show more |
+| `dashboard/dashboard-money-hero.tsx` | **P0-5** | Top row — Customers owe you, You owe suppliers, Cash + Bank (large clickable cards) |
+| `dashboard/dashboard-primary-actions.tsx` | **P0-5**/**P0-2** | 4 action buttons — Pay staff → `/dashboard/salary` (unified hub) |
+| `dashboard/dashboard-show-more.tsx` | **P0-5** | Collapsible panel — financial cards, quick actions, chart, sticky notes, operations |
 | `dashboard-fy-selector.tsx` | 19 | FY `<select>` — only years with transaction data (newest first); default current FY |
 | `dashboard-revenue-chart.tsx` | 15/19 | 7-day / 6-month income vs expense toggle |
 | `invoices/[id]/page.tsx` | 19 | Dedicated invoice detail view (summary, line items, print/edit links) |
 | `jobs/[id]/page.tsx` | 19 | Dedicated job detail page (customer, assignment, location, edit link) |
 | `dashboard/dashboard-financial-cards.tsx` | 15 | Income, expense, cash, bank, client credit, supplier payable cards |
 | `dashboard/dashboard-todays-payments.tsx` | 15 | Today's payments table (client component — DataTable) |
-| `dashboard/dashboard-pending-dues.tsx` | 15 | Top 5 client dues + supplier payables |
+| `dashboard/dashboard-pending-dues.tsx` | 15/**P1-3** | “Who owes what” — Collect/Pay deep links per row |
+| `dashboard/daily-report/page.tsx` | **Daily report** | Dedicated daily cash book page (Shahin-style) |
+| `dashboard/daily-report/daily-report-manager.tsx` | **Daily report** | Shahin table — Income/Expense/Transfer/Purchase columns, totals row, balance footer, delete |
+| `components/add-expense-modal.tsx` | **Simple home** | Modal — chaiwala, repairs, petty cash (no supplier/client) |
+| `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense → New bill → Collect → Pay supplier → Pay employee |
+| `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
+| `lib/queries/daily-book.queries.ts` | **Daily report** | `getDailyBookReport(date)` — columnar rows + bank transfers + purchase bills + user names |
 | `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
-| `dashboard/dashboard-quick-actions.tsx` | 15 | Quick actions after financial cards — colorful icon tiles (commerce, finance, ops, payroll) |
+| `dashboard/dashboard-quick-actions.tsx` | 15/**P1-5** | 6 primary shortcuts + collapsible “More shortcuts” (under Show more) |
+| `dashboard/dashboard-primary-actions.tsx` | **P0-5**/**UX** | Home 4 buttons — New bill, Collect payment & Pay supplier open modals (no redirect) |
 | `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables (stacked full-width) |
-| `dashboard/clients/page.tsx` | 11B/3 | Server component: clients + summary; `CommerceFlowPanel`; `?client=&open=pay\|invoice` deep links |
-| `dashboard/clients/client-manager.tsx` | 11B/3 | CRUD, receive payment (₹5k+ confirm), invoice row action, `?client=&open=` deep links, soft delete/recover |
-| `dashboard/clients/[id]/statement/page.tsx` | 11B | Server component: client statement with date range |
-| `dashboard/clients/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style statement — letterhead, entity box, ledger table, search, print |
-| `dashboard/clients/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable client statement (minimal chrome) |
-| `dashboard/clients/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for client statement print route |
-| `dashboard/suppliers/page.tsx` | 12/3 | Server component: suppliers + summary; `?supplier=&open=pay` deep links |
+| `dashboard/customers/page.tsx` | 11B/3/**UX** | Server component: customers + summary; `CommerceFlowPanel`; `?customer=` (legacy `?client=`) deep links |
+| `dashboard/customers/customer-manager.tsx` | 11B/3/**UX** | Customer CRUD, receive payment (₹5k+ confirm), invoice row action, soft delete/recover — all UI says “customer” |
+| `dashboard/customers/[id]/statement/page.tsx` | 11B | Server component: customer statement with date range |
+| `dashboard/customers/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style customer statement — letterhead, entity box, ledger table, search, print |
+| `dashboard/customers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable customer statement (minimal chrome) |
+| `dashboard/customers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for customer statement print route |
+| `dashboard/suppliers/page.tsx` | 12/3/**P0-3** | Suppliers page + `SupplierFlowPanel`; `?supplier=&open=pay` deep links |
 | `dashboard/suppliers/supplier-manager.tsx` | 12/3 | CRUD, Pay Now modal (₹5k+ confirm), statement link, `?supplier=` deep link, soft delete/recover |
 | `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
 | `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style supplier statement — same components, payable labels |
 | `dashboard/suppliers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable supplier statement |
 | `dashboard/suppliers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for supplier statement print route |
-| `dashboard/purchases/page.tsx` | 12 | Server component: purchases + active suppliers |
-| `dashboard/purchases/purchase-manager.tsx` | 12 | Purchase/sales invoices with GST slabs + live total preview |
+| `dashboard/purchases/page.tsx` | 12/**UX** | Server component: supplier bills + active suppliers (route `/dashboard/purchases`) |
+| `dashboard/purchases/purchase-manager.tsx` | 12/**UX** | Supplier bills UI — page title, forms, table; GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
-| `dashboard/invoices/invoice-manager.tsx` | 13/3 | Tax invoice CRUD, GST preview, split payment; `?client=&openForm=1` opens new-invoice form with client selected |
+| `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
+| `quick-bill-modal.tsx` | **P1-2** | Quick bill — searchable customer picker, inline create, paid now / udhar |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, inline create, cash/bank payment |
+| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, inline create, cash/bank receipt |
+| `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
+| `fy-calendar-hint.tsx` | **P2-4** | InfoHint — Indian FY (Apr–Mar) vs calendar year on Home Show more |
+| `lib/content/fy-calendar-copy.ts` | **P2-4** | Shared FY vs calendar copy for dashboard + reports |
+| `customers/customer-commerce-hub.tsx` | **P2-3** | Simple mode tabs — Customers \| New bill \| All bills; Invoices nav full-only |
+| `ui-language-toggle.tsx` | **P2-2** | Settings — English / Gujarati / Hindi for nav + home labels |
+| `lib/i18n/owner-labels.ts` | **P2-2** | Translated owner-facing label keys (nav, home actions, hero) |
+| `lib/stores/ui-language.store.ts` | **P2-2** | Zustand — `ui_language` hydrated from shell |
+| `page-first-visit-tip.tsx` | **P2-1** | Dismissible ~30s tips on Customers, Suppliers, Pay Staff (localStorage) |
+| `lib/content/page-first-visit-tips.ts` | **P2-1** | Tip copy for customers / suppliers / salary pages |
+| `support-button.tsx` | **P3-2** | Floating WhatsApp help button on dashboard (`NEXT_PUBLIC_SUPPORT_PHONE`) |
+| `lib/utils/support-contact.ts` | **P3-2** | `wa.me` / `tel:` helpers for support contact |
+| `lib/utils/dashboard-experience-guard.ts` | **P3-1** | `redirectUnlessFullDashboard()` — block Simple mode on full-only routes |
+| `lib/content/reports-nav.ts` | **P3-1** | Report list with `simple` / `full` tier; Daily + Monthly only in Simple |
+| `lib/actions/client.actions.ts` | 11B/**P1-2** | `createQuickCustomer` — name-only customer from quick bill (returns id) |
 | `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice with payment summary + pending balance due |
 | `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
 | `dashboard/banks/page.tsx` | 14 | Server component: bank accounts + summary |
@@ -235,12 +272,11 @@
 | `dashboard/employees/page.tsx` | 3/16 | Server component: fetches employees, workshops, posts; renders `EmployeeManager` |
 | `dashboard/employees/employee-manager.tsx` | 3/16 | **Client component**: card grid (3–4 cols), PageHeader + Modal form, search, stats; quick payment + statement links |
 | `dashboard/employees/[id]/statement/page.tsx` | 16 | Employee staff statement (date range) |
-| `dashboard/employees/[id]/statement/statement-manager.tsx` | 16 | Statement table — deposits, payments, advances, running balance |
+| `dashboard/employees/[id]/statement/statement-manager.tsx` | 16/**Pay UX** | Ledger table + View proof link (proof opens on slip page only) |
 | `dashboard/posts/page.tsx` | 16 | Posts (job titles) list page |
 | `dashboard/posts/post-manager.tsx` | 16 | Post CRUD with soft delete/recover |
-| `dashboard/salary/payments/page.tsx` | 16 | Staff payments list page |
-| `dashboard/salary/payments/page.tsx` | 16 | Staff payments page — reads `?employee=&month=&openForm=` URL params, prefetches salary payable |
-| `dashboard/salary/payments/staff-payment-manager.tsx` | 16/3 | Staff payment form + table; salary_paid and ₹5k+ confirm modal; `?employee=&openForm=1` deep link |
+| `dashboard/salary/payments/page.tsx` | 16/**P0-2** | Full mode staff payments; Simple mode redirects to `/dashboard/salary?tab=history` or `openPay` |
+| `dashboard/salary/payments/staff-payment-manager.tsx` | 16/3/**P0-2** | Payment form + history; `hub-embedded` / `hub-history` variants; Earned / Pay this month labels |
 | `dashboard/salary/deposits/page.tsx` | 16 | Salary deposits list page |
 | `dashboard/salary/deposits/salary-deposit-manager.tsx` | 16 | Accrual deposits; amount prefills from employee `monthly_salary` |
 | `dashboard/workshops/page.tsx` | 3 | Server component: fetches workshops, renders `WorkshopManager` |
@@ -249,9 +285,20 @@
 | `dashboard/attendance/attendance-manager.tsx` | 4/16 | Live/Today/Bulk tabs; bulk present marking for a date (closed workshop sessions) |
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
-| `dashboard/salary/page.tsx` | 6/**Phase 0** | Salary page — fingerprint upload only; GPS `SalaryManager` commented out |
+| `dashboard/salary/page.tsx` | 6/**Phase 0**/**P1-4** | Simple → `PayStaffHub`; Full → fingerprint salary; month-end payroll checklist (25th–5th) |
+| `pay-staff-hub.tsx` | **P0-2/Pay UX** | Pay Staff hub — Pay opens modal; History with employee filter + slip re-print |
+| `pay-staff-modal.tsx` | **Pay UX** | Wide pay modal — prefilled salary, advance deducted, cash/bank |
+| `salary-slip-detail-card.tsx` | **Pay UX** | Salary proof card — days, advance, earned, “Why this amount?” |
+| `salary-slip-summary-table.tsx` | **Pay UX** | Excel-style multi-month salary proof table (print statement) |
+| `salary-slip-print-document.tsx` | **Pay UX** | Printable salary slip (company letterhead + detail card) |
+| `salary/payments/[id]/slip/page.tsx` | **Pay UX** | Print / Save PDF — opens after payment; from History **Print** column |
+| `employees/[id]/statement/print/page.tsx` | **Pay UX** | Staff statement print/PDF with company letterhead |
+| `staff-statement-print-document.tsx` | **Pay UX** | Print statement — multi-month summary table or single-month proof card + ledger |
+| `lib/utils/salary-paid-map.ts` | **Pay UX** | Count salary paid by `salary_month` (pay in June still closes May row) |
+| `payroll-month-checklist.tsx` | **P1-4** | Month-end checklist component (not shown in UI — removed per owner request) |
+| `lib/queries/payroll-checklist.queries.ts` | **P1-4** | Payroll checklist status from DB (imports, advances, salary, payments) |
 | `dashboard/salary/salary-manager.tsx` | 6/9 | GPS-based salary report + Export CSV/Excel (full month via API); summary/table amounts respect data lock |
-| `fingerprint-salary-section.tsx` | **Phase 0** | Upload fingerprint `.xlsx`, Shahin-style salary table, export, Pay/Map actions |
+| `fingerprint-salary-section.tsx` | **Phase 0**/**P0-2** | Fingerprint upload + report; **Pay this month** column; unified pay links in Simple mode |
 | `fingerprint-name-map-modal.tsx` | **Phase 0** | Map unmatched fingerprint name → Punchless employee (saves alias) |
 | `lib/utils/salary-export.ts` | 9 | Build salary report rows for CSV/Excel export |
 | `app/api/salary/export/route.ts` | 9 | GET full-month salary report JSON for export |
@@ -260,7 +307,8 @@
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
 | `dashboard/advances/advance-manager.tsx` | 7/**Phase 0** | **Client component**: Owner records advances directly (no pending/approve workflow) — create/delete, search, deduct-month form |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
-| `dashboard/settings/settings-manager.tsx` | 7/18/**Phase 0** | Work schedule + Hourly/Fixed mode + **OT rate multiplier** (1× / 1.5× / 2×) |
+| `dashboard/settings/settings-manager.tsx` | 7/18/**Phase 0**/**P0-1** | **Dashboard experience** toggle (Simple/Full) + work schedule + OT multiplier |
+| `dashboard-experience-toggle.tsx` | **P0-1** | Settings UI — Simple vs Full mode; saves to `companies.dashboard_experience` |
 | `dashboard/settings/users/page.tsx` | 18 | Owner-only: list dashboard users (owner/admin), invite admin |
 | `dashboard/settings/users/users-manager.tsx` | 18 | Invite admin form + deactivate admin (service-role create + ban) |
 | `dashboard/settings/password/page.tsx` | 18 | Change password page (owner/admin) |
@@ -272,10 +320,14 @@
 | `dashboard-data-lock-controls.tsx` | Extras | Lock/unlock financials + PIN modal |
 | `global-search.tsx` | Extras/3 | Cmd+K palette — 2 results per client/supplier (manage + statement); unique `item.id` keys |
 | `setup-checklist.tsx` | 3 | Dismissible onboarding checklist on dashboard home (sessionStorage) |
-| `commerce-flow-panel.tsx` | 3 | 4-step client money flow panel on Clients page |
+| `flow-step-panel.tsx` | **P0-3/4** | Shared 4-step flow cards — stacked label + hint (`flex-col`), equal card heights |
+| `commerce-flow-panel.tsx` | 3/**P0-4** | Client money flow wrapper around `FlowStepPanel` |
+| `supplier-flow-panel.tsx` | **P0-3** | Supplier money flow wrapper around `FlowStepPanel` |
 | `delete-confirm-button.tsx` | UX | Reusable delete trigger + ConfirmModal ("Are you sure?") |
 | `page-navigation-loader.tsx` | UX | Full-screen loader overlay on internal navigation |
 | `navigation.store.ts` | UX | Zustand — navigation loading state |
+| `dashboard-experience.store.ts` | **P0-1** | Zustand — company dashboard experience (`simple` \| `full`) for instant sidebar updates |
+| `validations/dashboard-experience.schema.ts` | **P0-1** | Zod schema for experience toggle server action |
 | `(dashboard)/loading.tsx` | UX | Suspense fallback while dashboard pages load |
 | `dashboard/history/page.tsx` | 8.5 | Server component: fetches history sessions + employee summaries, renders `HistoryManager` |
 | `dashboard/history/history-manager.tsx` | 8.5/16 | Employee Summary / All Sessions tabs, period filter, CSV export |
@@ -289,7 +341,7 @@
 | `lib/content/learn-icons.tsx` | 9 | Maps `LearnIconName` → Lucide icons for learn UI |
 | `lib/content/learn-route-map.ts` | 9 | Maps dashboard URL paths → learn module IDs for contextual help links |
 | `info-hint.tsx` | 9/2 | Inline help box for jargon and page explanations |
-| `payroll-flow-panel.tsx` | 2/**Phase 0** | 3-step fingerprint payroll on Salary page (GPS mobile steps removed) |
+| `payroll-flow-panel.tsx` | 2/**Phase 0**/**P0-2** | 3-step payroll panel; `unifiedHub` keeps all steps on `/dashboard/salary` |
 | `lib/constants/payment-confirm.ts` | 3 | `CLIENT_PAYMENT_CONFIRM_THRESHOLD` (₹5000) for client/supplier/staff payment confirms |
 | `lib/constants/data-lock.ts` | 4 | `DATA_LOCK_IDLE_MS` (5 min) — auto-lock financials after idle |
 | `lib/constants/table-styles.ts` | 4 | Sticky first-column Tailwind classes for wide scroll tables |
@@ -305,8 +357,8 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
-| `sidebar-config.ts` | 11A/17/18/9/2/**Phase 0** | Nav — Operations + Workshops commented out (GPS paused); Payroll + Commerce active |
+| `sidebar.tsx` | 11A/**P0-1** | Grouped collapsible sidebar; filters by `dashboard_experience`; Simple mode badge |
+| `sidebar-config.ts` | 11A/**P0-1**/**P1-1**/**P3-1** | Simple Commerce primary; Posts, Audit Log, Billing `full-only`; Supplier bills in Commerce |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
@@ -324,7 +376,7 @@
 | `dashboard/reports/income-expense/page.tsx` | 17 | Particular-wise income/expense |
 | `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
 | `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
-| `dashboard-shell.tsx` | 11A/4 | Shell: skip-to-content, mobile nav, TooltipProvider, data-lock idle auto-lock |
+| `dashboard-shell.tsx` | 11A/4/**P0-1** | Shell: skip-to-content, mobile nav, hydrates dashboard experience store, data-lock idle |
 | `dashboard-header.tsx` | 11A/9 | Top header: Learn button, search, mobile menu, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
 | `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |
@@ -418,7 +470,7 @@
 | `attendance-import.actions.ts` | **Phase 0** | `uploadFingerprintAttendance()`, `mapFingerprintEmployeeAlias()` |
 | `job.actions.ts` | 5/8 | `createJob()` / `updateJob()` — push "New job assigned" to assignee; `deleteJob()` |
 | `advance.actions.ts` | 7/8 | `createAdvance()`; `approveAdvance()` / `rejectAdvance()` — push advance status to employee; `deleteAdvance()` |
-| `settings.actions.ts` | 7/13.5/**Phase 0** | Work schedule (+ OT multiplier), company profile, data lock PIN actions |
+| `settings.actions.ts` | 7/13.5/**Phase 0**/**P0-1** | `updateDashboardExperience`, work schedule (+ OT multiplier), profile, data lock PIN |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
 | `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
@@ -441,7 +493,7 @@
 | `attendance.queries.ts` | 4 | `getTodayAttendance()` — today's sessions with employee/workshop/job joins; `getActiveSessions()` — open sessions (no end_time); `getAttendanceByDateRange()` — date-filtered; `getAttendanceSummary()` — grouped by employee+workshop+state with total minutes |
 | `job.queries.ts` | 5 | `getJobs()` — list all jobs with assigned user details; `getJobById()` — get single job details |
 | `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
-| `settings.queries.ts` | 7/13.5 | Company settings + `getCompanyProfile()` for statement letterhead |
+| `settings.queries.ts` | 7/13.5/**P0-1** | Company settings (+ `dashboard_experience`), `getDashboardShellPrefs()`, profile |
 | `salary.queries.ts` | 6 | Unified payroll: `getSalaryReport()` + `getEmployeeSalaryPayable()` — hourly or fixed mode, grace half-days, joining-date pro-rata, advance deductions |
 | `attendance-import.queries.ts` | **Phase 0** | `getFingerprintSalaryReport()`, `getUnmatchedFingerprintRows()`, `getActiveEmployeesForMapping()` |
 | `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |

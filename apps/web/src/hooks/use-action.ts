@@ -2,10 +2,10 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ActionResult } from "@/lib/utils/action-result";
 
-interface UseActionOptions {
+interface UseActionOptions<T = unknown> {
   successMessage?: string;
   errorMessage?: string;
-  onSuccess?: () => void;
+  onSuccess?: (data?: T) => void;
   onError?: (error: string) => void;
 }
 
@@ -20,9 +20,9 @@ interface UseActionOptions {
  *
  *   <form action={execute}>...</form>
  */
-export function useAction<TInput = FormData>(
-  action: (input: TInput) => Promise<ActionResult>,
-  options: UseActionOptions = {}
+export function useAction<TInput = FormData, TData = unknown>(
+  action: (input: TInput) => Promise<ActionResult<TData>>,
+  options: UseActionOptions<TData> = {}
 ) {
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
@@ -41,7 +41,7 @@ export function useAction<TInput = FormData>(
           if (optionsRef.current.successMessage) {
             toast.success(optionsRef.current.successMessage);
           }
-          optionsRef.current.onSuccess?.();
+          optionsRef.current.onSuccess?.(result.data);
         } else {
           const errorMsg =
             result.error || optionsRef.current.errorMessage || "Something went wrong";

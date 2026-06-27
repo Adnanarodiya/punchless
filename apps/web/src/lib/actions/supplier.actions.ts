@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import {
   createSupplierSchema,
   paySupplierSchema,
+  quickSupplierSchema,
   updateSupplierSchema,
 } from "@/lib/validations/supplier.schema";
 
@@ -77,6 +79,48 @@ export const createSupplier = protectedAction<FormData>({
 
   revalidateSupplierPages(supplier.id);
   return { success: true };
+});
+
+/** Create supplier from home pay modal — name only, returns id for immediate selection. */
+export const createQuickSupplier = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_supplier", entityType: "supplier" },
+})(async (formData, { supabase, me }) => {
+  const parsed = quickSupplierSchema.safeParse({
+    name: formData.get("name"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { name } = parsed.data;
+
+  const { data: supplier, error } = await supabase
+    .from("suppliers")
+    .insert({
+      company_id: me.company_id,
+      name,
+      alias: null,
+      contact: null,
+      address: null,
+      gst_number: null,
+      opening_balance: 0,
+    } as never)
+    .select("id, name, alias, contact, address, gst_number, opening_balance, is_deleted, deleted_at, company_id, created_at, updated_at")
+    .single();
+
+  if (error || !supplier) {
+    return { success: false, error: error?.message || "Failed to create supplier" };
+  }
+
+  const row = supplier as Omit<SupplierWithPayable, "payable_amount">;
+  revalidateSupplierPages(row.id);
+  return {
+    success: true,
+    data: { ...row, payable_amount: 0 },
+  };
 });
 
 export const updateSupplier = protectedAction<FormData>({

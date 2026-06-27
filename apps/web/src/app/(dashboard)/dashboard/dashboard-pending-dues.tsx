@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { HandCoins, Banknote } from "lucide-react";
 
+import { Button } from "@punchless/ui/components/button";
+import { useDashboardHomeModalsOptional } from "@/components/dashboard-home-modals";
+import { ownerLabel } from "@/lib/i18n/owner-labels";
 import type { PendingDueRow } from "@/lib/queries/dashboard.queries";
+import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
 import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { maskAmount } from "@/lib/utils/mask-financial";
@@ -14,6 +19,8 @@ interface Props {
 
 export function DashboardPendingDues({ dues, hasDataLockPin }: Props) {
   const locked = useFinancialLocked(hasDataLockPin);
+  const homeModals = useDashboardHomeModalsOptional();
+  const language = useUiLanguageStore((s) => s.language);
 
   return (
     <section
@@ -22,38 +29,42 @@ export function DashboardPendingDues({ dues, hasDataLockPin }: Props) {
     >
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 id="pending-dues-heading" className="text-lg font-semibold">
-          Top pending dues
+          {ownerLabel(language, "pending.whoOwesWhat")}
         </h2>
         <Link
-          href="/dashboard/clients"
+          href="/dashboard/customers"
           className="text-sm text-primary hover:underline"
         >
-          All clients
+          All customers
         </Link>
       </div>
 
       {dues.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No outstanding client or supplier dues.
+          No outstanding customer or supplier dues.
         </p>
       ) : (
         <ul className="space-y-3">
           {dues.map((due) => (
-            <li key={`${due.type}-${due.id}`}>
+            <li
+              key={`${due.type}-${due.id}`}
+              className="flex flex-col gap-2 rounded-lg border border-border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+            >
               <Link
                 href={
                   due.type === "client"
-                    ? `/dashboard/clients`
-                    : `/dashboard/suppliers`
+                    ? `/dashboard/customers?customer=${due.id}`
+                    : `/dashboard/suppliers?supplier=${due.id}`
                 }
-                className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 transition hover:bg-accent/50"
+                className="min-w-0 flex-1 transition hover:opacity-80"
               >
-                <div>
-                  <p className="font-medium">{due.name}</p>
-                  <p className="text-xs capitalize text-muted-foreground">
-                    {due.type === "client" ? "Client due" : "Supplier payable"}
-                  </p>
-                </div>
+                <p className="font-medium">{due.name}</p>
+                <p className="text-xs capitalize text-muted-foreground">
+                  {due.type === "client" ? "Customer due" : "Supplier payable"}
+                </p>
+              </Link>
+
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
                 <span
                   className={
                     locked
@@ -63,7 +74,42 @@ export function DashboardPendingDues({ dues, hasDataLockPin }: Props) {
                 >
                   {maskAmount(locked, formatCurrency(due.amount))}
                 </span>
-              </Link>
+                {due.type === "client" && homeModals ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => homeModals.openCollectPayment(due.id)}
+                  >
+                    <HandCoins className="size-3.5" />
+                    Collect
+                  </Button>
+                ) : due.type === "client" ? (
+                  <Button variant="outline" size="sm" asChild className="shrink-0 gap-1.5">
+                    <Link href={`/dashboard/customers?customer=${due.id}&open=pay`}>
+                      <HandCoins className="size-3.5" />
+                      Collect
+                    </Link>
+                  </Button>
+                ) : homeModals ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => homeModals.openPaySupplier(due.id)}
+                  >
+                    <Banknote className="size-3.5" />
+                    Pay
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" asChild className="shrink-0 gap-1.5">
+                    <Link href={`/dashboard/suppliers?supplier=${due.id}&open=pay`}>
+                      <Banknote className="size-3.5" />
+                      Pay
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

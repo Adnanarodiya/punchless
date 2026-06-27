@@ -21,7 +21,7 @@ const ROUTE_MAP: { path: string; moduleId: string; exact?: boolean }[] = [
   { path: "/dashboard/employees", moduleId: "employees" },
   { path: "/dashboard/posts", moduleId: "posts" },
   { path: "/dashboard/jobs", moduleId: "jobs" },
-  { path: "/dashboard/clients", moduleId: "clients" },
+  { path: "/dashboard/customers", moduleId: "clients" },
   { path: "/dashboard/suppliers", moduleId: "suppliers" },
   { path: "/dashboard/invoices", moduleId: "invoices" },
   { path: "/dashboard/purchases", moduleId: "purchases" },

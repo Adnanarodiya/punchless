@@ -1,7 +1,9 @@
+import { redirectUnlessFullDashboard } from "@/lib/utils/dashboard-experience-guard";
 import { ReportLayout, ReportSummaryGrid } from "@/components/report-layout";
 import { ReportTable } from "@/components/report-table";
 import { getYearlyReport } from "@/lib/queries/report.queries";
 import { resolveReportPeriod } from "@/lib/utils/report-period";
+import { CALENDAR_YEARLY_REPORT_NOTICE } from "@/lib/content/fy-calendar-copy";
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export default async function YearlyReportPage({
@@ -9,6 +11,7 @@ export default async function YearlyReportPage({
 }: {
   searchParams: Promise<{ year?: string }>;
 }) {
+  await redirectUnlessFullDashboard("/dashboard/reports");
   const params = await searchParams;
   const period = resolveReportPeriod(params, { mode: "year" });
   const year = Number(period.start.slice(0, 4));
@@ -37,7 +40,7 @@ export default async function YearlyReportPage({
       periodMode="year"
       exportRows={exportRows}
       exportFilename={`yearly-report-${year}`}
-      periodNotice="This report uses the calendar year (Jan–Dec). The dashboard financial overview uses the Indian financial year (1 Apr – 31 Mar). Numbers may differ between the two."
+      periodNotice={CALENDAR_YEARLY_REPORT_NOTICE}
     >
       <ReportSummaryGrid
         items={[

@@ -6,6 +6,7 @@ import {
   type FingerprintEmployeeRecord,
   type FingerprintSalaryReport,
 } from "@/lib/utils/fingerprint-salary-report";
+import { fetchSalaryPaidByEmployeeForMonth } from "@/lib/utils/salary-paid-map";
 
 type CompanyFingerprintConfig = {
   companyId: string;
@@ -111,23 +112,11 @@ async function fetchAdvanceMap(
 
 async function fetchPaidMap(
   supabase: Awaited<ReturnType<typeof createClient>>,
+  monthStr: string,
   monthStart: string,
   monthEnd: string
 ) {
-  const { data } = await supabase
-    .from("staff_payments")
-    .select("employee_id, amount")
-    .eq("payment_type", "salary_paid")
-    .gte("payment_date", monthStart)
-    .lte("payment_date", monthEnd);
-
-  const paidMap = new Map<string, number>();
-  for (const row of data ?? []) {
-    const empId = (row as { employee_id: string }).employee_id;
-    const amt = Number((row as { amount: number }).amount ?? 0);
-    paidMap.set(empId, (paidMap.get(empId) ?? 0) + amt);
-  }
-  return paidMap;
+  return fetchSalaryPaidByEmployeeForMonth(supabase, monthStr, monthStart, monthEnd);
 }
 
 export async function getFingerprintSalaryReport(
@@ -174,7 +163,7 @@ export async function getFingerprintSalaryReport(
   const [employees, advanceMap, paidMap] = await Promise.all([
     fetchEmployees(supabase, config.companyId),
     fetchAdvanceMap(supabase, monthStr, monthStart, monthEnd),
-    fetchPaidMap(supabase, monthStart, monthEnd),
+    fetchPaidMap(supabase, monthStr, monthStart, monthEnd),
   ]);
 
   return buildFingerprintSalaryReport({

@@ -143,14 +143,14 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
       type: "client",
       label: r.name,
       subtitle: meta ? `${meta} · Clients — pay or invoice` : "Clients — pay or invoice",
-      href: `/dashboard/clients?client=${r.id}`,
+      href: `/dashboard/customers?customer=${r.id}`,
     });
     results.push({
       id: `${r.id}-statement`,
       type: "client",
       label: r.name,
       subtitle: "Ledger statement",
-      href: `/dashboard/clients/${r.id}/statement`,
+      href: `/dashboard/customers/${r.id}/statement`,
     });
   }
 
@@ -197,7 +197,7 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
   }
 
   for (const row of purchaseRows) {
-    const typeLabel = row.invoice_type === "purchase" ? "Purchase" : "Sales";
+    const typeLabel = row.invoice_type === "purchase" ? "Supplier bill" : "Credit note";
     results.push({
       id: row.id,
       type: "purchase",
@@ -205,8 +205,8 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
         ? `${typeLabel} ${row.invoice_number}`
         : typeLabel,
       subtitle: row.suppliers?.name
-        ? `${row.suppliers.name} · Open purchase`
-        : "Open purchase invoice",
+        ? `${row.suppliers.name} · Open supplier bill`
+        : "Open supplier bill",
       href: `/dashboard/purchases?purchase=${row.id}`,
     });
   }

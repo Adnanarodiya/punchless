@@ -10,32 +10,42 @@ import { cn } from "@punchless/ui/lib/utils";
  * or DASHBOARD_USABILITY_AUDIT.md Phase 0.
  */
 
-const steps = [
-  {
-    step: 1,
-    label: "Upload attendance",
-    hint: "Fingerprint machine .xlsx",
-    href: "/dashboard/salary",
-    icon: Upload,
-    current: true,
-  },
-  {
-    step: 2,
-    label: "Salary report",
-    hint: "Working days, OT & net pay",
-    href: "/dashboard/salary",
-    icon: CalendarCheck,
-  },
-  {
-    step: 3,
-    label: "Pay staff",
-    hint: "Record cash/bank payout",
-    href: "/dashboard/salary/payments",
-    icon: Banknote,
-  },
-];
+function buildSteps(unifiedHub: boolean) {
+  const base = "/dashboard/salary";
+  return [
+    {
+      step: 1,
+      label: "Upload attendance",
+      hint: "Fingerprint machine .xlsx",
+      href: base,
+      icon: Upload,
+      current: true,
+    },
+    {
+      step: 2,
+      label: "Salary report",
+      hint: "Working days, OT & pay amount",
+      href: base,
+      icon: CalendarCheck,
+    },
+    {
+      step: 3,
+      label: "Pay staff",
+      hint: unifiedHub ? "Green Pay button on each row" : "Record cash/bank payout",
+      href: unifiedHub ? base : "/dashboard/salary/payments",
+      icon: Banknote,
+    },
+  ];
+}
 
-export function PayrollFlowPanel({ className }: { className?: string }) {
+export function PayrollFlowPanel({
+  className,
+  unifiedHub = false,
+}: {
+  className?: string;
+  unifiedHub?: boolean;
+}) {
+  const steps = buildSteps(unifiedHub);
   return (
     <section
       className={cn(

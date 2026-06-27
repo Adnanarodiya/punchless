@@ -12,6 +12,11 @@ export const createStaffPaymentSchema = z
     paymentMode: paymentModeSchema.optional(),
     bankId: z.string().optional(),
     paymentDate: z.string().min(1, "Date is required"),
+    salaryMonth: z
+      .string()
+      .regex(/^\d{4}-\d{2}$/, "Invalid salary month")
+      .optional()
+      .or(z.literal("")),
     remark: z.string().max(500).optional().or(z.literal("")),
   })
   .superRefine((data, ctx) => {

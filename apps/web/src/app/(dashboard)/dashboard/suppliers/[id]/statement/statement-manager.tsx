@@ -48,8 +48,8 @@ export function SupplierStatementManager({
       printPath={`/dashboard/suppliers/${supplier.id}/statement/print`}
       statement={statement}
       tableLabels={{
-        invoiceColumn: "Purchase No.",
-        debitColumn: "Dr (Purchases)",
+        invoiceColumn: "Bill No.",
+        debitColumn: "Dr (Supplier bills)",
         creditColumn: "Cr (Paid)",
         showVehicleColumn: false,
         dueBadgePrefix: "Payable",

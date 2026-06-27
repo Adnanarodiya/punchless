@@ -29,7 +29,7 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Settings"
-        description="Company letterhead, work hours, hourly vs fixed salary mode, and PIN to hide financial figures."
+        description="Simple or Full dashboard, company letterhead, work hours, salary mode, and PIN to hide financial figures."
       />
       <SettingsManager settings={settings} />
     </div>

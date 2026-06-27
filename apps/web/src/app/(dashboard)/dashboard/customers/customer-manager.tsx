@@ -40,9 +40,9 @@ import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { IconTooltip } from "@/components/icon-tooltip";
 
 interface Props {
-  clients: ClientWithDue[];
+  customers: ClientWithDue[];
   summary: { totalClients: number; totalDue: number };
-  initialClientId?: string;
+  initialCustomerId?: string;
   initialOpen?: "pay" | "invoice";
 }
 
@@ -50,10 +50,10 @@ type ViewFilter = "active" | "deleted";
 
 const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
 
-export function ClientManager({
-  clients,
+export function CustomerManager({
+  customers,
   summary,
-  initialClientId,
+  initialCustomerId,
   initialOpen,
 }: Props) {
   const router = useRouter();
@@ -66,33 +66,33 @@ export function ClientManager({
   const [confirmPayAmount, setConfirmPayAmount] = useState(0);
 
   useEffect(() => {
-    if (!initialClientId) return;
-    const client = clients.find((c) => c.id === initialClientId && !c.is_deleted);
+    if (!initialCustomerId) return;
+    const client = customers.find((c) => c.id === initialCustomerId && !c.is_deleted);
     if (!client) return;
 
     if (initialOpen === "pay") {
       setPaymentClient(client);
     } else if (initialOpen === "invoice") {
-      router.replace(`/dashboard/invoices?client=${client.id}&openForm=1`);
+      router.replace(`/dashboard/invoices?customer=${client.id}&openForm=1`);
       return;
     }
 
-    router.replace("/dashboard/clients");
-  }, [initialClientId, initialOpen, clients, router]);
+    router.replace("/dashboard/customers");
+  }, [initialCustomerId, initialOpen, customers, router]);
 
-  const filteredClients = useMemo(() => {
-    return clients.filter((client) =>
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((client) =>
       viewFilter === "active" ? !client.is_deleted : client.is_deleted
     );
-  }, [clients, viewFilter]);
+  }, [customers, viewFilter]);
 
   const { execute: execCreate, loading: creating } = useAction(createClient, {
-    successMessage: "Client created!",
+    successMessage: "Customer created!",
     onSuccess: () => setMode("list"),
   });
 
   const { execute: execUpdate, loading: updating } = useAction(updateClient, {
-    successMessage: "Client updated!",
+    successMessage: "Customer updated!",
     onSuccess: () => {
       setMode("list");
       setEditingClient(null);
@@ -100,7 +100,7 @@ export function ClientManager({
   });
 
   const { execute: execDelete, loading: deleting } = useAction(softDeleteClient, {
-    successMessage: "Client deleted",
+    successMessage: "Customer deleted",
   });
 
   const { execute: execPayment, loading: paying } = useAction(
@@ -169,18 +169,18 @@ export function ClientManager({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Clients"
-        description="Manage client accounts, track dues, and record payments."
+        title="Customers"
+        description="Manage customer accounts, track dues, and record payments."
       >
         <Button onClick={startAdd}>
-          <Plus className="size-4" /> Add Client
+          <Plus className="size-4" /> Add customer
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Total Clients</p>
+            <p className="text-sm text-muted-foreground">Total customers</p>
             <div className="rounded-lg bg-primary/10 p-2 text-primary">
               <Users className="size-4" />
             </div>
@@ -205,7 +205,7 @@ export function ClientManager({
           <div className="rounded-xl border border-border bg-card p-5 lg:col-span-1">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">
-                {mode === "add" ? "Add Client" : "Edit Client"}
+                {mode === "add" ? "Add customer" : "Edit customer"}
               </h2>
               <Button variant="ghost" size="icon" onClick={cancelForm}>
                 <X className="size-4" />
@@ -215,7 +215,7 @@ export function ClientManager({
               action={mode === "add" ? handleCreate : handleUpdate}
               className="space-y-3"
             >
-              <Field label="Client Name" name="name" required defaultValue={editingClient?.name} />
+              <Field label="Customer name" name="name" required defaultValue={editingClient?.name} />
               <Field label="Alias" name="alias" defaultValue={editingClient?.alias ?? ""} />
               <Field label="Contact" name="contact" defaultValue={editingClient?.contact ?? ""} />
               <Field label="Address" name="address" defaultValue={editingClient?.address ?? ""} />
@@ -235,7 +235,7 @@ export function ClientManager({
                 />
               ) : null}
               <Button type="submit" className="w-full" loading={mode === "add" ? creating : updating} disabled={mode === "add" ? creating : updating}>
-                {mode === "add" ? "Create Client" : "Save Changes"}
+                {mode === "add" ? "Create customer" : "Save changes"}
               </Button>
             </form>
           </div>
@@ -265,10 +265,10 @@ export function ClientManager({
           </div>
 
           <DataTable
-            data={filteredClients}
+            data={filteredCustomers}
             getRowKey={(row) => row.id}
             enableSearch
-            searchPlaceholder="Search clients…"
+            searchPlaceholder="Search customers…"
             searchFilter={(row, query) => {
               const haystack = [
                 row.name,
@@ -284,13 +284,13 @@ export function ClientManager({
             }}
             emptyMessage={
               viewFilter === "active"
-                ? "No clients yet. Add your first client above."
-                : "No deleted clients to recover."
+                ? "No customers yet. Add your first customer above."
+                : "No deleted customers to recover."
             }
             columns={[
               {
                 key: "name",
-                header: "Client",
+                header: "Customer",
                 cell: (row) => (
                   <div>
                     <p className="font-medium">{row.name}</p>
@@ -335,12 +335,12 @@ export function ClientManager({
                   <div className="flex flex-wrap gap-1">
                     {viewFilter === "active" ? (
                       <>
-                        <IconTooltip label="Edit client">
+                        <IconTooltip label="Edit customer">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => startEdit(row)}
-                            aria-label="Edit client"
+                            aria-label="Edit customer"
                           >
                             <Pencil className="size-3.5" />
                           </Button>
@@ -358,7 +358,7 @@ export function ClientManager({
                         <IconTooltip label="Create invoice">
                           <Button variant="ghost" size="sm" asChild>
                             <Link
-                              href={`/dashboard/invoices?client=${row.id}&openForm=1`}
+                              href={`/dashboard/invoices?customer=${row.id}&openForm=1`}
                               aria-label="Create invoice"
                             >
                               <Receipt className="size-3.5" />
@@ -368,7 +368,7 @@ export function ClientManager({
                         <IconTooltip label="View statement">
                           <Button variant="ghost" size="sm" asChild>
                             <Link
-                              href={`/dashboard/clients/${row.id}/statement`}
+                              href={`/dashboard/customers/${row.id}/statement`}
                               aria-label="View statement"
                             >
                               <FileText className="size-3.5" />
@@ -388,7 +388,7 @@ export function ClientManager({
                         />
                       </>
                     ) : (
-                      <form action={toastAction(recoverClient, "Client recovered")}>
+                      <form action={toastAction(recoverClient, "Customer recovered")}>
                         <input type="hidden" name="clientId" value={row.id} />
                         <Button variant="outline" size="sm" type="submit">
                           <RotateCcw className="size-3.5" /> Recover
@@ -406,7 +406,7 @@ export function ClientManager({
       <Modal
         open={!!paymentClient}
         onOpenChange={(open) => !open && setPaymentClient(null)}
-        title={`Receive Payment — ${paymentClient?.name ?? ""}`}
+        title={`Collect payment — ${paymentClient?.name ?? ""}`}
       >
         {paymentClient ? (
           <form onSubmit={handlePaymentSubmit} className="space-y-4">
@@ -452,7 +452,7 @@ export function ClientManager({
       <ConfirmModal
         open={confirmPayOpen}
         onOpenChange={setConfirmPayOpen}
-        title="Confirm client payment"
+        title="Confirm customer payment"
         description={
           paymentClient
             ? `Record payment of ${formatCurrency(confirmPayAmount)} from ${paymentClient.name}?`

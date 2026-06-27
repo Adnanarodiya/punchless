@@ -1,3 +1,4 @@
+import { redirectUnlessFullDashboard } from "@/lib/utils/dashboard-experience-guard";
 import { ReportLayout, ReportSummaryGrid } from "@/components/report-layout";
 import { ReportTable } from "@/components/report-table";
 import { getExpenseReport } from "@/lib/queries/report.queries";
@@ -9,6 +10,7 @@ export default async function ExpenseReportPage({
 }: {
   searchParams: Promise<{ period?: string; start?: string; end?: string }>;
 }) {
+  await redirectUnlessFullDashboard("/dashboard/reports");
   const params = await searchParams;
   const period = resolveReportPeriod(params);
   const rows = await getExpenseReport(period.start, period.end);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
@@ -33,8 +33,21 @@ export function TransactionManager({
   banks,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
+  const [defaultTransactionType, setDefaultTransactionType] = useState<
+    "income" | "expense"
+  >("expense");
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setShowForm(true);
+    const type = searchParams.get("type");
+    if (type === "income" || type === "expense") {
+      setDefaultTransactionType(type);
+    }
+  }, [searchParams]);
 
   const summary = useMemo(() => {
     const sumByTypeAndMode = (
@@ -152,7 +165,13 @@ export function TransactionManager({
             <Field label="Amount (₹)" name="amount" type="number" min="0.01" step="0.01" required />
             <div>
               <label htmlFor="transactionType" className="mb-1 block text-sm font-medium">Type</label>
-              <select id="transactionType" name="transactionType" required className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
+              <select
+                id="transactionType"
+                name="transactionType"
+                required
+                defaultValue={defaultTransactionType}
+                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+              >
                 <option value="income">Income</option>
                 <option value="expense">Expense</option>
               </select>

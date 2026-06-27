@@ -51,7 +51,7 @@ export default async function ClientStatementPrintPage({
   return (
     <div className="pb-8">
       <PrintActions
-        backHref={`/dashboard/clients/${client.id}/statement?start=${startDate}&end=${endDate}`}
+        backHref={`/dashboard/customers/${client.id}/statement?start=${startDate}&end=${endDate}`}
       />
       <StatementPrintDocument
         company={company}

@@ -5,13 +5,14 @@ import { protectedAction } from "@/lib/server/protected-action";
 import {
   calculateGstAmount,
   createInvoiceSchema,
+  quickBillSchema,
   resolvePaymentBreakdown,
   updateInvoiceSchema,
 } from "@/lib/validations/invoice.schema";
 
 function revalidateInvoicePages(invoiceId?: string) {
   revalidatePath("/dashboard/invoices");
-  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard");
   if (invoiceId) {
     revalidatePath(`/dashboard/invoices/${invoiceId}/print`);
@@ -219,6 +220,95 @@ export const createInvoice = protectedAction<FormData>({
     invoiceId: invoice.id,
     invoiceDate: data.invoiceDate,
     invoiceNumber: data.invoiceNumber || null,
+    totalAmount: payment.totalAmount,
+    cashAmount: payment.cashAmount,
+    bankAmount: payment.bankAmount,
+    createdBy: me.id,
+  });
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateInvoicePages(invoice.id);
+  return { success: true };
+});
+
+export const createQuickBill = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_quick_bill", entityType: "invoice" },
+})(async (formData, { supabase, me }) => {
+  const parsed = quickBillSchema.safeParse({
+    clientId: formData.get("clientId"),
+    amount: formData.get("amount"),
+    paymentMode: formData.get("paymentMode"),
+    invoiceDate: formData.get("invoiceDate"),
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+  const description = data.description?.trim() || "Workshop bill";
+  const gstPercent = 0;
+  const payment = resolvePaymentBreakdown(
+    data.paymentMode,
+    data.amount,
+    gstPercent,
+    0,
+    0
+  );
+
+  const { data: invoice, error } = await supabase
+    .from("invoices")
+    .insert({
+      company_id: me.company_id,
+      client_id: data.clientId,
+      job_id: null,
+      invoice_number: null,
+      invoice_date: data.invoiceDate,
+      vehicle_number: null,
+      taxable_amount: data.amount,
+      gst_percent: gstPercent,
+      gst_amount: 0,
+      total_amount: payment.totalAmount,
+      payment_mode: data.paymentMode,
+      cash_amount: payment.cashAmount,
+      bank_amount: payment.bankAmount,
+      credit_amount: payment.creditAmount,
+      remark: null,
+      created_by: me.id,
+    } as never)
+    .select("id")
+    .single();
+
+  if (error || !invoice) {
+    return { success: false, error: error?.message || "Failed to create bill" };
+  }
+
+  const { error: lineError } = await supabase.from("invoice_line_items").insert({
+    invoice_id: invoice.id,
+    description,
+    quantity: 1,
+    unit_price: data.amount,
+    gst_percent: gstPercent,
+    amount: data.amount,
+    sort_order: 0,
+  } as never);
+
+  if (lineError) {
+    return { success: false, error: lineError.message };
+  }
+
+  const ledgerError = await writeInvoiceLedgerEntries(supabase, {
+    companyId: me.company_id,
+    clientId: data.clientId,
+    invoiceId: invoice.id,
+    invoiceDate: data.invoiceDate,
+    invoiceNumber: null,
     totalAmount: payment.totalAmount,
     cashAmount: payment.cashAmount,
     bankAmount: payment.bankAmount,

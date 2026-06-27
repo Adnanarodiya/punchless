@@ -2,6 +2,7 @@ import { ReportLayout, ReportSummaryGrid } from "@/components/report-layout";
 import { ReportTable } from "@/components/report-table";
 import { getMonthlyReport } from "@/lib/queries/report.queries";
 import { resolveReportPeriod } from "@/lib/utils/report-period";
+import { CALENDAR_MONTHLY_REPORT_NOTICE } from "@/lib/content/fy-calendar-copy";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 
 export default async function MonthlyReportPage({
@@ -19,8 +20,8 @@ export default async function MonthlyReportPage({
     ["Expense", String(report.totalExpense)],
     ["Net", String(report.net)],
     ["Invoices", String(report.invoiceTotal)],
-    ["Purchases", String(report.purchaseTotal)],
-    ["Client payments", String(report.clientPayments)],
+    ["Supplier bills", String(report.purchaseTotal)],
+    ["Customer payments", String(report.clientPayments)],
     ["Supplier payments", String(report.supplierPayments)],
     ["Staff payments", String(report.staffPayments)],
     [],
@@ -42,6 +43,7 @@ export default async function MonthlyReportPage({
       periodMode="month"
       exportRows={exportRows}
       exportFilename={`monthly-report-${period.start.slice(0, 7)}`}
+      periodNotice={CALENDAR_MONTHLY_REPORT_NOTICE}
     >
       <ReportSummaryGrid
         items={[

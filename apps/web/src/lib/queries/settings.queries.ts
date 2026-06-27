@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { DashboardExperience, UiLanguage } from "@punchless/types";
 
 export type CompanyProfile = {
   name: string;
@@ -14,6 +15,8 @@ export type SalaryMode = "hourly" | "fixed";
 export type CompanySettings = {
   id: string;
   name: string;
+  dashboard_experience: DashboardExperience;
+  ui_language: UiLanguage;
   salary_mode: SalaryMode;
   work_start_time: string;
   grace_period_minutes: number;
@@ -50,7 +53,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, ot_rate_multiplier, data_lock_pin_hash, tagline, address, phone, email, logo_url"
+      "id, name, dashboard_experience, ui_language, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, ot_rate_multiplier, data_lock_pin_hash, tagline, address, phone, email, logo_url"
     )
     .eq("id", (userData as { company_id: string }).company_id)
     .single();
@@ -62,6 +65,12 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   return {
     id: row.id,
     name: row.name,
+    dashboard_experience:
+      row.dashboard_experience === "full" ? "full" : "simple",
+    ui_language:
+      row.ui_language === "gu" || row.ui_language === "hi"
+        ? row.ui_language
+        : "en",
     salary_mode: row.salary_mode === "fixed" ? "fixed" : "hourly",
     work_start_time: row.work_start_time ?? "10:00",
     grace_period_minutes: row.grace_period_minutes ?? 5,
@@ -94,4 +103,19 @@ export async function getCompanyProfile(): Promise<CompanyProfile | null> {
 export async function getDataLockStatus(): Promise<{ hasPin: boolean }> {
   const settings = await getCompanySettings();
   return { hasPin: settings?.has_data_lock_pin ?? false };
+}
+
+export type DashboardShellPrefs = {
+  hasDataLockPin: boolean;
+  dashboardExperience: DashboardExperience;
+  uiLanguage: UiLanguage;
+};
+
+export async function getDashboardShellPrefs(): Promise<DashboardShellPrefs> {
+  const settings = await getCompanySettings();
+  return {
+    hasDataLockPin: settings?.has_data_lock_pin ?? false,
+    dashboardExperience: settings?.dashboard_experience ?? "simple",
+    uiLanguage: settings?.ui_language ?? "en",
+  };
 }

@@ -17,6 +17,9 @@
     "db:diff": "npx supabase db diff",
     "db:status": "npx supabase migration list --project-id hrjarkhzmhgdrlkzpkka",
     "db:seed-shahin-employees": "node scripts/seed-shahin-employees.mjs",
+    "db:seed-suhel-demo": "node scripts/seed-suhel-dummy-statement.mjs",
+    "e2e:p0": "npx tsx scripts/e2e-p0-audit.mts",
+    "e2e:owner": "npx tsx scripts/e2e-owner-test.mts",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status"

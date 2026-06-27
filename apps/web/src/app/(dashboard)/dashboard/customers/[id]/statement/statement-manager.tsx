@@ -33,15 +33,15 @@ export function StatementManager({
     <StatementScreen
       breadcrumbs={[
         { label: "Dashboard", href: "/dashboard" },
-        { label: "Clients", href: "/dashboard/clients" },
+        { label: "Customers", href: "/dashboard/customers" },
         { label: client.name },
       ]}
       entityLines={entityLines}
       company={company}
       startDate={startDate}
       endDate={endDate}
-      statementPath={`/dashboard/clients/${client.id}/statement`}
-      printPath={`/dashboard/clients/${client.id}/statement/print`}
+      statementPath={`/dashboard/customers/${client.id}/statement`}
+      printPath={`/dashboard/customers/${client.id}/statement/print`}
       statement={statement}
       tableLabels={{
         invoiceColumn: "Invoice No.",

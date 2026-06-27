@@ -11,7 +11,7 @@ export default async function PurchasesPage() {
   ]);
 
   return (
-    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading purchases…</div>}>
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading supplier bills…</div>}>
       <PurchaseManager purchases={purchases} suppliers={suppliers} />
     </Suspense>
   );

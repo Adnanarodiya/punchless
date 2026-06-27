@@ -49,7 +49,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
   }, [taxableAmount, gstPercent]);
 
   const { execute: execCreate, loading: creating } = useAction(createPurchaseInvoice, {
-    successMessage: "Purchase invoice recorded!",
+    successMessage: "Supplier bill recorded!",
     onSuccess: () => {
       setShowForm(false);
       setTaxableAmount("");
@@ -58,7 +58,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
   });
 
   const { execute: execUpdate, loading: updating } = useAction(updatePurchaseInvoice, {
-    successMessage: "Purchase invoice updated!",
+    successMessage: "Supplier bill updated!",
     onSuccess: () => {
       setShowForm(false);
       setEditingPurchase(null);
@@ -66,7 +66,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
   });
 
   const { execute: execDelete, loading: deleting } = useAction(softDeletePurchaseInvoice, {
-    successMessage: "Invoice deleted",
+    successMessage: "Supplier bill deleted",
   });
 
   function openAdd() {
@@ -94,11 +94,11 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Purchases"
-        description="Record supplier purchase and sales invoices with GST breakdown."
+        title="Supplier bills"
+        description="Record supplier bills and credit notes with GST breakdown."
       >
         <Button onClick={openAdd}>
-          <Plus className="size-4" /> Add Invoice
+          <Plus className="size-4" /> Add bill
         </Button>
       </PageHeader>
 
@@ -106,7 +106,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              {editingPurchase ? "Edit Purchase Invoice" : "Add Purchase Invoice"}
+              {editingPurchase ? "Edit supplier bill" : "Add supplier bill"}
             </h2>
             <Button variant="ghost" size="icon" onClick={() => { setShowForm(false); setEditingPurchase(null); }}>
               <X className="size-4" />
@@ -134,8 +134,8 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
               <label htmlFor="invoiceType" className="mb-1 block text-sm font-medium">Invoice Type</label>
               <select id="invoiceType" name="invoiceType" required defaultValue={editingPurchase?.invoice_type ?? "purchase"}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                <option value="purchase">Purchase (increases payable)</option>
-                <option value="sales">Sales / Credit note (reduces payable)</option>
+                <option value="purchase">Supplier bill (increases payable)</option>
+                <option value="sales">Credit note (reduces payable)</option>
               </select>
             </div>
 
@@ -171,7 +171,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
 
             <div className="md:col-span-2">
               <Button type="submit" className="w-full sm:w-auto" loading={editingPurchase ? updating : creating} disabled={editingPurchase ? updating : creating}>
-                {editingPurchase ? "Save Changes" : "Record Invoice"}
+                {editingPurchase ? "Save Changes" : "Record bill"}
               </Button>
             </div>
           </form>
@@ -183,7 +183,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
           data={purchases}
           getRowKey={(row) => row.id}
           enableSearch
-          searchPlaceholder="Search purchases…"
+          searchPlaceholder="Search supplier bills…"
           searchFilter={(row, query) =>
             [row.supplier_name, row.invoice_number, row.invoice_type]
               .filter(Boolean)
@@ -191,7 +191,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
               .toLowerCase()
               .includes(query)
           }
-          emptyMessage="No purchase invoices yet."
+          emptyMessage="No supplier bills yet."
           columns={[
             {
               key: "supplier",
@@ -221,7 +221,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
                   "inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize",
                   row.invoice_type === "purchase" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
                 )}>
-                  {row.invoice_type}
+                  {row.invoice_type === "purchase" ? "Bill" : "Credit note"}
                 </span>
               ),
             },
@@ -263,7 +263,7 @@ export function PurchaseManager({ purchases, suppliers }: Props) {
 
       {suppliers.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Add a supplier first before recording purchase invoices.
+          Add a supplier first before recording supplier bills.
         </p>
       ) : null}
     </div>

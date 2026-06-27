@@ -5,8 +5,11 @@ import { Button } from "@punchless/ui/components/button";
 import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { InfoHint } from "@/components/info-hint";
 import { TableEmptyState } from "@/components/table-empty-state";
+import { redirectUnlessFullDashboard } from "@/lib/utils/dashboard-experience-guard";
 
-export default function BillingPage() {
+export default async function BillingPage() {
+  await redirectUnlessFullDashboard("/dashboard/settings");
+
   return (
     <div className="space-y-6">
       <DashboardPageHeader
@@ -21,7 +24,7 @@ export default function BillingPage() {
         <TableEmptyState
           icon={CreditCard}
           title="Billing is not set up"
-          description="Stripe subscriptions are planned for a later phase. Everything else — attendance, payroll, clients, and reports — works without billing today."
+          description="Stripe subscriptions are planned for a later phase. Everything else — attendance, payroll, customers, and reports — works without billing today."
           action={
             <Button variant="outline" size="sm" asChild>
               <Link href="/dashboard/learn?module=settings">

@@ -31,6 +31,7 @@
     --success-foreground: 355.7 100% 97.3%;
     --warning: 38 92% 50%; /* Amber-500 */
     --warning-foreground: 48 96% 89%;
+    --purchase: 280 65% 55%; /* Purple — purchase column */
 
     /* Attendance States */
     --state-workshop: 142.1 76.2% 36.3%; /* Green */
@@ -80,6 +81,7 @@
     --success-foreground: 144.9 80.4% 10%;
     --warning: 47.9 95.8% 53.1%; /* Amber-400 */
     --warning-foreground: 26 83.3% 14.1%;
+    --purchase: 280 65% 60%;
 
     /* Attendance States (Dark Mode) */
     --state-workshop: 142.1 70.6% 45.3%; /* Green-500 */
@@ -117,6 +119,8 @@
   .bg-success { @apply bg-[hsl(var(--success))]; }
   .text-warning { @apply text-[hsl(var(--warning))]; }
   .bg-warning { @apply bg-[hsl(var(--warning))]; }
+  .text-purchase { @apply text-[hsl(var(--purchase))]; }
+  .bg-purchase { @apply bg-[hsl(var(--purchase))]; }
 
   @keyframes nav-progress {
     0% { transform: translateX(-100%); }

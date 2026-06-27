@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   Users,
   DollarSign,
@@ -12,32 +16,39 @@ import {
   Truck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+import { Button } from "@punchless/ui/components/button";
 import { cn } from "@punchless/ui/lib/utils";
+import { useDashboardHomeModalsOptional } from "@/components/dashboard-home-modals";
+import { useDashboardExperienceStore } from "@/lib/stores/dashboard-experience.store";
 
 type QuickAction = {
   label: string;
   description: string;
-  href: string;
+  href?: string;
+  modal?: "quickBill";
   icon: LucideIcon;
   iconClass: string;
   bgClass: string;
   borderClass: string;
+  /** Hidden in Simple dashboard mode when false. */
+  simpleMode?: boolean;
 };
 
-const quickActions: QuickAction[] = [
+const primaryQuickActions: QuickAction[] = [
   {
-    label: "Clients",
-    description: "CRM & client dues",
-    href: "/dashboard/clients",
+    label: "Customers",
+    description: "Dues & statements",
+    href: "/dashboard/customers",
     icon: Building2,
     iconClass: "text-state-travel",
     bgClass: "bg-state-travel/15 group-hover:bg-state-travel/25",
     borderClass: "hover:border-state-travel/40",
   },
   {
-    label: "Invoices",
-    description: "GST tax invoices",
-    href: "/dashboard/invoices",
+    label: "New bill",
+    description: "Quick customer bill",
+    modal: "quickBill",
     icon: FileText,
     iconClass: "text-success",
     bgClass: "bg-success/15 group-hover:bg-success/25",
@@ -53,8 +64,48 @@ const quickActions: QuickAction[] = [
     borderClass: "hover:border-warning/40",
   },
   {
-    label: "Purchases",
-    description: "Purchase invoices",
+    label: "Pay staff",
+    description: "Monthly payroll",
+    href: "/dashboard/salary",
+    icon: Banknote,
+    iconClass: "text-primary",
+    bgClass: "bg-primary/15 group-hover:bg-primary/25",
+    borderClass: "hover:border-primary/40",
+  },
+  {
+    label: "Employees",
+    description: "Add or manage staff",
+    href: "/dashboard/employees",
+    icon: Users,
+    iconClass: "text-state-travel",
+    bgClass: "bg-state-travel/15 group-hover:bg-state-travel/25",
+    borderClass: "hover:border-state-travel/40",
+  },
+  {
+    label: "Advances",
+    description: "Approve staff advances",
+    href: "/dashboard/advances",
+    icon: Wallet,
+    iconClass: "text-warning",
+    bgClass: "bg-warning/15 group-hover:bg-warning/25",
+    borderClass: "hover:border-warning/40",
+  },
+];
+
+const moreQuickActions: QuickAction[] = [
+  {
+    label: "GST invoices",
+    description: "Full tax invoices",
+    href: "/dashboard/invoices",
+    icon: FileText,
+    iconClass: "text-success",
+    bgClass: "bg-success/15 group-hover:bg-success/25",
+    borderClass: "hover:border-success/40",
+    simpleMode: false,
+  },
+  {
+    label: "Supplier bills",
+    description: "Supplier bills & credit notes",
     href: "/dashboard/purchases",
     icon: ShoppingCart,
     iconClass: "text-state-onsite",
@@ -71,8 +122,8 @@ const quickActions: QuickAction[] = [
     borderClass: "hover:border-primary/40",
   },
   {
-    label: "Transactions",
-    description: "Income & expense",
+    label: "Income & expense",
+    description: "Manual P&L entries",
     href: "/dashboard/transactions",
     icon: ArrowLeftRight,
     iconClass: "text-destructive",
@@ -80,19 +131,8 @@ const quickActions: QuickAction[] = [
     borderClass: "hover:border-destructive/30",
   },
   {
-    label: "Employees",
-    description: "Add or manage staff",
-    href: "/dashboard/employees",
-    icon: Users,
-    iconClass: "text-state-travel",
-    bgClass: "bg-state-travel/15 group-hover:bg-state-travel/25",
-    borderClass: "hover:border-state-travel/40",
-  },
-  // GPS / mobile — paused (fingerprint payroll only)
-  // Workshops, Jobs, Attendance, History, Requests
-  {
-    label: "Salary",
-    description: "Monthly payroll report",
+    label: "Staff salary",
+    description: "Attendance & salary report",
     href: "/dashboard/salary",
     icon: DollarSign,
     iconClass: "text-success",
@@ -100,61 +140,112 @@ const quickActions: QuickAction[] = [
     borderClass: "hover:border-success/40",
   },
   {
-    label: "Payments",
-    description: "Pay staff salary & advances",
+    label: "Pay staff (history)",
+    description: "Past salary payments",
     href: "/dashboard/salary/payments",
     icon: Banknote,
     iconClass: "text-primary",
     bgClass: "bg-primary/15 group-hover:bg-primary/25",
     borderClass: "hover:border-primary/40",
-  },
-  {
-    label: "Advances",
-    description: "Approve advance requests",
-    href: "/dashboard/advances",
-    icon: Wallet,
-    iconClass: "text-warning",
-    bgClass: "bg-warning/15 group-hover:bg-warning/25",
-    borderClass: "hover:border-warning/40",
+    simpleMode: false,
   },
 ];
 
+function QuickActionTile({
+  action,
+  onQuickBill,
+}: {
+  action: QuickAction;
+  onQuickBill?: () => void;
+}) {
+  const Icon = action.icon;
+  const className = cn(
+    "group rounded-xl border border-border bg-card p-3.5 text-left transition hover:shadow-sm sm:p-4",
+    action.borderClass
+  );
+  const content = (
+    <>
+      <div
+        className={cn(
+          "mb-2.5 flex size-9 items-center justify-center rounded-lg transition sm:mb-3",
+          action.bgClass
+        )}
+      >
+        <Icon className={cn("size-4", action.iconClass)} />
+      </div>
+      <p className="text-sm font-medium text-foreground">{action.label}</p>
+      <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+        {action.description}
+      </p>
+    </>
+  );
+
+  if (action.modal === "quickBill" && onQuickBill) {
+    return (
+      <button type="button" className={className} onClick={onQuickBill}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link href={action.href ?? "/dashboard"} className={className}>
+      {content}
+    </Link>
+  );
+}
+
 export function DashboardQuickActions() {
+  const [showMore, setShowMore] = useState(false);
+  const homeModals = useDashboardHomeModalsOptional();
+  const experience = useDashboardExperienceStore((s) => s.experience);
+  const isSimple = experience !== "full";
+  const visibleMoreActions = moreQuickActions.filter(
+    (action) => !isSimple || action.simpleMode !== false
+  );
+
   return (
     <section aria-labelledby="quick-actions-heading">
       <h2 id="quick-actions-heading" className="mb-4 text-lg font-semibold">
-        Quick Actions
+        More shortcuts
       </h2>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-        {quickActions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link
-              key={action.href}
-              href={action.href}
-              className={cn(
-                "group rounded-xl border border-border bg-card p-3.5 transition hover:shadow-sm sm:p-4",
-                action.borderClass
-              )}
-            >
-              <div
-                className={cn(
-                  "mb-2.5 flex size-9 items-center justify-center rounded-lg transition sm:mb-3",
-                  action.bgClass
-                )}
-              >
-                <Icon className={cn("size-4", action.iconClass)} />
-              </div>
-              <p className="text-sm font-medium text-foreground">
-                {action.label}
-              </p>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                {action.description}
-              </p>
-            </Link>
-          );
-        })}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+        {primaryQuickActions.map((action) => (
+          <QuickActionTile
+            key={(action.href ?? action.modal) + action.label}
+            action={action}
+            onQuickBill={homeModals ? () => homeModals.openQuickBill() : undefined}
+          />
+        ))}
       </div>
+
+      <div className="mt-4 flex justify-center">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => setShowMore((value) => !value)}
+          aria-expanded={showMore}
+        >
+          {showMore ? "Fewer shortcuts" : "More shortcuts"}
+          <ChevronDown
+            className={cn("size-4 transition-transform", showMore && "rotate-180")}
+          />
+        </Button>
+      </div>
+
+      {showMore && visibleMoreActions.length > 0 ? (
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3">
+          {visibleMoreActions.map((action) => (
+            <QuickActionTile
+              key={action.href + action.label}
+              action={action}
+              onQuickBill={homeModals ? () => homeModals.openQuickBill() : undefined}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -38,8 +38,8 @@ export default async function DailyReportPage({
           { label: "Expense", value: formatCurrency(report.totalExpense) },
           { label: "Net (Income − Expense)", value: formatCurrency(report.net) },
           { label: "Invoices billed", value: formatCurrency(report.invoiceTotal) },
-          { label: "Purchases", value: formatCurrency(report.purchaseTotal) },
-          { label: "Client payments in", value: formatCurrency(report.clientPayments) },
+          { label: "Supplier bills", value: formatCurrency(report.purchaseTotal) },
+          { label: "Customer payments in", value: formatCurrency(report.clientPayments) },
           { label: "Supplier payments out", value: formatCurrency(report.supplierPayments) },
           { label: "Staff paid out", value: formatCurrency(report.staffPayments) },
         ]}

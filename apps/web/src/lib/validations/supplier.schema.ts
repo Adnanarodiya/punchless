@@ -2,6 +2,11 @@ import { z } from "zod";
 
 const paymentModeSchema = z.enum(["cash", "bank", "credit"]);
 
+/** Minimal supplier for quick pay — name only, no opening balance. */
+export const quickSupplierSchema = z.object({
+  name: z.string().min(1, "Supplier name is required").max(200),
+});
+
 export const createSupplierSchema = z.object({
   name: z.string().min(1, "Supplier name is required").max(200),
   alias: z.string().max(100).optional().or(z.literal("")),

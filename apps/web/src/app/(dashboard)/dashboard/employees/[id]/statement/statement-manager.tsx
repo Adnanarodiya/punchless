@@ -9,8 +9,18 @@ import { DataTable } from "@punchless/ui/components/data-table";
 import { Button } from "@punchless/ui/components/button";
 
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
-import type { StaffStatementLine } from "@/lib/queries/staff-payment.queries";
+import type {
+  EmployeeSalarySlipRecord,
+  StaffStatementLine,
+} from "@/lib/queries/staff-payment.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
+import {
+  formatStaffLedgerTotal,
+  staffLedgerSummaryHint,
+  staffPaymentInPeriod,
+  staffStatementTypeLabel,
+} from "@/lib/utils/staff-statement-display";
 
 interface Props {
   employee: EmployeeWithWorkshop;
@@ -20,21 +30,7 @@ interface Props {
   closingBalance: number;
   salaryBalance: number;
   lines: StaffStatementLine[];
-}
-
-function referenceLabel(referenceType: string | null) {
-  switch (referenceType) {
-    case "salary_deposit":
-      return "Salary deposit";
-    case "staff_payment":
-      return "Staff payment";
-    case "advance":
-      return "Advance (approved)";
-    case "salary":
-      return "Salary";
-    default:
-      return referenceType ?? "Entry";
-  }
+  salarySlips: EmployeeSalarySlipRecord[];
 }
 
 export function EmployeeStatementManager({
@@ -45,8 +41,10 @@ export function EmployeeStatementManager({
   closingBalance,
   salaryBalance,
   lines,
+  salarySlips,
 }: Props) {
   const router = useRouter();
+  const paidInPeriod = staffPaymentInPeriod(openingBalance, closingBalance);
 
   function handleFilter(formData: FormData) {
     const start = String(formData.get("startDate") || "");
@@ -55,6 +53,10 @@ export function EmployeeStatementManager({
       `/dashboard/employees/${employee.id}/statement?start=${start}&end=${end}`
     );
   }
+
+  const slipByPaymentId = new Map(
+    salarySlips.map((slip) => [slip.paymentId, slip])
+  );
 
   return (
     <div className="space-y-6 print:space-y-4">
@@ -73,17 +75,38 @@ export function EmployeeStatementManager({
 
       <PageHeader
         title={`${employee.full_name} — Staff Statement`}
-        description="Deposits, payments, advances, and deductions with running balance."
+        description="Money you paid this staff — salary, advance (Upad), and deposits. Click View proof for month-wise breakdown."
       >
-        <Button variant="outline" onClick={() => window.print()}>
-          Print
+        <Button variant="outline" asChild>
+          <Link
+            href={`/dashboard/employees/${employee.id}/statement/print?start=${startDate}&end=${endDate}`}
+            target="_blank"
+          >
+            Print full proof PDF
+          </Link>
         </Button>
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryCard label="Opening Balance" value={formatBalance(openingBalance)} />
-        <SummaryCard label="Closing Balance" value={formatBalance(closingBalance)} />
-        <SummaryCard label="Current Balance" value={formatBalance(salaryBalance)} />
+        <SummaryCard
+          label="Paid before this period"
+          value={formatStaffLedgerTotal(openingBalance)}
+          hint={
+            openingBalance === 0
+              ? "Nothing recorded before start date"
+              : staffLedgerSummaryHint(openingBalance)
+          }
+        />
+        <SummaryCard
+          label="Paid in this period"
+          value={formatCurrency(paidInPeriod)}
+          hint="Salary + advance in selected dates"
+        />
+        <SummaryCard
+          label="Total paid (all time)"
+          value={formatStaffLedgerTotal(salaryBalance)}
+          hint={staffLedgerSummaryHint(salaryBalance)}
+        />
       </div>
 
       <form
@@ -117,9 +140,26 @@ export function EmployeeStatementManager({
           />
         </div>
         <Button type="submit">Apply</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            const { start, end } = defaultStatementDateRange();
+            router.push(
+              `/dashboard/employees/${employee.id}/statement?start=${start}&end=${end}`
+            );
+          }}
+        >
+          Last 6 months
+        </Button>
       </form>
 
       <div className="rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-1 text-lg font-semibold">Payment history</h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Each row is money you paid or advance you gave. Running total shows cumulative paid
+          to staff.
+        </p>
         <DataTable
           data={lines}
           getRowKey={(row) => row.id}
@@ -133,7 +173,7 @@ export function EmployeeStatementManager({
             {
               key: "type",
               header: "Type",
-              cell: (row) => referenceLabel(row.reference_type),
+              cell: (row) => staffStatementTypeLabel(row.reference_type),
             },
             {
               key: "remark",
@@ -141,23 +181,52 @@ export function EmployeeStatementManager({
               cell: (row) => row.remark ?? "—",
             },
             {
-              key: "debit",
-              header: "Debit",
+              key: "paid",
+              header: "You paid",
               cell: (row) =>
                 row.debit > 0 ? formatCurrency(row.debit) : "—",
             },
             {
-              key: "credit",
-              header: "Credit",
+              key: "deposit",
+              header: "Salary owed",
               cell: (row) =>
                 row.credit > 0 ? formatCurrency(row.credit) : "—",
             },
             {
               key: "balance",
-              header: "Balance",
+              header: "Total paid so far",
               cell: (row) => (
-                <span className="font-medium">{formatBalance(row.balance)}</span>
+                <span className="font-medium">
+                  {formatStaffLedgerTotal(row.balance)}
+                </span>
               ),
+            },
+            {
+              key: "proof",
+              header: "Proof",
+              cell: (row) => {
+                if (
+                  row.reference_type !== "staff_payment" ||
+                  !row.reference_id
+                ) {
+                  return "—";
+                }
+                const slip = slipByPaymentId.get(row.reference_id);
+                if (!slip) {
+                  return (
+                    <span className="text-xs text-muted-foreground">No slip saved</span>
+                  );
+                }
+                return (
+                  <Link
+                    href={`/dashboard/salary/payments/${row.reference_id}/slip`}
+                    target="_blank"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    View proof
+                  </Link>
+                );
+              },
             },
           ]}
         />
@@ -166,17 +235,20 @@ export function EmployeeStatementManager({
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
+function SummaryCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="text-2xl font-bold">{value}</p>
+      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
-}
-
-function formatBalance(amount: number) {
-  if (amount > 0) return `Cr ${formatCurrency(amount)}`;
-  if (amount < 0) return `Dr ${formatCurrency(Math.abs(amount))}`;
-  return formatCurrency(0);
 }

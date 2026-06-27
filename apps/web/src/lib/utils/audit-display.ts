@@ -29,14 +29,14 @@ const TONE_CLASS: Record<AuditPillTone, string> = {
 };
 
 const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
-  create_client: { label: "Client Added", tone: "success", summary: "New client created" },
-  update_client: { label: "Client Updated", tone: "primary", summary: "Client details changed" },
-  soft_delete_client: { label: "Client Removed", tone: "destructive", summary: "Client archived" },
-  recover_client: { label: "Client Restored", tone: "success", summary: "Client recovered from archive" },
+  create_client: { label: "Customer Added", tone: "success", summary: "New customer created" },
+  update_client: { label: "Customer Updated", tone: "primary", summary: "Customer details changed" },
+  soft_delete_client: { label: "Customer Removed", tone: "destructive", summary: "Customer archived" },
+  recover_client: { label: "Customer Restored", tone: "success", summary: "Customer recovered from archive" },
   receive_client_payment: {
     label: "Payment Received",
     tone: "success",
-    summary: "Client payment recorded — credit received",
+    summary: "Customer payment recorded — credit received",
   },
 
   create_supplier: { label: "Supplier Added", tone: "success", summary: "New supplier created" },
@@ -54,15 +54,15 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
   soft_delete_invoice: { label: "Invoice Deleted", tone: "destructive", summary: "Invoice removed" },
 
   create_purchase_invoice: {
-    label: "Purchase Added",
+    label: "Supplier Bill Added",
     tone: "warning",
-    summary: "Supplier purchase invoice recorded",
+    summary: "Supplier bill recorded",
   },
-  update_purchase_invoice: { label: "Purchase Updated", tone: "primary", summary: "Purchase invoice changed" },
+  update_purchase_invoice: { label: "Supplier Bill Updated", tone: "primary", summary: "Supplier bill changed" },
   soft_delete_purchase_invoice: {
-    label: "Purchase Deleted",
+    label: "Supplier Bill Deleted",
     tone: "destructive",
-    summary: "Purchase invoice removed",
+    summary: "Supplier bill removed",
   },
 
   create_bank: { label: "Bank Added", tone: "success", summary: "New bank account created" },
@@ -238,10 +238,10 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
 };
 
 const ENTITY_CONFIG: Record<string, AuditEntityDisplay> = {
-  client: { label: "Client", tone: "primary" },
+  client: { label: "Customer", tone: "primary" },
   supplier: { label: "Supplier", tone: "warning" },
   invoice: { label: "Invoice", tone: "success" },
-  purchase: { label: "Purchase", tone: "warning" },
+  purchase: { label: "Supplier bill", tone: "warning" },
   bank: { label: "Bank", tone: "travel" },
   transaction: { label: "Transaction", tone: "warning" },
   employee: { label: "Employee", tone: "workshop" },

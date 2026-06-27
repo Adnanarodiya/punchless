@@ -1,0 +1,70 @@
+---
+pid: 11416
+cwd: "D:\Coding\punchless"
+command: "cd D:\\Coding\\punchless\\apps\\web; pnpm dev 2>&1"
+started_at: 2026-06-27T10:29:59.626Z
+running_for_ms: 4755011  
+---
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+
+> @punchless/web@0.1.0 dev D:\Coding\punchless\apps\web
+> next dev
+
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.216:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ✓ Compiled /middleware in 277ms (164 modules)
+ ○ Compiling /login ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (133kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+(node:12936) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ Compiled /login in 3s (820 modules)
+ GET /login 200 in 3497ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 771ms (599 modules)
+ GET /home 404 in 1088ms
+ ○ Compiling / ...
+ ✓ Compiled / in 546ms (607 modules)
+ GET / 200 in 922ms
+ GET / 200 in 111ms
+ ✓ Compiled in 609ms (269 modules)
+ ✓ Compiled in 523ms (269 modules)
+ ✓ Compiled in 285ms (269 modules)
+ ✓ Compiled in 475ms (269 modules)
+ ✓ Compiled in 428ms (269 modules)
+ ✓ Compiled in 545ms (269 modules)
+ ✓ Compiled in 310ms (269 modules)
+ ✓ Compiled in 277ms (269 modules)
+ ✓ Compiled in 444ms (269 modules)
+ ✓ Compiled in 385ms (269 modules)
+ ✓ Compiled in 548ms (269 modules)
+ ✓ Compiled in 497ms (269 modules)
+ ✓ Compiled in 469ms (269 modules)
+ ✓ Compiled in 434ms (269 modules)
+ ✓ Compiled in 402ms (269 modules)
+ ✓ Compiled in 310ms (269 modules)
+ ✓ Compiled in 311ms (269 modules)
+ ✓ Compiled in 288ms (269 modules)
+ ✓ Compiled in 381ms (269 modules)
+ ✓ Compiled in 374ms (269 modules)
+ ✓ Compiled in 339ms (269 modules)
+ ✓ Compiled in 303ms (269 modules)
+ ✓ Compiled in 1229ms (433 modules)
+ ⚠ Found a change in next.config.ts. Restarting the server to apply the changes...
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.216:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.4s
+ ✓ Compiled /middleware in 332ms (164 modules)
+ ○ Compiling / ...
+(node:20144) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ Compiled / in 3.2s (602 modules)
+ GET / 200 in 3679ms

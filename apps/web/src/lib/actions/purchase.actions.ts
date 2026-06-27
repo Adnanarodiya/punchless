@@ -72,7 +72,7 @@ export const createPurchaseInvoice = protectedAction<FormData>({
   const ledgerEntryType = invoiceType === "purchase" ? "credit" : "debit";
   const ledgerRemark =
     remark ||
-    `${invoiceType === "purchase" ? "Purchase" : "Sales"} invoice${invoiceNumber ? ` #${invoiceNumber}` : ""}`;
+    `${invoiceType === "purchase" ? "Supplier bill" : "Credit note"}${invoiceNumber ? ` #${invoiceNumber}` : ""}`;
 
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
     company_id: me.company_id,

@@ -26,6 +26,8 @@ import { useDataLockStore } from "@/lib/stores/data-lock.store";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import type { CompanySettings } from "@/lib/queries/settings.queries";
 import { useAction } from "@/hooks/use-action";
+import { DashboardExperienceToggle } from "@/components/dashboard-experience-toggle";
+import { UiLanguageToggle } from "@/components/ui-language-toggle";
 
 interface Props {
   settings: CompanySettings;
@@ -65,6 +67,9 @@ export function SettingsManager({ settings }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
+      <DashboardExperienceToggle initialExperience={settings.dashboard_experience} />
+      <UiLanguageToggle initialLanguage={settings.ui_language} />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Link
           href="/dashboard/settings/users"

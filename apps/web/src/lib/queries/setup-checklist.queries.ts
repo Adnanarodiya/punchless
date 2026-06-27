@@ -101,7 +101,7 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
     {
       id: "learn",
       label: "Learn the system",
-      description: "Read how fingerprint salary, clients, and suppliers work.",
+      description: "Read how fingerprint salary, customers, and suppliers work.",
       href: "/dashboard/learn",
       done: false,
     },

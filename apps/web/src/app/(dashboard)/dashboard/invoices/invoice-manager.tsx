@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Eye, Plus, X, Pencil, Printer } from "lucide-react";
+import { Eye, Plus, X, Pencil, Printer, Receipt } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@/components/page-header";
@@ -28,6 +28,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { InfoHint } from "@/components/info-hint";
+import { QuickBillModal } from "@/components/quick-bill-modal";
 
 const GST_SLABS = [0, 5, 12, 18, 28] as const;
 
@@ -38,6 +39,12 @@ interface Props {
   clients: ClientWithDue[];
   jobs: JobWithDetails[];
   suggestedInvoiceNumber: string;
+  /** P2-3 — embedded in Customers hub (Simple mode); hides page header. */
+  embedded?: boolean;
+}
+
+function isQuickBill(invoice: InvoiceWithDetails) {
+  return invoice.gst_percent === 0 && !invoice.invoice_number;
 }
 
 const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
@@ -52,8 +59,10 @@ export function InvoiceManager({
   clients,
   jobs,
   suggestedInvoiceNumber,
+  embedded = false,
 }: Props) {
   const searchParams = useSearchParams();
+  const [showQuickBill, setShowQuickBill] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingInvoice, setEditingInvoice] =
     useState<InvoiceWithDetails | null>(null);
@@ -63,6 +72,7 @@ export function InvoiceManager({
   const [cashAmount, setCashAmount] = useState("");
   const [bankAmount, setBankAmount] = useState("");
   const [formClientId, setFormClientId] = useState("");
+  const [convertingQuickBill, setConvertingQuickBill] = useState(false);
 
   const preview = useMemo(() => {
     const taxable = parseFloat(taxableAmount) || 0;
@@ -101,6 +111,7 @@ export function InvoiceManager({
     onSuccess: () => {
       setShowForm(false);
       setEditingInvoice(null);
+      setConvertingQuickBill(false);
       resetForm();
     },
   });
@@ -120,6 +131,7 @@ export function InvoiceManager({
 
   function openAdd(clientId?: string) {
     setEditingInvoice(null);
+    setConvertingQuickBill(false);
     resetForm();
     if (clientId) setFormClientId(clientId);
     setShowForm(true);
@@ -127,6 +139,7 @@ export function InvoiceManager({
 
   function openEdit(invoice: InvoiceWithDetails) {
     setEditingInvoice(invoice);
+    setFormClientId(invoice.client_id);
     setTaxableAmount(String(invoice.taxable_amount));
     setGstPercent(String(invoice.gst_percent));
     setPaymentMode(invoice.payment_mode as PaymentMode);
@@ -135,42 +148,121 @@ export function InvoiceManager({
     setShowForm(true);
   }
 
+  function openConvertToGst(invoice: InvoiceWithDetails) {
+    setConvertingQuickBill(true);
+    openEdit(invoice);
+    if (invoice.gst_percent === 0) {
+      setGstPercent("18");
+    }
+  }
+
   useEffect(() => {
     const invoiceId = searchParams.get("invoice");
+    const convertGst = searchParams.get("convertGst");
     if (invoiceId) {
       const invoice = invoices.find((row) => row.id === invoiceId);
-      if (invoice) openEdit(invoice);
+      if (invoice) {
+        if (convertGst === "1" && isQuickBill(invoice)) {
+          openConvertToGst(invoice);
+        } else {
+          openEdit(invoice);
+        }
+      }
       return;
     }
 
-    const clientId = searchParams.get("client");
+    const clientId = searchParams.get("customer") ?? searchParams.get("client");
+    const quickBill = searchParams.get("quickBill");
     const openForm = searchParams.get("openForm");
-    if (clientId && openForm === "1" && clients.some((c) => c.id === clientId)) {
-      openAdd(clientId);
+
+    if (quickBill === "1") {
+      setShowQuickBill(true);
+      if (clientId && clients.some((c) => c.id === clientId)) {
+        setFormClientId(clientId);
+      }
+      return;
+    }
+
+    if (openForm === "1") {
+      if (clientId && clients.some((c) => c.id === clientId)) {
+        openAdd(clientId);
+      } else if (!clientId) {
+        openAdd();
+      }
     }
   }, [searchParams, invoices, clients]);
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Tax Invoices"
-        description="GST tax invoices for clients — cash, bank, credit, or split payment."
-      >
-        <Button onClick={() => openAdd()}>
-          <Plus className="size-4" /> New Invoice
-        </Button>
-      </PageHeader>
+      {embedded ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">All bills</h2>
+            <p className="text-sm text-muted-foreground">
+              Quick bills and GST tax invoices for customers.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setShowQuickBill(true)}>
+              <Plus className="size-4" /> Quick bill
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => openAdd()}>
+              GST tax invoice
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <PageHeader
+          title="Tax Invoices"
+          description="GST tax invoices for customers — cash, bank, credit, or split payment."
+        >
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setShowQuickBill(true)}>
+              <Plus className="size-4" /> Quick bill
+            </Button>
+            <Button variant="outline" onClick={() => openAdd()}>
+              GST tax invoice
+            </Button>
+          </div>
+        </PageHeader>
+      )}
+
+      <QuickBillModal
+        open={showQuickBill}
+        onOpenChange={setShowQuickBill}
+        clients={clients}
+        initialClientId={formClientId}
+      />
 
       {showForm ? (
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">
-              {editingInvoice ? "Edit Tax Invoice" : "New Tax Invoice"}
+              {convertingQuickBill
+                ? "Add GST to quick bill"
+                : editingInvoice
+                  ? "Edit Tax Invoice"
+                  : "New Tax Invoice"}
             </h2>
-            <Button variant="ghost" size="icon" onClick={() => { setShowForm(false); setEditingInvoice(null); }}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowForm(false);
+                setEditingInvoice(null);
+                setConvertingQuickBill(false);
+              }}
+            >
               <X className="size-4" />
             </Button>
           </div>
+
+          {convertingQuickBill ? (
+            <InfoHint title="Converting quick bill to GST invoice" className="mb-4">
+              Add an invoice number and GST slab. The total will change — update payment amounts
+              if the customer paid a different figure.
+            </InfoHint>
+          ) : null}
 
           <form
             action={editingInvoice
@@ -179,7 +271,7 @@ export function InvoiceManager({
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
             <div>
-              <label htmlFor="clientId" className="mb-1 block text-sm font-medium">Client</label>
+              <label htmlFor="clientId" className="mb-1 block text-sm font-medium">Customer</label>
               <select
                 id="clientId"
                 name="clientId"
@@ -187,7 +279,7 @@ export function InvoiceManager({
                 value={editingInvoice?.client_id ?? formClientId}
                 onChange={(e) => setFormClientId(e.target.value)}
                 className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                <option value="" disabled>Select client</option>
+                <option value="" disabled>Select customer</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}{c.alias ? ` (${c.alias})` : ""}</option>
                 ))}
@@ -264,8 +356,8 @@ export function InvoiceManager({
             <div className="md:col-span-2">
               <InfoHint title="Payment modes">
                 <strong>Cash / Bank</strong> — customer paid now; counts as income today.{" "}
-                <strong>Credit</strong> — customer pays later; adds to their due on Clients.{" "}
-                <strong>Split</strong> — part cash, part bank; extra amount can clear older client dues.
+                <strong>Credit</strong> — customer pays later; adds to their due on Customers.{" "}
+                <strong>Split</strong> — part cash, part bank; extra amount can clear older customer dues.
               </InfoHint>
             </div>
 
@@ -326,11 +418,16 @@ export function InvoiceManager({
           columns={[
             {
               key: "client",
-              header: "Client",
+              header: "Customer",
               cell: (row) => (
                 <div>
                   <p className="font-medium">{row.client_name}</p>
-                  {row.invoice_number ? <p className="text-xs text-muted-foreground">#{row.invoice_number}</p> : null}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    {row.invoice_number ? <span>#{row.invoice_number}</span> : null}
+                    {isQuickBill(row) ? (
+                      <span className="rounded bg-muted px-1.5 py-0.5 font-medium">Quick bill</span>
+                    ) : null}
+                  </div>
                 </div>
               ),
             },
@@ -381,6 +478,16 @@ export function InvoiceManager({
                       <Printer className="size-3.5" />
                     </Link>
                   </Button>
+                  {isQuickBill(row) ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openConvertToGst(row)}
+                      title="Add GST"
+                    >
+                      <Receipt className="size-3.5" />
+                    </Button>
+                  ) : null}
                   <Button variant="ghost" size="sm" onClick={() => openEdit(row)} title="Edit">
                     <Pencil className="size-3.5" />
                   </Button>

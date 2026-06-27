@@ -11,13 +11,19 @@ import {
 import { PageNavigationLoader } from "@/components/page-navigation-loader";
 import { useDataLockIdle } from "@/hooks/use-data-lock-idle";
 import { useDataLockStore } from "@/lib/stores/data-lock.store";
+import { useDashboardExperienceStore } from "@/lib/stores/dashboard-experience.store";
 import { TooltipProvider } from "@punchless/ui/components/tooltip";
+import type { DashboardExperience, UiLanguage } from "@punchless/types";
+import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
+import { SupportButton } from "@/components/support-button";
 
 interface DashboardShellProps {
   role: string;
   userName: string;
   companyName: string;
   hasDataLockPin: boolean;
+  dashboardExperience: DashboardExperience;
+  uiLanguage: UiLanguage;
   children: React.ReactNode;
 }
 
@@ -26,16 +32,36 @@ export function DashboardShell({
   userName,
   companyName,
   hasDataLockPin,
+  dashboardExperience,
+  uiLanguage,
   children,
 }: DashboardShellProps) {
   const setHasPin = React.useCallback(
     (pin: boolean) => useDataLockStore.getState().setHasPin(pin),
     []
   );
+  const setExperience = React.useCallback(
+    (experience: DashboardExperience) =>
+      useDashboardExperienceStore.getState().setExperience(experience),
+    []
+  );
 
   React.useEffect(() => {
     setHasPin(hasDataLockPin);
   }, [hasDataLockPin, setHasPin]);
+
+  React.useEffect(() => {
+    setExperience(dashboardExperience);
+  }, [dashboardExperience, setExperience]);
+
+  const setLanguage = React.useCallback(
+    (language: UiLanguage) => useUiLanguageStore.getState().setLanguage(language),
+    []
+  );
+
+  React.useEffect(() => {
+    setLanguage(uiLanguage);
+  }, [uiLanguage, setLanguage]);
 
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -59,6 +85,7 @@ export function DashboardShell({
         role={role}
         userName={userName}
         companyName={companyName}
+        dashboardExperience={dashboardExperience}
         mobileOpen={mobileNavOpen}
         onMobileClose={() => setMobileNavOpen(false)}
       />
@@ -74,6 +101,7 @@ export function DashboardShell({
         <main id="main-content" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
+        <SupportButton />
       </div>
     </div>
     </TooltipProvider>

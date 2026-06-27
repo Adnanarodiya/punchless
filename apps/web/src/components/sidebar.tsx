@@ -4,26 +4,39 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import type { DashboardExperience } from "@punchless/types";
 
 import { CollapsibleNavGroup } from "@punchless/ui/components/collapsible-nav-group";
 import { cn } from "@punchless/ui/lib/utils";
 
-import { filterNavGroups, type NavGroup, type NavItem } from "./sidebar-config";
+import {
+  filterNavGroups,
+  getNavItemLabel,
+  MORE_TOOLS_GROUP_LABEL,
+  type NavGroup,
+  type NavItem,
+} from "./sidebar-config";
+import { translateNavLabel } from "@/lib/i18n/owner-labels";
+import { useDashboardExperienceStore } from "@/lib/stores/dashboard-experience.store";
+import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
 
 interface SidebarProps {
   role: string;
   userName: string;
   companyName: string;
+  dashboardExperience: DashboardExperience;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
 function NavLink({
   item,
+  label,
   isActive,
   onNavigate,
 }: {
   item: NavItem;
+  label: string;
   isActive: boolean;
   onNavigate?: () => void;
 }) {
@@ -37,7 +50,7 @@ function NavLink({
       >
         <span className="flex items-center gap-3">
           <Icon className="size-4 shrink-0 opacity-50" />
-          {item.label}
+          {label}
         </span>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Soon
@@ -58,7 +71,7 @@ function NavLink({
       )}
     >
       <Icon className="size-4 shrink-0" />
-      {item.label}
+      {label}
     </Link>
   );
 }
@@ -85,19 +98,58 @@ export function Sidebar({
   role,
   userName,
   companyName,
+  dashboardExperience,
   mobileOpen = false,
   onMobileClose,
 }: SidebarProps) {
   const pathname = usePathname();
-  const groups = useMemo(() => filterNavGroups(role), [role]);
-  const [openGroup, setOpenGroup] = useState<string | null>(() =>
-    findActiveGroupLabel(groups, pathname)
+  const storeExperience = useDashboardExperienceStore((s) => s.experience);
+  const setExperience = useDashboardExperienceStore((s) => s.setExperience);
+  const language = useUiLanguageStore((s) => s.language);
+  const experience = storeExperience || dashboardExperience;
+
+  function navLabel(item: NavItem) {
+    return translateNavLabel(language, getNavItemLabel(item, experience));
+  }
+
+  function groupLabel(label: string) {
+    return label === MORE_TOOLS_GROUP_LABEL
+      ? translateNavLabel(language, label)
+      : label;
+  }
+
+  useEffect(() => {
+    setExperience(dashboardExperience);
+  }, [dashboardExperience, setExperience]);
+
+  const groups = useMemo(
+    () => filterNavGroups(role, experience),
+    [role, experience]
   );
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const active = findActiveGroupLabel(groups, pathname);
+    return new Set(active ? [active] : []);
+  });
 
   useEffect(() => {
     const active = findActiveGroupLabel(groups, pathname);
-    if (active) setOpenGroup(active);
+    if (!active) return;
+    setOpenGroups((prev) => {
+      if (prev.has(active)) return prev;
+      const next = new Set(prev);
+      next.add(active);
+      return next;
+    });
   }, [pathname, groups]);
+
+  function setGroupOpen(label: string, open: boolean) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (open) next.add(label);
+      else next.delete(label);
+      return next;
+    });
+  }
 
   const content = (
     <>
@@ -126,6 +178,11 @@ export function Sidebar({
           {companyName}
         </p>
         <p className="truncate text-xs text-muted-foreground">{userName}</p>
+        {experience === "simple" ? (
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-primary">
+            Simple mode
+          </p>
+        ) : null}
       </div>
 
       <nav
@@ -133,12 +190,15 @@ export function Sidebar({
         aria-label="Main navigation"
       >
         {groups.map((group) => {
-          if (group.items.length === 1) {
+          const isMoreTools = group.label === MORE_TOOLS_GROUP_LABEL;
+
+          if (group.items.length === 1 && !isMoreTools) {
             const item = group.items[0];
             return (
               <div key={group.label} className="space-y-0.5">
                 <NavLink
                   item={item}
+                  label={navLabel(item)}
                   isActive={item.href ? isNavItemActive(pathname, item.href) : false}
                   onNavigate={onMobileClose}
                 />
@@ -149,14 +209,16 @@ export function Sidebar({
           return (
             <CollapsibleNavGroup
               key={group.label}
-              label={group.label}
-              open={openGroup === group.label}
-              onOpenChange={(open) => setOpenGroup(open ? group.label : null)}
+              label={groupLabel(group.label)}
+              open={openGroups.has(group.label)}
+              onOpenChange={(open) => setGroupOpen(group.label, open)}
+              className={isMoreTools ? "border-t border-sidebar-border pt-4" : undefined}
             >
               {group.items.map((item) => (
                 <NavLink
-                  key={item.label}
+                  key={`${group.label}-${item.label}`}
                   item={item}
+                  label={navLabel(item)}
                   isActive={item.href ? isNavItemActive(pathname, item.href) : false}
                   onNavigate={onMobileClose}
                 />

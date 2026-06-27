@@ -6,6 +6,7 @@ import { createTransactionSchema } from "@/lib/validations/transaction.schema";
 
 function revalidateTransactionPages(bankId?: string | null) {
   revalidatePath("/dashboard/transactions");
+  revalidatePath("/dashboard/daily-report");
   revalidatePath("/dashboard");
   if (bankId) {
     revalidatePath(`/dashboard/banks/${bankId}/statement`);

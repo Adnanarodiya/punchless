@@ -2,8 +2,13 @@ import { z } from "zod";
 
 const paymentModeSchema = z.enum(["cash", "bank", "credit"]);
 
+/** Minimal customer for quick bill — name only, no opening balance. */
+export const quickCustomerSchema = z.object({
+  name: z.string().min(1, "Customer name is required").max(200),
+});
+
 export const createClientSchema = z.object({
-  name: z.string().min(1, "Client name is required").max(200),
+  name: z.string().min(1, "Customer name is required").max(200),
   alias: z.string().max(100).optional().or(z.literal("")),
   contact: z.string().max(20).optional().or(z.literal("")),
   address: z.string().max(500).optional().or(z.literal("")),

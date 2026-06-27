@@ -2,15 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Users,
-  MapPin,
-  Briefcase,
-  Clock,
   DollarSign,
   Wallet,
   Settings,
   CreditCard,
-  History,
-  FileEdit,
   UserCircle,
   Building2,
   FileText,
@@ -20,7 +15,6 @@ import {
   Banknote,
   PiggyBank,
   BarChart3,
-  ScrollText,
   Shield,
   GraduationCap,
 } from "lucide-react";
@@ -71,43 +65,25 @@ export const navGroups: NavGroup[] = [
         icon: UserCircle,
         roles: ["owner", "admin"],
       },
-      {
-        label: "Workshops",
-        href: "/dashboard/workshops",
-        icon: MapPin,
-        roles: ["owner", "admin"],
-      },
+      // Workshops (geofence) — paused with GPS attendance
+      // {
+      //   label: "Workshops",
+      //   href: "/dashboard/workshops",
+      //   icon: MapPin,
+      //   roles: ["owner", "admin"],
+      // },
     ],
   },
-  {
-    label: "Operations",
-    items: [
-      {
-        label: "Attendance",
-        href: "/dashboard/attendance",
-        icon: Clock,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "History",
-        href: "/dashboard/history",
-        icon: History,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "Requests",
-        href: "/dashboard/requests",
-        icon: FileEdit,
-        roles: ["owner", "admin"],
-      },
-      {
-        label: "Jobs",
-        href: "/dashboard/jobs",
-        icon: Briefcase,
-        roles: ["owner", "admin"],
-      },
-    ],
-  },
+  // GPS / mobile attendance — paused (fingerprint upload payroll only for now)
+  // {
+  //   label: "Operations",
+  //   items: [
+  //     { label: "Attendance", href: "/dashboard/attendance", icon: Clock, roles: ["owner", "admin"] },
+  //     { label: "History", href: "/dashboard/history", icon: History, roles: ["owner", "admin"] },
+  //     { label: "Requests", href: "/dashboard/requests", icon: FileEdit, roles: ["owner", "admin"] },
+  //     { label: "Jobs", href: "/dashboard/jobs", icon: Briefcase, roles: ["owner", "admin"] },
+  //   ],
+  // },
   {
     label: "Commerce",
     items: [

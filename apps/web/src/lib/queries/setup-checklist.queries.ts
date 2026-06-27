@@ -40,7 +40,6 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
 
   const [
     { data: company },
-    { count: workshopCount },
     { count: postCount },
     { count: employeeCount },
   ] = await Promise.all([
@@ -49,11 +48,6 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
       .select("name, address, phone, work_start_time")
       .eq("id", companyId)
       .single(),
-    supabase
-      .from("workshops")
-      .select("id", { count: "exact", head: true })
-      .eq("company_id", companyId)
-      .eq("is_active", true),
     supabase
       .from("posts")
       .select("id", { count: "exact", head: true })
@@ -77,7 +71,6 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
   const profileDone = Boolean(
     c?.address?.trim() || c?.phone?.trim()
   );
-  const workshopDone = (workshopCount ?? 0) > 0;
   const postsDone = (postCount ?? 0) > 0;
   const employeesDone = (employeeCount ?? 0) > 0;
 
@@ -89,31 +82,26 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
       href: role === "owner" ? "/dashboard/settings" : "/dashboard/learn?module=settings",
       done: profileDone,
     },
-    {
-      id: "workshop",
-      label: "Workshop location",
-      description: "Set GPS geofence so staff can punch in on mobile.",
-      href: "/dashboard/workshops",
-      done: workshopDone,
-    },
+    // GPS workshop geofence — paused (fingerprint payroll)
+    // { id: "workshop", label: "Workshop location", ... href: "/dashboard/workshops" },
     {
       id: "posts",
       label: "Job posts",
-      description: "Create roles like Mechanic or Supervisor.",
+      description: "Designations like TECH, DRIVER, WM (used on salary report).",
       href: "/dashboard/posts",
       done: postsDone,
     },
     {
       id: "employees",
       label: "Add employees",
-      description: "Invite staff with email and assign a workshop.",
+      description: "Staff names, designation, and monthly salary.",
       href: "/dashboard/employees",
       done: employeesDone,
     },
     {
       id: "learn",
       label: "Learn the system",
-      description: "Read how attendance, salary, and clients work.",
+      description: "Read how fingerprint salary, clients, and suppliers work.",
       href: "/dashboard/learn",
       done: false,
     },

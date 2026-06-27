@@ -25,6 +25,7 @@ export const updateCompanySettings = protectedAction<FormData>({
     gracePeriodMinutes: formData.get("gracePeriodMinutes"),
     dailyWorkHours: formData.get("dailyWorkHours"),
     workingDaysPerMonth: formData.get("workingDaysPerMonth"),
+    otRateMultiplier: formData.get("otRateMultiplier"),
   });
 
   if (!parsed.success) {
@@ -38,6 +39,7 @@ export const updateCompanySettings = protectedAction<FormData>({
     gracePeriodMinutes,
     dailyWorkHours,
     workingDaysPerMonth,
+    otRateMultiplier,
   } = parsed.data;
 
   const { error } = await supabase
@@ -48,6 +50,7 @@ export const updateCompanySettings = protectedAction<FormData>({
       grace_period_minutes: gracePeriodMinutes,
       daily_work_hours: dailyWorkHours,
       working_days_per_month: workingDaysPerMonth,
+      ot_rate_multiplier: otRateMultiplier,
     } as unknown as never)
     .eq("id", me.company_id);
 

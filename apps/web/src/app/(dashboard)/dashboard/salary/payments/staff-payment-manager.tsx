@@ -34,6 +34,7 @@ interface Props {
   initialMonth?: string;
   initialOpenForm?: boolean;
   initialPayable?: EmployeeSalaryPayable | null;
+  initialAmount?: number;
   lockEmployee?: boolean;
 }
 
@@ -58,6 +59,7 @@ export function StaffPaymentManager({
   initialMonth = currentMonthStr(),
   initialOpenForm = false,
   initialPayable = null,
+  initialAmount,
   lockEmployee = false,
 }: Props) {
   const router = useRouter();
@@ -68,11 +70,13 @@ export function StaffPaymentManager({
     "advance" | "salary_paid" | "deduction"
   >(initialEmployeeId ? "salary_paid" : "salary_paid");
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
-  const [amount, setAmount] = useState(
-    initialPayable && initialPayable.suggestedAmount > 0
-      ? String(initialPayable.suggestedAmount)
-      : ""
-  );
+  const [amount, setAmount] = useState(() => {
+    if (initialAmount != null && initialAmount > 0) return String(initialAmount);
+    if (initialPayable && initialPayable.suggestedAmount > 0) {
+      return String(initialPayable.suggestedAmount);
+    }
+    return "";
+  });
   const [remark, setRemark] = useState("");
   const [payable, setPayable] = useState<EmployeeSalaryPayable | null>(initialPayable);
   const [loadingPayable, setLoadingPayable] = useState(false);

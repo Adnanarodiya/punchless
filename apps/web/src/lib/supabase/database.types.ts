@@ -39,6 +39,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_import_rows: {
+        Row: {
+          company_id: string
+          created_at: string
+          daily_statuses: Json
+          days_worked: number
+          employee_id: string | null
+          fingerprint_emp_id: string | null
+          fingerprint_name: string
+          id: string
+          import_id: string
+          ot_hours: number
+          raw_summary: Json | null
+          summary_absent: number | null
+          summary_half: number | null
+          summary_present: number | null
+          sundays_excluded: number
+          total_hours: number | null
+          weekday_absents: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          daily_statuses?: Json
+          days_worked?: number
+          employee_id?: string | null
+          fingerprint_emp_id?: string | null
+          fingerprint_name: string
+          id?: string
+          import_id: string
+          ot_hours?: number
+          raw_summary?: Json | null
+          summary_absent?: number | null
+          summary_half?: number | null
+          summary_present?: number | null
+          sundays_excluded?: number
+          total_hours?: number | null
+          weekday_absents?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          daily_statuses?: Json
+          days_worked?: number
+          employee_id?: string | null
+          fingerprint_emp_id?: string | null
+          fingerprint_name?: string
+          id?: string
+          import_id?: string
+          ot_hours?: number
+          raw_summary?: Json | null
+          summary_absent?: number | null
+          summary_half?: number | null
+          summary_present?: number | null
+          sundays_excluded?: number
+          total_hours?: number | null
+          weekday_absents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_import_rows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_import_rows_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_import_rows_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_imports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_imports: {
+        Row: {
+          company_id: string
+          created_at: string
+          eligible_days: number
+          file_name: string
+          id: string
+          month: number
+          ot_rate_multiplier: number
+          salary_month: string
+          uploaded_at: string
+          uploaded_by: string | null
+          year: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          eligible_days: number
+          file_name: string
+          id?: string
+          month: number
+          ot_rate_multiplier?: number
+          salary_month: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          year: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          eligible_days?: number
+          file_name?: string
+          id?: string
+          month?: number
+          ot_rate_multiplier?: number
+          salary_month?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_imports_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_sessions: {
         Row: {
           company_id: string
@@ -451,48 +590,66 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
           created_at: string | null
           daily_work_hours: number | null
           data_lock_pin_hash: string | null
+          email: string | null
           grace_period_minutes: number | null
           id: string
+          logo_url: string | null
           name: string
+          ot_rate_multiplier: number
+          phone: string | null
           salary_mode: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
+          tagline: string | null
           trial_ends_at: string | null
           updated_at: string | null
           work_start_time: string | null
           working_days_per_month: number | null
         }
         Insert: {
+          address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
           data_lock_pin_hash?: string | null
+          email?: string | null
           grace_period_minutes?: number | null
           id?: string
+          logo_url?: string | null
           name: string
+          ot_rate_multiplier?: number
+          phone?: string | null
           salary_mode?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          tagline?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
           work_start_time?: string | null
           working_days_per_month?: number | null
         }
         Update: {
+          address?: string | null
           created_at?: string | null
           daily_work_hours?: number | null
           data_lock_pin_hash?: string | null
+          email?: string | null
           grace_period_minutes?: number | null
           id?: string
+          logo_url?: string | null
           name?: string
+          ot_rate_multiplier?: number
+          phone?: string | null
           salary_mode?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          tagline?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
           work_start_time?: string | null
@@ -588,6 +745,45 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "attendance_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_fingerprint_aliases: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          fingerprint_name: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          fingerprint_name: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          fingerprint_name?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_fingerprint_aliases_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_fingerprint_aliases_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

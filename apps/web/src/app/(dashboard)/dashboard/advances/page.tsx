@@ -15,7 +15,7 @@ export default async function AdvancesPage() {
     <div className="space-y-6">
       <DashboardPageHeader
         title="Salary Advances"
-        description="Approve advance requests — approved amounts are deducted on the Salary report for that month."
+        description="Record cash advances you gave staff — amounts are deducted on the Salary report for that month."
       />
       <AdvanceManager advances={advances} employees={activeEmployees} />
     </div>

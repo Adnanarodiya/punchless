@@ -16,6 +16,7 @@
     "db:migration:new": "npx supabase migration new",
     "db:diff": "npx supabase db diff",
     "db:status": "npx supabase migration list --project-id hrjarkhzmhgdrlkzpkka",
+    "db:seed-shahin-employees": "node scripts/seed-shahin-employees.mjs",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status"

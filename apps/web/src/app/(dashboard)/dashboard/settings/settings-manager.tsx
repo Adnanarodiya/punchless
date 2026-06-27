@@ -361,6 +361,25 @@ export function SettingsManager({ settings }: Props) {
                 Average working days used for salary calculation (e.g., 26)
               </p>
             </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
+                <Hourglass className="size-4 text-muted-foreground" />
+                OT rate multiplier
+              </label>
+              <select
+                name="otRateMultiplier"
+                defaultValue={String(settings.ot_rate_multiplier)}
+                className={inputClass}
+              >
+                <option value="1">1× — same as regular hourly pay</option>
+                <option value="1.5">1.5× — time and a half</option>
+                <option value="2">2× — double time</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">
+                OT pay = extra hours from fingerprint sheet × hourly rate × this multiplier.
+              </p>
+            </div>
           </div>
         </div>
 

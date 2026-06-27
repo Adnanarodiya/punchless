@@ -19,6 +19,7 @@ export type CompanySettings = {
   grace_period_minutes: number;
   daily_work_hours: number;
   working_days_per_month: number;
+  ot_rate_multiplier: number;
   has_data_lock_pin: boolean;
   tagline: string | null;
   address: string | null;
@@ -49,7 +50,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, data_lock_pin_hash, tagline, address, phone, email, logo_url"
+      "id, name, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, ot_rate_multiplier, data_lock_pin_hash, tagline, address, phone, email, logo_url"
     )
     .eq("id", (userData as { company_id: string }).company_id)
     .single();
@@ -66,6 +67,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
     grace_period_minutes: row.grace_period_minutes ?? 5,
     daily_work_hours: row.daily_work_hours ?? 8,
     working_days_per_month: row.working_days_per_month ?? 26,
+    ot_rate_multiplier: Number(row.ot_rate_multiplier ?? 1),
     has_data_lock_pin: Boolean(row.data_lock_pin_hash),
     tagline: row.tagline ?? null,
     address: row.address ?? null,

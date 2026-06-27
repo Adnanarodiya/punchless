@@ -200,6 +200,16 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
     tone: "primary",
     summary: "Company work schedule settings updated",
   },
+  upload_fingerprint_attendance: {
+    label: "Attendance Uploaded",
+    tone: "primary",
+    summary: "Fingerprint attendance sheet imported for salary",
+  },
+  map_fingerprint_alias: {
+    label: "Name Mapped",
+    tone: "primary",
+    summary: "Fingerprint name linked to employee",
+  },
   set_data_lock_pin: {
     label: "Data Lock Set",
     tone: "warning",

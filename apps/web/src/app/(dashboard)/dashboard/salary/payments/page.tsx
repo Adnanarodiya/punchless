@@ -9,6 +9,7 @@ interface Props {
     employee?: string;
     month?: string;
     openForm?: string;
+    amount?: string;
   }>;
 }
 
@@ -22,6 +23,11 @@ export default async function StaffPaymentsPage({ searchParams }: Props) {
   const initialEmployeeId = params.employee?.trim() || undefined;
   const initialMonth = params.month?.trim() || currentMonthStr();
   const initialOpenForm = params.openForm === "1" || !!initialEmployeeId;
+  const initialAmount = params.amount ? Number(params.amount) : undefined;
+  const parsedInitialAmount =
+    initialAmount != null && Number.isFinite(initialAmount) && initialAmount > 0
+      ? Math.round(initialAmount)
+      : undefined;
 
   const [payments, employees, banks, initialPayable] = await Promise.all([
     getStaffPayments(),
@@ -41,6 +47,7 @@ export default async function StaffPaymentsPage({ searchParams }: Props) {
       initialMonth={initialMonth}
       initialOpenForm={initialOpenForm}
       initialPayable={initialPayable}
+      initialAmount={parsedInitialAmount}
       lockEmployee={!!initialEmployeeId}
     />
   );

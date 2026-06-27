@@ -1,0 +1,20 @@
+---
+pid: 25768
+cwd: "D:\Coding\punchless"
+command: "cd \"D:\\Coding\\punchless\\apps\\web\"; pnpm dev 2>&1"
+started_at: 2026-06-27T08:02:35.648Z
+running_for_ms: 1195011  
+---
+[WARN] The "pnpm" field in package.json is no longer read by pnpm. The following keys were ignored: "pnpm.overrides". See https://pnpm.io/settings for the new home of each setting.
+
+> @punchless/web@0.1.0 dev D:\Coding\punchless\apps\web
+> next dev
+
+ ⚠ Port 3000 is in use by process 17396, using available port 3002 instead.
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3002
+   - Network:      http://172.23.144.1:3002
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.4s

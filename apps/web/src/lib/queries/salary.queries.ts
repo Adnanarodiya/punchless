@@ -376,6 +376,12 @@ export async function getEmployeeSalaryPayable(
   employeeId: string,
   monthStr: string
 ): Promise<EmployeeSalaryPayable | null> {
+  const { getFingerprintEmployeePayable } = await import(
+    "@/lib/queries/attendance-import.queries"
+  );
+  const fingerprintPayable = await getFingerprintEmployeePayable(employeeId, monthStr);
+  if (fingerprintPayable) return fingerprintPayable;
+
   const supabase = await createClient();
   const { monthStart, monthEnd } = getMonthDateRange(monthStr);
 

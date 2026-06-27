@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-27 (Dashboard usability audit doc — web-only UX review for non-technical owners)
+> **Last updated:** 2026-06-27 (GPS UI removed — fingerprint payroll flow only; nav/quick actions cleaned)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -40,7 +40,7 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `package.json` | 1 | Root workspace config, DB scripts (`db:gen-types`, `db:push`, `db:pull`, `db:reset`) |
+| `package.json` | 1 | Root workspace config, DB scripts (`db:gen-types`, `db:push`, `db:seed-shahin-employees`, etc.) |
 | `turbo.json` | 1 | Turborepo pipeline config (build, dev, lint, clean) |
 | `pnpm-workspace.yaml` | 1 | Defines workspace packages: `apps/*`, `packages/*` |
 | `.env` | 1 | Root env vars (Supabase URL, keys) — NOT committed |
@@ -56,7 +56,10 @@
 | `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
 | `PHASE_14_TESTING.md` | 14 | **Phase 14 testing plan** — 2 dummy banks, 15 tests; Test 3 clarifies 3-page navigation flow |
 | `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
-| `DASHBOARD_USABILITY_AUDIT.md` | UX | **Web dashboard usability audit** — non-technical owner assessment, P0–P3 simplification recommendations (clients, suppliers, salary, home) |
+| `DASHBOARD_USABILITY_AUDIT.md` | UX | **Web dashboard usability audit** — owner assessment + **Phase 0 fingerprint upload → Shahin salary report** (GPS/mobile paused) |
+| `may 2026 attandence.xlsx` | UX/ref | Owner fingerprint export sample (`rptMonthlyWorkDurationSummary`) — parser reference |
+| `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
+| `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
 | `docs/12_STATEMENT_UI_PLAN.md` | 13.5 | **🔴 Priority plan** — Shahin-style statement UI (7 phases, print, company profile migration) |
 
 ### Documentation (`/docs/`)
@@ -97,6 +100,7 @@
 | `migrations/20260625120000_banks_and_transactions.sql` | 14 | `bank_accounts`, `bank_transactions`, `bank_transfers`, `transactions` + ledger ref types |
 | `migrations/20260626120000_company_profile_fields.sql` | 13.5 | `companies` letterhead fields: `tagline`, `address`, `phone`, `email`, `logo_url` |
 | `migrations/20260627120000_salary_mode_and_daily_payroll.sql` | 6 | `companies.salary_mode` (hourly/fixed) + `get_daily_attendance_payroll()` RPC (grace half-days, IST) |
+| `migrations/20260627140000_fingerprint_attendance_import.sql` | **Phase 0** | `companies.ot_rate_multiplier`; `attendance_imports`, `attendance_import_rows`, `employee_fingerprint_aliases` + RLS |
 | `migrations/20260625140000_hr_extensions.sql` | 16 | `posts`, `staff_payments`, `salary_deposits`; extend `users` (address, post_id, joining_date, account_no, ifsc_code); ledger ref `salary_deposit`, `staff_payment` |
 | `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
@@ -245,16 +249,18 @@
 | `dashboard/attendance/attendance-manager.tsx` | 4/16 | Live/Today/Bulk tabs; bulk present marking for a date (closed workshop sessions) |
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
-| `dashboard/salary/page.tsx` | 6 | Server component: reads `?month=` search param, fetches salary report, renders `SalaryManager` |
-| `dashboard/salary/salary-manager.tsx` | 6/9 | Salary report + Export CSV/Excel (full month via API); summary/table amounts respect data lock |
+| `dashboard/salary/page.tsx` | 6/**Phase 0** | Salary page — fingerprint upload only; GPS `SalaryManager` commented out |
+| `dashboard/salary/salary-manager.tsx` | 6/9 | GPS-based salary report + Export CSV/Excel (full month via API); summary/table amounts respect data lock |
+| `fingerprint-salary-section.tsx` | **Phase 0** | Upload fingerprint `.xlsx`, Shahin-style salary table, export, Pay/Map actions |
+| `fingerprint-name-map-modal.tsx` | **Phase 0** | Map unmatched fingerprint name → Punchless employee (saves alias) |
 | `lib/utils/salary-export.ts` | 9 | Build salary report rows for CSV/Excel export |
 | `app/api/salary/export/route.ts` | 9 | GET full-month salary report JSON for export |
 | `masked-amount.tsx` | 9 | Client component — masks currency when data lock active |
 | `data-lock-header-button.tsx` | 9 | Lock/unlock icon in dashboard header (all pages) |
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
-| `dashboard/advances/advance-manager.tsx` | 7 | **Client component**: Full CRUD — create/approve/reject/delete advances, notes modal, status filters (all/pending/approved/rejected), stat cards, search |
+| `dashboard/advances/advance-manager.tsx` | 7/**Phase 0** | **Client component**: Owner records advances directly (no pending/approve workflow) — create/delete, search, deduct-month form |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |
-| `dashboard/settings/settings-manager.tsx` | 7/18 | Work schedule + **Hourly/Fixed salary mode** toggle, grace/punch-in settings |
+| `dashboard/settings/settings-manager.tsx` | 7/18/**Phase 0** | Work schedule + Hourly/Fixed mode + **OT rate multiplier** (1× / 1.5× / 2×) |
 | `dashboard/settings/users/page.tsx` | 18 | Owner-only: list dashboard users (owner/admin), invite admin |
 | `dashboard/settings/users/users-manager.tsx` | 18 | Invite admin form + deactivate admin (service-role create + ban) |
 | `dashboard/settings/password/page.tsx` | 18 | Change password page (owner/admin) |
@@ -283,7 +289,7 @@
 | `lib/content/learn-icons.tsx` | 9 | Maps `LearnIconName` → Lucide icons for learn UI |
 | `lib/content/learn-route-map.ts` | 9 | Maps dashboard URL paths → learn module IDs for contextual help links |
 | `info-hint.tsx` | 9/2 | Inline help box for jargon and page explanations |
-| `payroll-flow-panel.tsx` | 2 | 4-step payroll path on Salary page with links |
+| `payroll-flow-panel.tsx` | 2/**Phase 0** | 3-step fingerprint payroll on Salary page (GPS mobile steps removed) |
 | `lib/constants/payment-confirm.ts` | 3 | `CLIENT_PAYMENT_CONFIRM_THRESHOLD` (₹5000) for client/supplier/staff payment confirms |
 | `lib/constants/data-lock.ts` | 4 | `DATA_LOCK_IDLE_MS` (5 min) — auto-lock financials after idle |
 | `lib/constants/table-styles.ts` | 4 | Sticky first-column Tailwind classes for wide scroll tables |
@@ -300,7 +306,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A | Grouped collapsible sidebar with mobile drawer |
-| `sidebar-config.ts` | 11A/17/18/9/2 | Nav — Payroll: Salary, Payments, Deposits, Advances; Reports: All Reports only; Billing comingSoon |
+| `sidebar-config.ts` | 11A/17/18/9/2/**Phase 0** | Nav — Operations + Workshops commented out (GPS paused); Payroll + Commerce active |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
@@ -334,6 +340,8 @@
 | `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
 | `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
 | `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
+| `fingerprint-attendance-parser.ts` | **Phase 0** | Parse `rptMonthlyWorkDurationSummary` xlsx — NONAME skip, Sunday filter, SUMMERY OT |
+| `fingerprint-salary-report.ts` | **Phase 0** | Shahin salary line calc (÷ eligible days, OT × multiplier) + export rows |
 
 #### Server Utilities (`src/lib/server/`)
 
@@ -407,9 +415,10 @@
 | `staff-payment.actions.ts` | 16 | `fetchEmployeeSalaryPayable`, `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4/16 | Manual sessions + `bulkMarkAttendance()` for daily present marking |
+| `attendance-import.actions.ts` | **Phase 0** | `uploadFingerprintAttendance()`, `mapFingerprintEmployeeAlias()` |
 | `job.actions.ts` | 5/8 | `createJob()` / `updateJob()` — push "New job assigned" to assignee; `deleteJob()` |
 | `advance.actions.ts` | 7/8 | `createAdvance()`; `approveAdvance()` / `rejectAdvance()` — push advance status to employee; `deleteAdvance()` |
-| `settings.actions.ts` | 7/13.5 | Work schedule, company profile, data lock PIN actions |
+| `settings.actions.ts` | 7/13.5/**Phase 0** | Work schedule (+ OT multiplier), company profile, data lock PIN actions |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
 | `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
@@ -434,6 +443,7 @@
 | `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
 | `settings.queries.ts` | 7/13.5 | Company settings + `getCompanyProfile()` for statement letterhead |
 | `salary.queries.ts` | 6 | Unified payroll: `getSalaryReport()` + `getEmployeeSalaryPayable()` — hourly or fixed mode, grace half-days, joining-date pro-rata, advance deductions |
+| `attendance-import.queries.ts` | **Phase 0** | `getFingerprintSalaryReport()`, `getUnmatchedFingerprintRows()`, `getActiveEmployeesForMapping()` |
 | `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
@@ -571,7 +581,7 @@ Map Picker:      workshop-manager.tsx → map-picker.tsx (Leaflet) → lat/lng �
 Workshop Assign: employee-manager.tsx → dropdown (if >1) or auto-assign (if 1) → employee.actions.ts
 Job Create:      job-manager.tsx → map-picker.tsx → job.actions.ts → jobs table
 Salary Report:   salary-manager.tsx → salary.queries.ts → attendance_sessions sum + advance deductions → display; Pay → staff payments with suggested amount
-Advance Flow:    advance-manager.tsx → advance.actions.ts → salary_advances table → approve/reject → deducted in salary.queries.ts
+Advance Flow:    advance-manager.tsx → advance.actions.ts (auto-approved on create) → salary_advances table → deducted on fingerprint salary report
 Mobile Login:    app/(auth)/login.tsx → auth.store.ts → auth.service.ts → supabase.auth.signInWithPassword
 Mobile Home:     app/(tabs)/home.tsx → attendance.service.ts → attendance_sessions (today summary + live state) + geofence.service.ts (manual travel/job/end-shift actions) + location.store.ts (GPS status)
 Mobile Jobs:     app/(tabs)/jobs.tsx → job.service.ts → jobs table (assigned jobs with status/actions)

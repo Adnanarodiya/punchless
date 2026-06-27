@@ -13,7 +13,6 @@ import {
   User,
   MapPin,
   IndianRupee,
-  History,
   FileText,
   Banknote,
   Users,
@@ -162,7 +161,7 @@ export function EmployeeManager({
     <div className="space-y-6">
       <PageHeader
         title="Employees"
-        description="Manage staff, assign workshops, and track salary details."
+        description="Manage staff names, designation, and monthly salary for fingerprint payroll."
       >
         <Button onClick={openAdd}>
           <Plus className="size-4" />
@@ -389,12 +388,6 @@ export function EmployeeManager({
             </p>
           ) : null}
 
-          {workshops.length === 0 ? (
-            <p className="text-xs text-destructive">
-              Create a workshop first before adding employees.
-            </p>
-          ) : null}
-
           <input type="hidden" name="dailyWorkHours" value={dailyWorkHours} />
           <input
             type="hidden"
@@ -406,7 +399,7 @@ export function EmployeeManager({
             type="submit"
             className="w-full"
             loading={isEdit ? updating : creating}
-            disabled={workshops.length === 0 || (isEdit ? updating : creating)}
+            disabled={isEdit ? updating : creating}
           >
             {isEdit ? "Save Changes" : "Create Employee"}
           </Button>
@@ -484,9 +477,7 @@ function EmployeeCard({
             <MapPin className="size-3 shrink-0" />
             <span className="truncate">{emp.workshop_name}</span>
           </p>
-        ) : (
-          <p className="text-destructive">No workshop assigned</p>
-        )}
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between border-t border-border pt-3">
@@ -503,11 +494,13 @@ function EmployeeCard({
               <FileText className="size-3.5" />
             </Button>
           </Link>
+          {/* GPS attendance history — paused
           <Link href={`/dashboard/history?employee=${emp.id}`}>
             <Button variant="ghost" size="icon" className="size-8" title="History">
               <History className="size-3.5" />
             </Button>
           </Link>
+          */}
         </div>
         <div className="flex gap-0.5">
           <Button
@@ -536,7 +529,11 @@ function EmployeeCard({
               size="icon"
               type="submit"
               className="size-8"
-              title={emp.is_active ? "Deactivate" : "Activate"}
+              title={
+                emp.is_active
+                  ? "Deactivate — hide from salary & payroll lists"
+                  : "Activate — show again in salary & payroll"
+              }
             >
               <Power
                 className={cn(

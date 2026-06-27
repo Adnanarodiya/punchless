@@ -1,40 +1,33 @@
 import Link from "next/link";
-import {
-  Banknote,
-  CalendarCheck,
-  ClipboardCheck,
-  Clock,
-  FileEdit,
-  Wallet,
-} from "lucide-react";
+import { Banknote, CalendarCheck, Upload, Wallet } from "lucide-react";
 
 import { cn } from "@punchless/ui/lib/utils";
+
+/**
+ * Fingerprint payroll path — shown on the Salary page.
+ *
+ * GPS / mobile steps (Attendance → Requests → History) are paused — see git history
+ * or DASHBOARD_USABILITY_AUDIT.md Phase 0.
+ */
 
 const steps = [
   {
     step: 1,
-    label: "Attendance",
-    hint: "Staff punch in on mobile",
-    href: "/dashboard/attendance",
-    icon: Clock,
-  },
-  {
-    step: 2,
-    label: "Fix requests",
-    hint: "Approve corrections",
-    href: "/dashboard/requests",
-    icon: FileEdit,
-  },
-  {
-    step: 3,
-    label: "Salary report",
-    hint: "Review due amounts",
+    label: "Upload attendance",
+    hint: "Fingerprint machine .xlsx",
     href: "/dashboard/salary",
-    icon: CalendarCheck,
+    icon: Upload,
     current: true,
   },
   {
-    step: 4,
+    step: 2,
+    label: "Salary report",
+    hint: "Working days, OT & net pay",
+    href: "/dashboard/salary",
+    icon: CalendarCheck,
+  },
+  {
+    step: 3,
     label: "Pay staff",
     hint: "Record cash/bank payout",
     href: "/dashboard/salary/payments",
@@ -42,7 +35,6 @@ const steps = [
   },
 ];
 
-/** Monthly payroll path — shown on the Salary page. */
 export function PayrollFlowPanel({ className }: { className?: string }) {
   return (
     <section
@@ -58,7 +50,7 @@ export function PayrollFlowPanel({ className }: { className?: string }) {
             How monthly payroll works
           </h2>
           <p className="text-xs text-muted-foreground">
-            Follow these steps in order each month. Advances reduce the due on step 3.
+            Export from fingerprint machine → upload here → pay staff. Advances reduce net pay.
           </p>
         </div>
         <Link
@@ -70,7 +62,7 @@ export function PayrollFlowPanel({ className }: { className?: string }) {
         </Link>
       </div>
 
-      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {steps.map((item) => {
           const Icon = item.icon;
           return (
@@ -97,15 +89,6 @@ export function PayrollFlowPanel({ className }: { className?: string }) {
           );
         })}
       </ol>
-
-      <p className="mt-3 text-xs text-muted-foreground">
-        <ClipboardCheck className="mr-1 inline size-3.5" aria-hidden />
-        Tip: open{" "}
-        <Link href="/dashboard/history" className="font-medium text-foreground hover:underline">
-          History
-        </Link>{" "}
-        before step 3 to verify hours and days for the month.
-      </p>
     </section>
   );
 }

@@ -29,13 +29,17 @@ export const createAdvance = protectedAction<FormData>({
 
   const { employeeId, amount, reason, salaryMonth } = parsed.data;
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase.from("salary_advances").insert({
     company_id: me.company_id,
     employee_id: employeeId,
     amount,
     reason: reason || null,
     salary_month: salaryMonth || null,
-    status: "pending",
+    status: "approved",
+    approved_by: me.id,
+    approved_at: now,
   } as unknown as never);
 
   if (error) return { success: false, error: error.message };

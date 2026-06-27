@@ -34,7 +34,7 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
     suppliers,
     matchingSuppliers,
     purchasesByNumber,
-    jobs,
+    // jobs — GPS/mobile paused
   ] = await Promise.all([
     supabase
       .from("clients")
@@ -79,11 +79,7 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
       .eq("is_deleted", false)
       .or(`invoice_number.ilike.${pattern},remark.ilike.${pattern}`)
       .limit(TYPE_LIMIT),
-    supabase
-      .from("jobs")
-      .select("id, title, customer_name, status")
-      .or(`title.ilike.${pattern},customer_name.ilike.${pattern}`)
-      .limit(TYPE_LIMIT),
+    // supabase.from("jobs") — paused
   ]);
 
   type InvoiceRow = {
@@ -215,21 +211,8 @@ export async function globalSearch(query: string): Promise<SearchResultItem[]> {
     });
   }
 
-  for (const row of jobs.data ?? []) {
-    const r = row as {
-      id: string;
-      title: string;
-      customer_name: string | null;
-      status: string | null;
-    };
-    results.push({
-      id: r.id,
-      type: "job",
-      label: r.title,
-      subtitle: [r.customer_name, r.status].filter(Boolean).join(" · ") || "Open job",
-      href: `/dashboard/jobs/${r.id}`,
-    });
-  }
+  // GPS jobs search — paused
+  // for (const row of jobs.data ?? []) { ... }
 
   return results;
 }

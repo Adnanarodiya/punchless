@@ -6,6 +6,9 @@ export const companySettingsSchema = z.object({
   gracePeriodMinutes: z.coerce.number().min(0).max(60, "Max 60 minutes"),
   dailyWorkHours: z.coerce.number().min(1, "Min 1 hour").max(24, "Max 24 hours"),
   workingDaysPerMonth: z.coerce.number().min(1, "Min 1 day").max(31, "Max 31 days"),
+  otRateMultiplier: z.coerce
+    .number()
+    .refine((value) => [1, 1.5, 2].includes(value), "OT multiplier must be 1×, 1.5×, or 2×"),
 });
 
 export type CompanySettingsInput = z.infer<typeof companySettingsSchema>;

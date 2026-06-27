@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users, Clock, Briefcase, Wallet } from "lucide-react";
+import { Users, DollarSign, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 
@@ -8,8 +8,6 @@ import {
   getDashboardStats,
   getFinancialSummary,
   getFinancialYearsWithData,
-  getRecentAttendance,
-  getRecentJobs,
   getRevenueChart,
   getRevenueChartByMonth,
   getTodaysPayments,
@@ -29,7 +27,8 @@ import { DashboardFySelector } from "./dashboard-fy-selector";
 import { DashboardLiveClock } from "./dashboard-live-clock";
 import { DashboardPendingDues } from "./dashboard-pending-dues";
 import { DashboardQuickActions } from "./dashboard-quick-actions";
-import { DashboardRecentTables } from "./dashboard-recent-tables";
+// GPS attendance tables — paused
+// import { DashboardRecentTables } from "./dashboard-recent-tables";
 import {
   DashboardRevenueChart,
   type ChartRange,
@@ -49,7 +48,7 @@ export default async function DashboardPage({
   const chartRange: ChartRange = params.chart === "6m" ? "6m" : "7d";
   const currentFy = getCurrentFinancialYearStartYear();
 
-  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, recentAttendance, recentJobs, dataLock, stickyNotes, setupChecklist] =
+  const [yearsWithData, stats, todaysPayments, pendingDues, revenueChart7d, revenueChart6m, dataLock, stickyNotes, setupChecklist] =
     await Promise.all([
     getFinancialYearsWithData(),
     getDashboardStats(),
@@ -57,8 +56,6 @@ export default async function DashboardPage({
     getTopPendingDues(5),
     getRevenueChart(7),
     getRevenueChartByMonth(6),
-    getRecentAttendance(10),
-    getRecentJobs(10),
     getDataLockStatus(),
     getStickyNotes(),
     getSetupChecklistStatus(),
@@ -90,20 +87,12 @@ export default async function DashboardPage({
       href: "/dashboard/employees",
     },
     {
-      label: "Currently Working",
-      value: stats.activeSessionCount,
-      icon: Clock,
+      label: "Fingerprint payroll",
+      value: "Salary",
+      icon: DollarSign,
       color: "text-success",
       bgColor: "bg-success/10",
-      href: "/dashboard/attendance",
-    },
-    {
-      label: "Active Jobs",
-      value: stats.activeJobCount,
-      icon: Briefcase,
-      color: "text-warning",
-      bgColor: "bg-warning/10",
-      href: "/dashboard/jobs",
+      href: "/dashboard/salary",
     },
     {
       label: "Pending Advances",
@@ -119,7 +108,7 @@ export default async function DashboardPage({
     <div className="space-y-8">
       <PageHeader
         title="Dashboard"
-        description="Financial HQ + workshop operations — money, attendance, and jobs at a glance."
+        description="Money in, money out, and monthly fingerprint payroll at a glance."
       >
         <div className="flex flex-col items-end gap-2">
           <DashboardLiveClock />
@@ -161,7 +150,7 @@ export default async function DashboardPage({
         <h2 id="operations-heading" className="mb-4 text-lg font-semibold">
           Operations
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {operationCards.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -185,10 +174,9 @@ export default async function DashboardPage({
         </div>
       </section>
 
-      <DashboardRecentTables
-        recentAttendance={recentAttendance}
-        recentJobs={recentJobs}
-      />
+      {/* GPS: Recent Attendance + Recent Jobs tables — paused
+      <DashboardRecentTables recentAttendance={recentAttendance} recentJobs={recentJobs} />
+      */}
     </div>
   );
 }

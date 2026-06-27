@@ -62,6 +62,8 @@
 | `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
 | `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
+| `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner (`pnpm db:reset-company-data`) |
+| `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `lib/utils/statement-date-range.ts` | **Pay UX** | Default employee statement window — last 6 months |
 | `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
 | `scripts/e2e-p0-audit.mts` | **P0/E2E** | Automated audit — fingerprint parser, salary math, HTTP smoke, P0-1–5 source checks (`pnpm e2e:p0`) |

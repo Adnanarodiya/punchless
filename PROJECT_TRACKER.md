@@ -65,6 +65,7 @@
 | `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner (`pnpm db:reset-company-data`) |
 | `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
+| `apps/web/vercel.json` | **Deploy** | Vercel monorepo install/build commands (root dir = `apps/web`) |
 | `lib/utils/statement-date-range.ts` | **Pay UX** | Default employee statement window — last 6 months |
 | `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
 | `scripts/e2e-p0-audit.mts` | **P0/E2E** | Automated audit — fingerprint parser, salary math, HTTP smoke, P0-1–5 source checks (`pnpm e2e:p0`) |

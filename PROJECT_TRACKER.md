@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-26 (Phase 4 polish — mobile tables, tooltips, auto-lock, empty states, docs)
+> **Last updated:** 2026-06-27 (Dashboard usability audit doc — web-only UX review for non-technical owners)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -56,6 +56,7 @@
 | `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
 | `PHASE_14_TESTING.md` | 14 | **Phase 14 testing plan** — 2 dummy banks, 15 tests; Test 3 clarifies 3-page navigation flow |
 | `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
+| `DASHBOARD_USABILITY_AUDIT.md` | UX | **Web dashboard usability audit** — non-technical owner assessment, P0–P3 simplification recommendations (clients, suppliers, salary, home) |
 | `docs/12_STATEMENT_UI_PLAN.md` | 13.5 | **🔴 Priority plan** — Shahin-style statement UI (7 phases, print, company profile migration) |
 
 ### Documentation (`/docs/`)

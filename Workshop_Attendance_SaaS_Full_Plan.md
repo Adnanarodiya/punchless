@@ -27,7 +27,7 @@ and one web dashboard
 
 ### Repo Structure
 
--   Monorepo (Turborepo)
+-   Monorepo (Turborepo)...
 
 ------------------------------------------------------------------------
 

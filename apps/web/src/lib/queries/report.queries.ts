@@ -507,5 +507,8 @@ export async function getRojmelReport(
     });
   }
 
-  return lines;
+  const openingRow = lines.find((row) => row.id === "opening");
+  const dataRows = lines.filter((row) => row.id !== "opening");
+  dataRows.reverse();
+  return openingRow ? [openingRow, ...dataRows] : dataRows;
 }

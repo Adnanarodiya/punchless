@@ -1,0 +1,40 @@
+---
+pid: 22784
+cwd: "D:\Coding\punchless"
+command: "Set-Location D:\\Coding\\punchless; pnpm dev"
+started_at: 2026-06-28T05:57:01.901Z
+running_for_ms: 1740010  
+---
+
+> punchless@0.1.0 dev D:\Coding\punchless
+> turbo dev
+
+• turbo 2.8.3• Packages in scope: @punchless/config, @punchless/mobile, @punchless/types, @punchless/ui, @punchless/web
+
+• Running dev in 5 packages
+• Remote caching disabled
+@punchless/web:dev: cache bypass, force executing 2c5ea908080516f2
+@punchless/mobile:dev: cache bypass, force executing 57622046913e1739
+@punchless/web:dev: 
+@punchless/web:dev: > @punchless/web@0.1.0 dev D:\Coding\punchless\apps\web
+@punchless/web:dev: > next dev
+@punchless/web:dev: 
+@punchless/mobile:dev: 
+@punchless/mobile:dev: > @punchless/mobile@0.1.0 dev D:\Coding\punchless\apps\mobile
+@punchless/mobile:dev: > expo start
+@punchless/mobile:dev: 
+@punchless/mobile:dev: Starting project at D:\Coding\punchless\apps\mobile
+@punchless/web:dev:  ⚠ Port 3000 is in use by process 6424, using available port 3001 instead.
+@punchless/mobile:dev: Starting Metro Bundler
+@punchless/web:dev:    ▲ Next.js 15.5.12
+@punchless/web:dev:    - Local:        http://localhost:3001
+@punchless/web:dev:    - Network:      http://192.168.0.216:3001
+@punchless/web:dev:    - Environments: .env.local
+@punchless/web:dev: 
+@punchless/web:dev:  ✓ Starting...
+@punchless/web:dev:  ✓ Ready in 2.4s
+@punchless/mobile:dev: The following packages should be updated for best compatibility with the installed expo version:
+@punchless/mobile:dev:   @react-native-community/netinfo@12.0.1 - expected version: 11.4.1
+@punchless/mobile:dev: Your project may not work correctly until you install the expected versions of the packages.
+@punchless/mobile:dev: Waiting on http://localhost:8081
+@punchless/mobile:dev: Logs for your project will appear below.

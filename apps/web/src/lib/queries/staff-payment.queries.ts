@@ -357,6 +357,6 @@ export async function getEmployeeStatement(
   return {
     openingBalance,
     closingBalance: running,
-    lines,
+    lines: [...lines].reverse(),
   };
 }

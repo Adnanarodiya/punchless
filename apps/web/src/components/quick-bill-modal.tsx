@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
@@ -12,6 +12,26 @@ import { createQuickBill } from "@/lib/actions/invoice.actions";
 import { createQuickCustomer } from "@/lib/actions/client.actions";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { useAction } from "@/hooks/use-action";
+import {
+  entityDisplayLabel,
+  filterEntitiesByQuery,
+  findEntityByQuery,
+  isNewEntityName,
+} from "@/lib/utils/entity-picker";
+import { resolvePaymentBreakdown } from "@/lib/validations/invoice.schema";
+import { formatCurrency } from "@/lib/utils/formatting";
+
+type QuickBillPaymentMode = "cash" | "bank" | "credit" | "split";
+
+const QUICK_BILL_PAYMENT_OPTIONS: { value: QuickBillPaymentMode; label: string }[] = [
+  { value: "cash", label: "Cash" },
+  { value: "bank", label: "Bank" },
+  { value: "credit", label: "Credit (Udhar)" },
+  { value: "split", label: "Cash + Bank" },
+];
+
+const fieldClass =
+  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
 type Props = {
   open: boolean;
@@ -25,10 +45,6 @@ function todayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function clientLabel(client: Pick<ClientWithDue, "name" | "alias">) {
-  return client.alias ? `${client.name} (${client.alias})` : client.name;
-}
-
 export function QuickBillModal({
   open,
   onOpenChange,
@@ -40,7 +56,10 @@ export function QuickBillModal({
   const [clientId, setClientId] = useState(initialClientId);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<"cash" | "credit">("cash");
+  const [amount, setAmount] = useState("");
+  const [paymentMode, setPaymentMode] = useState<QuickBillPaymentMode>("cash");
+  const [cashAmount, setCashAmount] = useState("");
+  const [bankAmount, setBankAmount] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const customerInputRef = useRef<HTMLInputElement>(null);
 
@@ -52,7 +71,10 @@ export function QuickBillModal({
     if (!open) {
       setCustomerQuery("");
       setShowCustomerList(false);
+      setAmount("");
       setPaymentMode("cash");
+      setCashAmount("");
+      setBankAmount("");
       if (!initialClientId) setClientId("");
       return;
     }
@@ -60,30 +82,32 @@ export function QuickBillModal({
     if (initialClientId) {
       setClientId(initialClientId);
       const match = clientOptions.find((c) => c.id === initialClientId);
-      if (match) setCustomerQuery(clientLabel(match));
+      if (match) setCustomerQuery(entityDisplayLabel(match));
     }
   }, [open, initialClientId, clientOptions]);
 
-  const filteredCustomers = useMemo(() => {
-    const query = customerQuery.trim().toLowerCase();
-    if (!query) return clientOptions.slice(0, 8);
-    return clientOptions
-      .filter(
-        (client) =>
-          client.name.toLowerCase().includes(query) ||
-          (client.alias?.toLowerCase().includes(query) ?? false)
-      )
-      .slice(0, 8);
-  }, [clientOptions, customerQuery]);
-
   const trimmedQuery = customerQuery.trim();
-  const canCreateCustomer =
-    trimmedQuery.length > 0 &&
-    !clientOptions.some(
-      (client) => client.name.toLowerCase() === trimmedQuery.toLowerCase()
-    );
 
+  const filteredCustomers = useMemo(
+    () => filterEntitiesByQuery(clientOptions, customerQuery),
+    [clientOptions, customerQuery]
+  );
+
+  const isNewCustomer = isNewEntityName(clientOptions, customerQuery);
   const selectedClient = clientOptions.find((c) => c.id === clientId);
+
+  const splitPreview = useMemo(() => {
+    const billTotal = parseFloat(amount) || 0;
+    if (paymentMode !== "split" || billTotal <= 0) return null;
+
+    return resolvePaymentBreakdown(
+      "split",
+      billTotal,
+      0,
+      parseFloat(cashAmount) || 0,
+      parseFloat(bankAmount) || 0
+    );
+  }, [amount, paymentMode, cashAmount, bankAmount]);
 
   const { execute, loading } = useAction(createQuickBill, {
     successMessage: "Bill saved.",
@@ -95,13 +119,23 @@ export function QuickBillModal({
 
   function selectCustomer(client: ClientWithDue) {
     setClientId(client.id);
-    setCustomerQuery(clientLabel(client));
+    setCustomerQuery(entityDisplayLabel(client));
     setShowCustomerList(false);
   }
 
-  async function handleCreateCustomer() {
+  async function ensureCustomerSelected(): Promise<string | null> {
+    if (clientId) return clientId;
+
     const name = trimmedQuery;
-    if (!name || creatingCustomer) return;
+    if (!name) return null;
+
+    const exact = findEntityByQuery(clientOptions, name);
+    if (exact) {
+      selectCustomer(exact);
+      return exact.id;
+    }
+
+    if (creatingCustomer) return null;
 
     setCreatingCustomer(true);
     try {
@@ -111,38 +145,51 @@ export function QuickBillModal({
 
       if (!result.success || !result.data) {
         toast.error(result.error || "Could not create customer");
-        return;
+        return null;
       }
 
       const created = result.data as ClientWithDue;
       setClientOptions((prev) => [...prev, created]);
       selectCustomer(created);
-      toast.success(`Customer "${name}" added`);
+      return created.id;
     } finally {
       setCreatingCustomer(false);
     }
   }
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading || creatingCustomer) return;
+
+    const id = await ensureCustomerSelected();
+    if (!id) {
+      toast.error("Enter a customer name");
+      customerInputRef.current?.focus();
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    formData.set("clientId", id);
+    await execute(formData);
+  }
+
+  function handleCustomerBlur() {
+    window.setTimeout(() => {
+      setShowCustomerList(false);
+      if (!clientId && trimmedQuery) {
+        void ensureCustomerSelected();
+      }
+    }, 150);
+  }
+
   return (
     <Modal open={open} onOpenChange={onOpenChange} title="Bill a customer">
       <p className="mb-4 text-sm text-muted-foreground">
-        Quick bill — no GST. Search a customer or type a new name. You can add GST later from
-        Invoices.
+        Quick bill — no GST. Search a customer or type a new name — new names are saved
+        automatically. You can add GST later from Invoices.
       </p>
 
-      <form
-        action={execute}
-        className="space-y-4"
-        onSubmit={(e) => {
-          if (!clientId) {
-            e.preventDefault();
-            toast.error("Select or create a customer first");
-            customerInputRef.current?.focus();
-          }
-        }}
-      >
-        <input type="hidden" name="clientId" value={clientId} />
-
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">
           <label htmlFor="quickBillCustomerSearch" className="mb-1 block text-sm font-medium">
             Customer
@@ -162,18 +209,7 @@ export function QuickBillModal({
                 setShowCustomerList(true);
               }}
               onFocus={() => setShowCustomerList(true)}
-              onBlur={() => {
-                window.setTimeout(() => {
-                  setShowCustomerList(false);
-                  if (!clientId && trimmedQuery) {
-                    const exact = clientOptions.find(
-                      (client) =>
-                        client.name.toLowerCase() === trimmedQuery.toLowerCase()
-                    );
-                    if (exact) selectCustomer(exact);
-                  }
-                }, 150);
-              }}
+              onBlur={handleCustomerBlur}
               className="h-10 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
@@ -182,9 +218,13 @@ export function QuickBillModal({
             <p className="mt-1 text-xs text-muted-foreground">
               Selected: <span className="font-medium text-foreground">{selectedClient.name}</span>
             </p>
+          ) : isNewCustomer ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              New customer — will be added when you save the bill
+            </p>
           ) : null}
 
-          {showCustomerList && (filteredCustomers.length > 0 || canCreateCustomer) ? (
+          {showCustomerList && (filteredCustomers.length > 0 || isNewCustomer) ? (
             <ul
               className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md"
               role="listbox"
@@ -202,22 +242,13 @@ export function QuickBillModal({
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => selectCustomer(client)}
                   >
-                    {clientLabel(client)}
+                    {entityDisplayLabel(client)}
                   </button>
                 </li>
               ))}
-              {canCreateCustomer ? (
-                <li>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary hover:bg-accent"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={handleCreateCustomer}
-                    disabled={creatingCustomer}
-                  >
-                    <Plus className="size-3.5 shrink-0" />
-                    {creatingCustomer ? "Adding…" : `Add customer "${trimmedQuery}"`}
-                  </button>
+              {isNewCustomer && filteredCustomers.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-muted-foreground">
+                  Press Tab or save — &quot;{trimmedQuery}&quot; will be added as a new customer
                 </li>
               ) : null}
             </ul>
@@ -235,51 +266,90 @@ export function QuickBillModal({
             min="0.01"
             step="0.01"
             required
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className={fieldClass}
           />
         </div>
 
         <div>
           <span className="mb-2 block text-sm font-medium">Payment</span>
           <div className="grid grid-cols-2 gap-2">
-            <label
-              className={cn(
-                "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition",
-                paymentMode === "cash"
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-input text-muted-foreground hover:bg-accent/50"
-              )}
-            >
-              <input
-                type="radio"
-                name="paymentMode"
-                value="cash"
-                checked={paymentMode === "cash"}
-                onChange={() => setPaymentMode("cash")}
-                className="sr-only"
-              />
-              Paid now
-            </label>
-            <label
-              className={cn(
-                "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition",
-                paymentMode === "credit"
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-input text-muted-foreground hover:bg-accent/50"
-              )}
-            >
-              <input
-                type="radio"
-                name="paymentMode"
-                value="credit"
-                checked={paymentMode === "credit"}
-                onChange={() => setPaymentMode("credit")}
-                className="sr-only"
-              />
-              Udhar (credit)
-            </label>
+            {QUICK_BILL_PAYMENT_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition",
+                  paymentMode === option.value
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-input text-muted-foreground hover:bg-accent/50"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="paymentMode"
+                  value={option.value}
+                  checked={paymentMode === option.value}
+                  onChange={() => setPaymentMode(option.value)}
+                  className="sr-only"
+                />
+                {option.label}
+              </label>
+            ))}
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Cash/Bank = paid now. Credit = udhar. Cash + Bank = split part cash, part bank.
+          </p>
         </div>
+
+        {paymentMode === "split" ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="quickBillCashAmount" className="mb-1 block text-sm font-medium">
+                Cash amount (₹)
+              </label>
+              <input
+                id="quickBillCashAmount"
+                name="cashAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label htmlFor="quickBillBankAmount" className="mb-1 block text-sm font-medium">
+                Bank amount (₹)
+              </label>
+              <input
+                id="quickBillBankAmount"
+                name="bankAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={bankAmount}
+                onChange={(e) => setBankAmount(e.target.value)}
+                className={fieldClass}
+              />
+            </div>
+            {splitPreview ? (
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Cash {formatCurrency(splitPreview.cashAmount)} · Bank{" "}
+                {formatCurrency(splitPreview.bankAmount)}
+                {splitPreview.creditAmount > 0
+                  ? ` · Udhar ${formatCurrency(splitPreview.creditAmount)}`
+                  : null}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <input type="hidden" name="cashAmount" value="0" />
+            <input type="hidden" name="bankAmount" value="0" />
+          </>
+        )}
 
         <div>
           <label htmlFor="quickBillDate" className="mb-1 block text-sm font-medium">
@@ -310,7 +380,12 @@ export function QuickBillModal({
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="submit" loading={loading} disabled={loading} className="sm:min-w-28">
+          <Button
+            type="submit"
+            loading={loading || creatingCustomer}
+            disabled={loading || creatingCustomer}
+            className="sm:min-w-28"
+          >
             Save bill
           </Button>
           <Link

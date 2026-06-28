@@ -1,12 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@punchless/types/database.types";
 import {
+  displayStatementLinesNewestFirst,
   getBalanceMeta,
   resolveStatementSource,
   type StatementResult,
 } from "@/lib/utils/statement";
 
 type SupplierRow = Database["public"]["Tables"]["suppliers"]["Row"];
+type LedgerRow = Database["public"]["Tables"]["ledger_entries"]["Row"];
 
 export type SupplierWithPayable = SupplierRow & {
   payable_amount: number;
@@ -17,6 +19,11 @@ export type SupplierSummary = {
   totalPayable: number;
 };
 
+function parseLedgerAmount(value: unknown): number {
+  const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function sumSupplierPayable(
   entries: { entry_type: string; amount: number }[]
 ) {
@@ -24,6 +31,34 @@ function sumSupplierPayable(
     if (entry.entry_type === "credit") return balance + Number(entry.amount);
     return balance - Number(entry.amount);
   }, 0);
+}
+
+function sortSupplierEntries(entries: LedgerRow[]) {
+  return [...entries].sort((a, b) => {
+    if (a.entry_date !== b.entry_date) {
+      return a.entry_date.localeCompare(b.entry_date);
+    }
+    return (a.created_at ?? "").localeCompare(b.created_at ?? "");
+  });
+}
+
+function resolveEditableEntity(entry: LedgerRow): {
+  entity: "supplier_payment" | "purchase" | null;
+  id: string | null;
+} {
+  if (entry.reference_type === "opening_balance" || !entry.reference_id) {
+    return { entity: null, id: null };
+  }
+
+  if (entry.reference_type === "payment") {
+    return { entity: "supplier_payment", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "purchase") {
+    return { entity: "purchase", id: entry.reference_id };
+  }
+
+  return { entity: null, id: null };
 }
 
 /** Supplier payable = credits − debits (we owe them) */
@@ -127,11 +162,12 @@ export async function getSupplierStatement(
     .order("entry_date", { ascending: true })
     .order("created_at", { ascending: true });
 
-  const entries = allEntries ?? [];
-
+  const entries = (allEntries as LedgerRow[]) ?? [];
   const beforePeriod = entries.filter((entry) => entry.entry_date < startDate);
-  const inPeriod = entries.filter(
-    (entry) => entry.entry_date >= startDate && entry.entry_date <= endDate
+  const inPeriod = sortSupplierEntries(
+    entries.filter(
+      (entry) => entry.entry_date >= startDate && entry.entry_date <= endDate
+    )
   );
 
   const openingBalance = sumSupplierPayable(beforePeriod);
@@ -139,11 +175,21 @@ export async function getSupplierStatement(
 
   const purchaseIds = [
     ...new Set(
-      inPeriod
-        .filter(
-          (entry) => entry.reference_type === "purchase" && entry.reference_id
-        )
-        .map((entry) => entry.reference_id as string)
+      inPeriod.flatMap((entry) => {
+        const editable = resolveEditableEntity(entry);
+        return editable.entity === "purchase" && editable.id ? [editable.id] : [];
+      })
+    ),
+  ];
+
+  const paymentIds = [
+    ...new Set(
+      inPeriod.flatMap((entry) => {
+        const editable = resolveEditableEntity(entry);
+        return editable.entity === "supplier_payment" && editable.id
+          ? [editable.id]
+          : [];
+      })
     ),
   ];
 
@@ -155,12 +201,19 @@ export async function getSupplierStatement(
     ),
   ];
 
-  const [purchaseResult, userResult] = await Promise.all([
+  const [purchaseResult, paymentResult, userResult] = await Promise.all([
     purchaseIds.length > 0
       ? supabase
           .from("purchase_invoices")
-          .select("id, invoice_number")
+          .select("id, invoice_number, taxable_amount, gst_percent, invoice_type")
           .in("id", purchaseIds)
+          .eq("is_deleted", false)
+      : Promise.resolve({ data: [] }),
+    paymentIds.length > 0
+      ? supabase
+          .from("supplier_payments")
+          .select("id, payment_mode")
+          .in("id", paymentIds)
       : Promise.resolve({ data: [] }),
     userIds.length > 0
       ? supabase.from("users").select("id, full_name").in("id", userIds)
@@ -169,6 +222,9 @@ export async function getSupplierStatement(
 
   const purchaseMap = new Map(
     (purchaseResult.data ?? []).map((purchase) => [purchase.id, purchase])
+  );
+  const paymentMap = new Map(
+    (paymentResult.data ?? []).map((payment) => [payment.id, payment])
   );
   const userMap = new Map(
     (userResult.data ?? []).map((user) => [user.id, user.full_name])
@@ -180,16 +236,22 @@ export async function getSupplierStatement(
   let index = 0;
 
   const lines = inPeriod.map((entry) => {
-    const debit = entry.entry_type === "debit" ? Number(entry.amount) : 0;
-    const credit = entry.entry_type === "credit" ? Number(entry.amount) : 0;
+    const debit = entry.entry_type === "debit" ? parseLedgerAmount(entry.amount) : 0;
+    const credit =
+      entry.entry_type === "credit" ? parseLedgerAmount(entry.amount) : 0;
     runningBalance = Math.round((runningBalance + credit - debit) * 100) / 100;
     totalDebit = Math.round((totalDebit + debit) * 100) / 100;
     totalCredit = Math.round((totalCredit + credit) * 100) / 100;
     index += 1;
 
+    const editable = resolveEditableEntity(entry);
     const purchase =
-      entry.reference_type === "purchase" && entry.reference_id
-        ? purchaseMap.get(entry.reference_id)
+      editable.entity === "purchase" && editable.id
+        ? purchaseMap.get(editable.id)
+        : null;
+    const payment =
+      editable.entity === "supplier_payment" && editable.id
+        ? paymentMap.get(editable.id)
         : null;
 
     return {
@@ -210,6 +272,11 @@ export async function getSupplierStatement(
         ? (userMap.get(entry.created_by) ?? null)
         : null,
       source: resolveStatementSource(entry.reference_type),
+      editable_entity: editable.entity,
+      editable_id: editable.id,
+      payment_mode: payment?.payment_mode ?? null,
+      bill_amount: purchase ? parseLedgerAmount(purchase.taxable_amount) : null,
+      is_quick_bill: false,
     };
   });
 
@@ -217,6 +284,6 @@ export async function getSupplierStatement(
     opening,
     closing: getBalanceMeta(runningBalance, "supplier"),
     totals: { debit: totalDebit, credit: totalCredit },
-    lines,
+    lines: displayStatementLinesNewestFirst(lines),
   };
 }

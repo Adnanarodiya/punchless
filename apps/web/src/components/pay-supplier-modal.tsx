@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
@@ -14,6 +14,12 @@ import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confir
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import { useAction } from "@/hooks/use-action";
 import { formatCurrency } from "@/lib/utils/formatting";
+import {
+  entityDisplayLabel,
+  filterEntitiesByQuery,
+  findEntityByQuery,
+  isNewEntityName,
+} from "@/lib/utils/entity-picker";
 
 type Props = {
   open: boolean;
@@ -25,10 +31,6 @@ type Props = {
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function supplierLabel(supplier: Pick<SupplierWithPayable, "name" | "alias">) {
-  return supplier.alias ? `${supplier.name} (${supplier.alias})` : supplier.name;
 }
 
 export function PaySupplierModal({
@@ -65,30 +67,18 @@ export function PaySupplierModal({
     if (initialSupplierId) {
       setSupplierId(initialSupplierId);
       const match = supplierOptions.find((s) => s.id === initialSupplierId);
-      if (match) setSupplierQuery(supplierLabel(match));
+      if (match) setSupplierQuery(entityDisplayLabel(match));
     }
   }, [open, initialSupplierId, supplierOptions]);
 
-  const filteredSuppliers = useMemo(() => {
-    const query = supplierQuery.trim().toLowerCase();
-    const active = supplierOptions.filter((s) => !s.is_deleted);
-    if (!query) return active.slice(0, 8);
-    return active
-      .filter(
-        (supplier) =>
-          supplier.name.toLowerCase().includes(query) ||
-          (supplier.alias?.toLowerCase().includes(query) ?? false)
-      )
-      .slice(0, 8);
-  }, [supplierOptions, supplierQuery]);
-
   const trimmedQuery = supplierQuery.trim();
-  const canCreateSupplier =
-    trimmedQuery.length > 0 &&
-    !supplierOptions.some(
-      (supplier) => supplier.name.toLowerCase() === trimmedQuery.toLowerCase()
-    );
 
+  const filteredSuppliers = useMemo(
+    () => filterEntitiesByQuery(supplierOptions, supplierQuery),
+    [supplierOptions, supplierQuery]
+  );
+
+  const isNewSupplier = isNewEntityName(supplierOptions, supplierQuery);
   const selectedSupplier = supplierOptions.find((s) => s.id === supplierId);
 
   const { execute: execPayment, loading: paying } = useAction(paySupplier, {
@@ -101,13 +91,23 @@ export function PaySupplierModal({
 
   function selectSupplier(supplier: SupplierWithPayable) {
     setSupplierId(supplier.id);
-    setSupplierQuery(supplierLabel(supplier));
+    setSupplierQuery(entityDisplayLabel(supplier));
     setShowSupplierList(false);
   }
 
-  async function handleCreateSupplier() {
+  async function ensureSupplierSelected(): Promise<string | null> {
+    if (supplierId) return supplierId;
+
     const name = trimmedQuery;
-    if (!name || creatingSupplier) return;
+    if (!name) return null;
+
+    const exact = findEntityByQuery(supplierOptions, name);
+    if (exact) {
+      selectSupplier(exact);
+      return exact.id;
+    }
+
+    if (creatingSupplier) return null;
 
     setCreatingSupplier(true);
     try {
@@ -117,28 +117,30 @@ export function PaySupplierModal({
 
       if (!result.success || !result.data) {
         toast.error(result.error || "Could not create supplier");
-        return;
+        return null;
       }
 
       const created = result.data as SupplierWithPayable;
       setSupplierOptions((prev) => [...prev, created]);
       selectSupplier(created);
-      toast.success(`Supplier "${name}" added`);
+      return created.id;
     } finally {
       setCreatingSupplier(false);
     }
   }
 
-  async function submitPayment(formData: FormData) {
-    if (!supplierId) return;
-    formData.set("supplierId", supplierId);
+  async function submitPayment(formData: FormData, resolvedSupplierId: string) {
+    formData.set("supplierId", resolvedSupplierId);
     await execPayment(formData);
   }
 
-  function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!supplierId || paying) {
-      toast.error("Select or create a supplier first");
+    if (paying || creatingSupplier) return;
+
+    const resolvedSupplierId = await ensureSupplierSelected();
+    if (!resolvedSupplierId) {
+      toast.error("Enter a supplier name");
       supplierInputRef.current?.focus();
       return;
     }
@@ -153,21 +155,35 @@ export function PaySupplierModal({
       return;
     }
 
-    void submitPayment(formData);
+    await submitPayment(formData, resolvedSupplierId);
   }
 
   async function confirmPayment() {
     if (!pendingPayment) return;
-    await submitPayment(pendingPayment);
+
+    const resolvedSupplierId = await ensureSupplierSelected();
+    if (!resolvedSupplierId) return;
+
+    await submitPayment(pendingPayment, resolvedSupplierId);
     setConfirmPayOpen(false);
     setPendingPayment(null);
+  }
+
+  function handleSupplierBlur() {
+    window.setTimeout(() => {
+      setShowSupplierList(false);
+      if (!supplierId && trimmedQuery) {
+        void ensureSupplierSelected();
+      }
+    }, 150);
   }
 
   return (
     <>
       <Modal open={open} onOpenChange={onOpenChange} title="Pay a supplier">
         <p className="mb-4 text-sm text-muted-foreground">
-          Record cash or bank payment to a vendor. Search a supplier or type a new name.
+          Record cash or bank payment to a vendor. Search or type a new name — new suppliers are
+          saved automatically.
         </p>
 
         <form onSubmit={handlePaymentSubmit} className="space-y-4">
@@ -190,18 +206,7 @@ export function PaySupplierModal({
                   setShowSupplierList(true);
                 }}
                 onFocus={() => setShowSupplierList(true)}
-                onBlur={() => {
-                  window.setTimeout(() => {
-                    setShowSupplierList(false);
-                    if (!supplierId && trimmedQuery) {
-                      const exact = supplierOptions.find(
-                        (supplier) =>
-                          supplier.name.toLowerCase() === trimmedQuery.toLowerCase()
-                      );
-                      if (exact) selectSupplier(exact);
-                    }
-                  }, 150);
-                }}
+                onBlur={handleSupplierBlur}
                 className="h-10 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
@@ -216,9 +221,13 @@ export function PaySupplierModal({
                   {formatCurrency(selectedSupplier.payable_amount)}
                 </span>
               </p>
+            ) : isNewSupplier ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                New supplier — will be added when you record payment
+              </p>
             ) : null}
 
-            {showSupplierList && (filteredSuppliers.length > 0 || canCreateSupplier) ? (
+            {showSupplierList && (filteredSuppliers.length > 0 || isNewSupplier) ? (
               <ul
                 className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md"
                 role="listbox"
@@ -236,25 +245,16 @@ export function PaySupplierModal({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectSupplier(supplier)}
                     >
-                      <span>{supplierLabel(supplier)}</span>
+                      <span>{entityDisplayLabel(supplier)}</span>
                       <span className="text-xs text-muted-foreground">
                         Payable {formatCurrency(supplier.payable_amount)}
                       </span>
                     </button>
                   </li>
                 ))}
-                {canCreateSupplier ? (
-                  <li>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary hover:bg-accent"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={handleCreateSupplier}
-                      disabled={creatingSupplier}
-                    >
-                      <Plus className="size-3.5 shrink-0" />
-                      {creatingSupplier ? "Adding…" : `Add supplier "${trimmedQuery}"`}
-                    </button>
+                {isNewSupplier && filteredSuppliers.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">
+                    Press Tab or save — &quot;{trimmedQuery}&quot; will be added as a new supplier
                   </li>
                 ) : null}
               </ul>
@@ -308,7 +308,12 @@ export function PaySupplierModal({
             />
           </div>
 
-          <Button type="submit" loading={paying} disabled={paying} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            loading={paying || creatingSupplier}
+            disabled={paying || creatingSupplier}
+            className="w-full sm:w-auto"
+          >
             Record payment
           </Button>
         </form>
@@ -321,11 +326,13 @@ export function PaySupplierModal({
         description={
           selectedSupplier
             ? `Pay ${formatCurrency(confirmPayAmount)} to ${selectedSupplier.name}?`
-            : undefined
+            : isNewSupplier
+              ? `Pay ${formatCurrency(confirmPayAmount)} to new supplier "${trimmedQuery}"? They will be added automatically.`
+              : undefined
         }
         confirmText="Confirm payment"
         onConfirm={() => void confirmPayment()}
-        loading={paying}
+        loading={paying || creatingSupplier}
       />
     </>
   );

@@ -6,6 +6,12 @@ export type BalanceMeta = {
   label: string;
 };
 
+export type StatementEditableEntity =
+  | "invoice"
+  | "client_payment"
+  | "supplier_payment"
+  | "purchase";
+
 export type StatementLine = {
   id: string;
   index: number;
@@ -22,6 +28,15 @@ export type StatementLine = {
   vehicle_number: string | null;
   user_name: string | null;
   source: string;
+  /** Set when row can be corrected from the statement screen. */
+  editable_entity?: StatementEditableEntity | null;
+  editable_id?: string | null;
+  payment_mode?: string | null;
+  /** Quick bill / invoice amount for edit form (taxable total). */
+  bill_amount?: number | null;
+  is_quick_bill?: boolean;
+  cash_amount?: number | null;
+  bank_amount?: number | null;
 };
 
 export type StatementResult = {
@@ -59,6 +74,14 @@ export function formatStatementAmount(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Math.abs(amount));
+}
+
+/** Re-index statement rows so the newest entry is #1 (display order). */
+export function displayStatementLinesNewestFirst(
+  lines: StatementLine[]
+): StatementLine[] {
+  const reversed = [...lines].reverse();
+  return reversed.map((line, index) => ({ ...line, index: index + 1 }));
 }
 
 export function resolveStatementSource(referenceType: string | null): string {

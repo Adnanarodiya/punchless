@@ -5,8 +5,10 @@ import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { protectedAction } from "@/lib/server/protected-action";
 import {
   createClientSchema,
+  deleteClientPaymentSchema,
   quickCustomerSchema,
   receiveClientPaymentSchema,
+  updateClientPaymentSchema,
   updateClientSchema,
 } from "@/lib/validations/client.schema";
 
@@ -260,6 +262,144 @@ export const receiveClientPayment = protectedAction<FormData>({
 
   if (ledgerError) {
     return { success: false, error: ledgerError.message };
+  }
+
+  revalidateClientPages(clientId);
+  return { success: true };
+});
+
+export const updateClientPayment = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "update_client_payment", entityType: "client" },
+})(async (formData, { supabase, me }) => {
+  const parsed = updateClientPaymentSchema.safeParse({
+    paymentId: formData.get("paymentId"),
+    clientId: formData.get("clientId"),
+    amount: formData.get("amount"),
+    paymentMode: formData.get("paymentMode"),
+    paymentDate: formData.get("paymentDate"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { paymentId, clientId, amount, paymentMode, paymentDate, remark } =
+    parsed.data;
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("client_payments")
+    .select("id, client_id")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  if (existing.client_id !== clientId) {
+    return { success: false, error: "Payment does not belong to this customer" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("client_payments")
+    .update({
+      amount,
+      payment_mode: paymentMode,
+      payment_date: paymentDate,
+      remark: remark || null,
+    } as never)
+    .eq("id", paymentId);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  const { error: deleteLedgerError } = await supabase
+    .from("ledger_entries")
+    .delete()
+    .eq("entity_type", "client")
+    .eq("entity_id", clientId)
+    .eq("reference_type", "payment")
+    .eq("reference_id", paymentId);
+
+  if (deleteLedgerError) {
+    return { success: false, error: deleteLedgerError.message };
+  }
+
+  const { error: ledgerError } = await supabase.from("ledger_entries").insert({
+    company_id: me.company_id,
+    entity_type: "client",
+    entity_id: clientId,
+    entry_type: "credit",
+    amount,
+    payment_mode: paymentMode,
+    reference_type: "payment",
+    reference_id: paymentId,
+    remark: remark || `Payment received (${paymentMode})`,
+    entry_date: paymentDate,
+    created_by: me.id,
+  } as never);
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateClientPages(clientId);
+  return { success: true };
+});
+
+export const deleteClientPayment = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "delete_client_payment", entityType: "client" },
+})(async (formData, { supabase }) => {
+  const parsed = deleteClientPaymentSchema.safeParse({
+    clientId: formData.get("clientId"),
+    paymentId: formData.get("paymentId"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { clientId, paymentId } = parsed.data;
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("client_payments")
+    .select("id, client_id")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  if (existing.client_id !== clientId) {
+    return { success: false, error: "Payment does not belong to this customer" };
+  }
+
+  const { error: deleteLedgerError } = await supabase
+    .from("ledger_entries")
+    .delete()
+    .eq("entity_type", "client")
+    .eq("entity_id", clientId)
+    .eq("reference_type", "payment")
+    .eq("reference_id", paymentId);
+
+  if (deleteLedgerError) {
+    return { success: false, error: deleteLedgerError.message };
+  }
+
+  const { error: deletePaymentError } = await supabase
+    .from("client_payments")
+    .delete()
+    .eq("id", paymentId);
+
+  if (deletePaymentError) {
+    return { success: false, error: deletePaymentError.message };
   }
 
   revalidateClientPages(clientId);

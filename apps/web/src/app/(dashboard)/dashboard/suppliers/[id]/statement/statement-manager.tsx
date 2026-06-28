@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
+import { SupplierStatementRowActions } from "@/components/supplier-statement-row-actions";
 import { StatementScreen } from "@/components/statement-screen";
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
@@ -20,6 +23,8 @@ export function SupplierStatementManager({
   endDate,
   statement,
 }: Props) {
+  const router = useRouter();
+
   const entityLines = [
     { label: "Name", value: supplier.name },
     ...(supplier.contact
@@ -54,6 +59,13 @@ export function SupplierStatementManager({
         showVehicleColumn: false,
         dueBadgePrefix: "Payable",
       }}
+      renderRowActions={(line) => (
+        <SupplierStatementRowActions
+          supplierId={supplier.id}
+          line={line}
+          onSuccess={() => router.refresh()}
+        />
+      )}
     />
   );
 }

@@ -28,6 +28,15 @@ export const receiveClientPaymentSchema = z.object({
   remark: z.string().max(500).optional().or(z.literal("")),
 });
 
+export const updateClientPaymentSchema = receiveClientPaymentSchema.extend({
+  paymentId: z.string().uuid("Invalid payment ID"),
+});
+
+export const deleteClientPaymentSchema = z.object({
+  clientId: z.string().uuid("Invalid client ID"),
+  paymentId: z.string().uuid("Invalid payment ID"),
+});
+
 export type CreateClientInput = z.infer<typeof createClientSchema>;
 export type UpdateClientInput = z.infer<typeof updateClientSchema>;
 export type ReceiveClientPaymentInput = z.infer<typeof receiveClientPaymentSchema>;

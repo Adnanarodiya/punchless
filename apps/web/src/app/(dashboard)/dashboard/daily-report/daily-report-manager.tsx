@@ -9,6 +9,7 @@ import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import { cn } from "@punchless/ui/lib/utils";
+import { DailyReportSummaryCards } from "@/components/daily-report-summary-cards";
 import { PageHeader } from "@/components/page-header";
 
 import { deleteStaffPayment } from "@/lib/actions/staff-payment.actions";
@@ -138,7 +139,7 @@ export function DailyReportManager({
 
       <PageHeader
         title="Daily report"
-        description="Shahin-style cash book — income, expense, transfers, and purchases for any day."
+        description="Full day book — every bill, payment, salary, expense, and transfer with today vs yesterday summary."
       >
         {showFullReportLink ? (
           <Button variant="outline" asChild>
@@ -185,12 +186,19 @@ export function DailyReportManager({
           : ` — ${report.lines.length} entries`}
       </p>
 
+      <DailyReportSummaryCards
+        summary={report.summary}
+        yesterdaySummary={report.yesterdaySummary}
+        hasDataLockPin={hasDataLockPin}
+      />
+
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[1100px] border-collapse text-sm">
           <thead>
             <tr>
               <th className={cn(thClass, "w-10 text-center")}>#</th>
-              <th className={cn(thClass, "min-w-[160px]")}>Particular</th>
+              <th className={cn(thClass, "min-w-[120px]")}>Type</th>
+              <th className={cn(thClass, "min-w-[140px]")}>Particular</th>
               <th className={cn(thClass, "text-success")}>Income</th>
               <th className={cn(thClass, "text-destructive")}>Expense</th>
               <th className={cn(thClass)}>Transfer</th>
@@ -206,10 +214,10 @@ export function DailyReportManager({
             {report.lines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="border border-border px-4 py-10 text-center text-muted-foreground"
                 >
-                  No income, expense, transfers, or purchases on this date.
+                  No bills, payments, salary, expenses, or transfers on this date.
                 </td>
               </tr>
             ) : (
@@ -217,6 +225,9 @@ export function DailyReportManager({
                 <tr key={row.id} className="hover:bg-muted/30">
                   <td className="border border-border px-2 py-2 text-center tabular-nums text-muted-foreground">
                     {index + 1}
+                  </td>
+                  <td className="border border-border px-2 py-2 text-xs font-medium text-muted-foreground">
+                    {row.category}
                   </td>
                   <td className="border border-border px-2 py-2 font-medium">
                     {row.particular}
@@ -265,7 +276,7 @@ export function DailyReportManager({
             <tfoot>
               <tr className="statement-row-total font-semibold">
                 <td
-                  colSpan={2}
+                  colSpan={3}
                   className="border border-border px-2 py-2 text-right uppercase tracking-wide"
                 >
                   Total

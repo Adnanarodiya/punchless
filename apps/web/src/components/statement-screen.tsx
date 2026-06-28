@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -30,6 +30,7 @@ interface StatementScreenProps {
   printPath: string;
   statement: StatementResult;
   tableLabels: StatementTableLabels;
+  renderRowActions?: (line: StatementResult["lines"][number]) => ReactNode;
 }
 
 function filterStatementLines(
@@ -62,6 +63,7 @@ export function StatementScreen({
   printPath,
   statement,
   tableLabels,
+  renderRowActions,
 }: StatementScreenProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -152,13 +154,14 @@ export function StatementScreen({
         />
 
         <StatementTable
-          opening={statement.opening}
-          closing={statement.closing}
           totals={statement.totals}
           lines={filteredLines}
-          startDate={startDate}
-          endDate={endDate}
           labels={tableLabels}
+          renderActions={
+            renderRowActions
+              ? (row) => renderRowActions(row as StatementResult["lines"][number])
+              : undefined
+          }
         />
       </div>
     </div>

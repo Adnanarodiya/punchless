@@ -8,6 +8,7 @@ import {
   quickBillSchema,
   resolvePaymentBreakdown,
   updateInvoiceSchema,
+  updateStatementQuickBillSchema,
 } from "@/lib/validations/invoice.schema";
 
 function revalidateInvoicePages(invoiceId?: string) {
@@ -242,6 +243,8 @@ export const createQuickBill = protectedAction<FormData>({
     clientId: formData.get("clientId"),
     amount: formData.get("amount"),
     paymentMode: formData.get("paymentMode"),
+    cashAmount: formData.get("cashAmount"),
+    bankAmount: formData.get("bankAmount"),
     invoiceDate: formData.get("invoiceDate"),
     description: formData.get("description"),
   });
@@ -258,8 +261,8 @@ export const createQuickBill = protectedAction<FormData>({
     data.paymentMode,
     data.amount,
     gstPercent,
-    0,
-    0
+    data.cashAmount,
+    data.bankAmount
   );
 
   const { data: invoice, error } = await supabase
@@ -412,6 +415,122 @@ export const updateInvoice = protectedAction<FormData>({
     invoiceId: data.invoiceId,
     invoiceDate: data.invoiceDate,
     invoiceNumber: data.invoiceNumber || null,
+    totalAmount: payment.totalAmount,
+    cashAmount: payment.cashAmount,
+    bankAmount: payment.bankAmount,
+    createdBy: me.id,
+  });
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateInvoicePages(data.invoiceId);
+  return { success: true };
+});
+
+export const updateStatementQuickBill = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "update_quick_bill", entityType: "invoice" },
+})(async (formData, { supabase, me }) => {
+  const parsed = updateStatementQuickBillSchema.safeParse({
+    invoiceId: formData.get("invoiceId"),
+    clientId: formData.get("clientId"),
+    amount: formData.get("amount"),
+    paymentMode: formData.get("paymentMode"),
+    cashAmount: formData.get("cashAmount"),
+    bankAmount: formData.get("bankAmount"),
+    invoiceDate: formData.get("invoiceDate"),
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+
+  const { data: invoice, error: fetchError } = await supabase
+    .from("invoices")
+    .select("id, client_id, gst_percent, invoice_number, is_deleted")
+    .eq("id", data.invoiceId)
+    .single();
+
+  if (fetchError || !invoice) {
+    return { success: false, error: "Bill not found" };
+  }
+
+  if (invoice.is_deleted) {
+    return { success: false, error: "This bill was deleted" };
+  }
+
+  if (invoice.client_id !== data.clientId) {
+    return { success: false, error: "Bill does not belong to this customer" };
+  }
+
+  if (invoice.gst_percent !== 0 || invoice.invoice_number) {
+    return {
+      success: false,
+      error: "GST tax invoices must be edited from the Invoices page",
+    };
+  }
+
+  const description = data.description?.trim() || "Workshop bill";
+  const gstPercent = 0;
+  const payment = resolvePaymentBreakdown(
+    data.paymentMode,
+    data.amount,
+    gstPercent,
+    data.cashAmount,
+    data.bankAmount
+  );
+
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update({
+      invoice_date: data.invoiceDate,
+      taxable_amount: data.amount,
+      gst_amount: 0,
+      total_amount: payment.totalAmount,
+      payment_mode: data.paymentMode,
+      cash_amount: payment.cashAmount,
+      bank_amount: payment.bankAmount,
+      credit_amount: payment.creditAmount,
+    } as never)
+    .eq("id", data.invoiceId);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  await supabase.from("invoice_line_items").delete().eq("invoice_id", data.invoiceId);
+
+  const { error: lineError } = await supabase.from("invoice_line_items").insert({
+    invoice_id: data.invoiceId,
+    description,
+    quantity: 1,
+    unit_price: data.amount,
+    gst_percent: gstPercent,
+    amount: data.amount,
+    sort_order: 0,
+  } as never);
+
+  if (lineError) {
+    return { success: false, error: lineError.message };
+  }
+
+  const deleteError = await deleteInvoiceLedgerEntries(supabase, data.invoiceId);
+  if (deleteError) {
+    return { success: false, error: deleteError.message };
+  }
+
+  const ledgerError = await writeInvoiceLedgerEntries(supabase, {
+    companyId: me.company_id,
+    clientId: data.clientId,
+    invoiceId: data.invoiceId,
+    invoiceDate: data.invoiceDate,
+    invoiceNumber: null,
     totalAmount: payment.totalAmount,
     cashAmount: payment.cashAmount,
     bankAmount: payment.bankAmount,

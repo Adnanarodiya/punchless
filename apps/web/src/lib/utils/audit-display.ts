@@ -38,6 +38,21 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
     tone: "success",
     summary: "Customer payment recorded — credit received",
   },
+  update_client_payment: {
+    label: "Payment Corrected",
+    tone: "primary",
+    summary: "Customer payment updated from statement",
+  },
+  delete_client_payment: {
+    label: "Payment Deleted",
+    tone: "destructive",
+    summary: "Customer payment removed from statement",
+  },
+  update_quick_bill: {
+    label: "Quick Bill Corrected",
+    tone: "primary",
+    summary: "Customer quick bill updated from statement",
+  },
 
   create_supplier: { label: "Supplier Added", tone: "success", summary: "New supplier created" },
   update_supplier: { label: "Supplier Updated", tone: "primary", summary: "Supplier details changed" },
@@ -47,6 +62,16 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
     label: "Supplier Paid",
     tone: "warning",
     summary: "Payment sent to supplier — funds out",
+  },
+  update_supplier_payment: {
+    label: "Payment Corrected",
+    tone: "primary",
+    summary: "Supplier payment updated from statement",
+  },
+  delete_supplier_payment: {
+    label: "Payment Deleted",
+    tone: "destructive",
+    summary: "Supplier payment removed from statement",
   },
 
   create_invoice: { label: "Invoice Created", tone: "success", summary: "New tax invoice issued" },

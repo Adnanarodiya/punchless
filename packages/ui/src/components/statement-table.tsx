@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { BalanceBadge, type BalanceMeta } from "./balance-badge";
 import { cn } from "../lib/utils";
 import {
@@ -27,14 +29,11 @@ export type StatementTableRow = {
 };
 
 export interface StatementTableProps {
-  opening: BalanceMeta;
-  closing: BalanceMeta;
   totals: { debit: number; credit: number };
   lines: StatementTableRow[];
-  startDate: string;
-  endDate: string;
   labels: StatementTableLabels;
   className?: string;
+  renderActions?: (row: StatementTableRow) => ReactNode;
 }
 
 function AmountCell({
@@ -61,14 +60,11 @@ function AmountCell({
 }
 
 export function StatementTable({
-  opening,
-  closing,
   totals,
   lines,
-  startDate,
-  endDate,
   labels,
   className,
+  renderActions,
 }: StatementTableProps) {
   const colSpanMeta = labels.showVehicleColumn ? 3 : 2;
 
@@ -101,24 +97,6 @@ export function StatementTable({
           </tr>
         </thead>
         <tbody>
-          <tr className="statement-row-opening border-b border-border italic">
-            <td
-              colSpan={colSpanMeta}
-              className="px-2 py-2 text-right font-medium"
-            >
-              Opening Balance (as of {formatStatementDate(startDate)})
-            </td>
-            <td className="px-2 py-2 text-right text-muted-foreground">—</td>
-            <td className="px-2 py-2 text-right text-muted-foreground">—</td>
-            <td className="px-2 py-2 text-muted-foreground">—</td>
-            <td className="px-2 py-2">Carry Forward</td>
-            <td className="px-2 py-2 text-right">
-              <BalanceBadge balance={opening} />
-            </td>
-            <td className="px-2 py-2 print:hidden" />
-            <td className="px-2 py-2 print:hidden" />
-          </tr>
-
           {lines.map((row) => (
             <tr key={row.id} className="border-b border-border">
               <td className="px-2 py-2 tabular-nums">{row.index}</td>
@@ -142,8 +120,14 @@ export function StatementTable({
               <td className="px-2 py-2 print:hidden text-muted-foreground">
                 {row.user_name ?? "—"}
               </td>
-              <td className="px-2 py-2 print:hidden text-muted-foreground">
-                —
+              <td className="px-2 py-2 print:hidden">
+                {renderActions ? (
+                  <div className="flex items-center justify-end gap-1">
+                    {renderActions(row)}
+                  </div>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </td>
             </tr>
           ))}
@@ -162,28 +146,6 @@ export function StatementTable({
               {formatStatementAmount(totals.credit)}
             </td>
             <td colSpan={5} />
-          </tr>
-
-          <tr className="statement-row-closing font-bold">
-            <td
-              colSpan={colSpanMeta}
-              className="px-2 py-2 text-right"
-            >
-              Closing Balance (as of {formatStatementDate(endDate)})
-            </td>
-            <td colSpan={4} className="px-2 py-2 text-center">
-              {closing.status === "due" ? (
-                <span className="inline-flex rounded-full bg-destructive px-3 py-1 text-xs font-semibold text-destructive-foreground">
-                  {labels.dueBadgePrefix}: ₹
-                  {formatStatementAmount(closing.amount)}
-                </span>
-              ) : null}
-            </td>
-            <td className="px-2 py-2 text-right">
-              <BalanceBadge balance={closing} />
-            </td>
-            <td className="px-2 py-2 print:hidden" />
-            <td className="px-2 py-2 print:hidden" />
           </tr>
         </tbody>
       </table>

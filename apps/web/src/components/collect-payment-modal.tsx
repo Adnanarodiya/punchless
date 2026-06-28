@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Plus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
@@ -17,6 +17,12 @@ import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confir
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { useAction } from "@/hooks/use-action";
 import { formatCurrency } from "@/lib/utils/formatting";
+import {
+  entityDisplayLabel,
+  filterEntitiesByQuery,
+  findEntityByQuery,
+  isNewEntityName,
+} from "@/lib/utils/entity-picker";
 
 type Props = {
   open: boolean;
@@ -28,10 +34,6 @@ type Props = {
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function customerLabel(client: Pick<ClientWithDue, "name" | "alias">) {
-  return client.alias ? `${client.name} (${client.alias})` : client.name;
 }
 
 export function CollectPaymentModal({
@@ -68,30 +70,18 @@ export function CollectPaymentModal({
     if (initialClientId) {
       setClientId(initialClientId);
       const match = clientOptions.find((c) => c.id === initialClientId);
-      if (match) setCustomerQuery(customerLabel(match));
+      if (match) setCustomerQuery(entityDisplayLabel(match));
     }
   }, [open, initialClientId, clientOptions]);
 
-  const filteredCustomers = useMemo(() => {
-    const query = customerQuery.trim().toLowerCase();
-    const active = clientOptions.filter((c) => !c.is_deleted);
-    if (!query) return active.slice(0, 8);
-    return active
-      .filter(
-        (client) =>
-          client.name.toLowerCase().includes(query) ||
-          (client.alias?.toLowerCase().includes(query) ?? false)
-      )
-      .slice(0, 8);
-  }, [clientOptions, customerQuery]);
-
   const trimmedQuery = customerQuery.trim();
-  const canCreateCustomer =
-    trimmedQuery.length > 0 &&
-    !clientOptions.some(
-      (client) => client.name.toLowerCase() === trimmedQuery.toLowerCase()
-    );
 
+  const filteredCustomers = useMemo(
+    () => filterEntitiesByQuery(clientOptions, customerQuery),
+    [clientOptions, customerQuery]
+  );
+
+  const isNewCustomer = isNewEntityName(clientOptions, customerQuery);
   const selectedClient = clientOptions.find((c) => c.id === clientId);
 
   const { execute: execPayment, loading: paying } = useAction(receiveClientPayment, {
@@ -104,13 +94,23 @@ export function CollectPaymentModal({
 
   function selectCustomer(client: ClientWithDue) {
     setClientId(client.id);
-    setCustomerQuery(customerLabel(client));
+    setCustomerQuery(entityDisplayLabel(client));
     setShowCustomerList(false);
   }
 
-  async function handleCreateCustomer() {
+  async function ensureCustomerSelected(): Promise<string | null> {
+    if (clientId) return clientId;
+
     const name = trimmedQuery;
-    if (!name || creatingCustomer) return;
+    if (!name) return null;
+
+    const exact = findEntityByQuery(clientOptions, name);
+    if (exact) {
+      selectCustomer(exact);
+      return exact.id;
+    }
+
+    if (creatingCustomer) return null;
 
     setCreatingCustomer(true);
     try {
@@ -120,28 +120,30 @@ export function CollectPaymentModal({
 
       if (!result.success || !result.data) {
         toast.error(result.error || "Could not create customer");
-        return;
+        return null;
       }
 
       const created = result.data as ClientWithDue;
       setClientOptions((prev) => [...prev, created]);
       selectCustomer(created);
-      toast.success(`Customer "${name}" added`);
+      return created.id;
     } finally {
       setCreatingCustomer(false);
     }
   }
 
-  async function submitPayment(formData: FormData) {
-    if (!clientId) return;
-    formData.set("clientId", clientId);
+  async function submitPayment(formData: FormData, resolvedClientId: string) {
+    formData.set("clientId", resolvedClientId);
     await execPayment(formData);
   }
 
-  function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!clientId || paying) {
-      toast.error("Select or create a customer first");
+    if (paying || creatingCustomer) return;
+
+    const resolvedClientId = await ensureCustomerSelected();
+    if (!resolvedClientId) {
+      toast.error("Enter a customer name");
       customerInputRef.current?.focus();
       return;
     }
@@ -156,21 +158,35 @@ export function CollectPaymentModal({
       return;
     }
 
-    void submitPayment(formData);
+    await submitPayment(formData, resolvedClientId);
   }
 
   async function confirmPayment() {
     if (!pendingPayment) return;
-    await submitPayment(pendingPayment);
+
+    const resolvedClientId = await ensureCustomerSelected();
+    if (!resolvedClientId) return;
+
+    await submitPayment(pendingPayment, resolvedClientId);
     setConfirmPayOpen(false);
     setPendingPayment(null);
+  }
+
+  function handleCustomerBlur() {
+    window.setTimeout(() => {
+      setShowCustomerList(false);
+      if (!clientId && trimmedQuery) {
+        void ensureCustomerSelected();
+      }
+    }, 150);
   }
 
   return (
     <>
       <Modal open={open} onOpenChange={onOpenChange} title="Collect payment">
         <p className="mb-4 text-sm text-muted-foreground">
-          Record cash or bank received from a customer. Search a customer or type a new name.
+          Record cash or bank received from a customer. Search or type a new name — new customers
+          are saved automatically.
         </p>
 
         <form onSubmit={handlePaymentSubmit} className="space-y-4">
@@ -193,18 +209,7 @@ export function CollectPaymentModal({
                   setShowCustomerList(true);
                 }}
                 onFocus={() => setShowCustomerList(true)}
-                onBlur={() => {
-                  window.setTimeout(() => {
-                    setShowCustomerList(false);
-                    if (!clientId && trimmedQuery) {
-                      const exact = clientOptions.find(
-                        (client) =>
-                          client.name.toLowerCase() === trimmedQuery.toLowerCase()
-                      );
-                      if (exact) selectCustomer(exact);
-                    }
-                  }, 150);
-                }}
+                onBlur={handleCustomerBlur}
                 className="h-10 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
               />
             </div>
@@ -219,9 +224,13 @@ export function CollectPaymentModal({
                   {formatCurrency(selectedClient.due_amount)}
                 </span>
               </p>
+            ) : isNewCustomer ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                New customer — will be added when you record payment
+              </p>
             ) : null}
 
-            {showCustomerList && (filteredCustomers.length > 0 || canCreateCustomer) ? (
+            {showCustomerList && (filteredCustomers.length > 0 || isNewCustomer) ? (
               <ul
                 className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md"
                 role="listbox"
@@ -239,25 +248,16 @@ export function CollectPaymentModal({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => selectCustomer(client)}
                     >
-                      <span>{customerLabel(client)}</span>
+                      <span>{entityDisplayLabel(client)}</span>
                       <span className="text-xs text-muted-foreground">
                         Due {formatCurrency(client.due_amount)}
                       </span>
                     </button>
                   </li>
                 ))}
-                {canCreateCustomer ? (
-                  <li>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-primary hover:bg-accent"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={handleCreateCustomer}
-                      disabled={creatingCustomer}
-                    >
-                      <Plus className="size-3.5 shrink-0" />
-                      {creatingCustomer ? "Adding…" : `Add customer "${trimmedQuery}"`}
-                    </button>
+                {isNewCustomer && filteredCustomers.length === 0 ? (
+                  <li className="px-3 py-2 text-sm text-muted-foreground">
+                    Press Tab or save — &quot;{trimmedQuery}&quot; will be added as a new customer
                   </li>
                 ) : null}
               </ul>
@@ -311,7 +311,12 @@ export function CollectPaymentModal({
             />
           </div>
 
-          <Button type="submit" loading={paying} disabled={paying} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            loading={paying || creatingCustomer}
+            disabled={paying || creatingCustomer}
+            className="w-full sm:w-auto"
+          >
             Record payment
           </Button>
         </form>
@@ -324,11 +329,13 @@ export function CollectPaymentModal({
         description={
           selectedClient
             ? `Record payment of ${formatCurrency(confirmPayAmount)} from ${selectedClient.name}?`
-            : undefined
+            : isNewCustomer
+              ? `Record payment of ${formatCurrency(confirmPayAmount)} from new customer "${trimmedQuery}"? They will be added automatically.`
+              : undefined
         }
         confirmText="Record payment"
         onConfirm={() => void confirmPayment()}
-        loading={paying}
+        loading={paying || creatingCustomer}
       />
     </>
   );

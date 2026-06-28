@@ -27,3 +27,12 @@ export const paySupplierSchema = z.object({
   paymentDate: z.string().min(1, "Payment date is required"),
   remark: z.string().max(500).optional().or(z.literal("")),
 });
+
+export const updateSupplierPaymentSchema = paySupplierSchema.extend({
+  paymentId: z.string().uuid("Invalid payment ID"),
+});
+
+export const deleteSupplierPaymentSchema = z.object({
+  supplierId: z.string().uuid("Invalid supplier ID"),
+  paymentId: z.string().uuid("Invalid payment ID"),
+});

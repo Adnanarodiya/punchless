@@ -68,16 +68,100 @@ export const updateInvoiceSchema = createInvoiceSchema.extend({
   invoiceId: z.string().uuid("Invalid invoice ID"),
 });
 
-/** P1-2 — Quick bill: client + amount + cash now or udhar (credit). */
-export const quickBillSchema = z.object({
-  clientId: z.string().uuid("Customer is required"),
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
-  paymentMode: z.enum(["cash", "credit"], {
-    message: "Choose paid now or udhar",
-  }),
-  invoiceDate: z.string().min(1, "Date is required"),
-  description: z.string().max(200).optional().or(z.literal("")),
-});
+/** P1-2 — Quick bill: client + amount + cash / bank / credit / split. */
+export const quickBillSchema = z
+  .object({
+    clientId: z.string().uuid("Customer is required"),
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    paymentMode: paymentModeSchema,
+    cashAmount: z.coerce.number().min(0).default(0),
+    bankAmount: z.coerce.number().min(0).default(0),
+    invoiceDate: z.string().min(1, "Date is required"),
+    description: z.string().max(200).optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentMode === "split") {
+      if (data.cashAmount <= 0 && data.bankAmount <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Enter a cash and/or bank amount for split payment",
+          path: ["cashAmount"],
+        });
+      }
+      return;
+    }
+
+    const breakdown = resolvePaymentBreakdown(
+      data.paymentMode,
+      data.amount,
+      0,
+      data.cashAmount,
+      data.bankAmount
+    );
+
+    if (
+      Math.abs(
+        breakdown.cashAmount +
+          breakdown.bankAmount +
+          breakdown.creditAmount -
+          data.amount
+      ) > 0.01
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Payment breakdown must equal bill amount",
+        path: ["paymentMode"],
+      });
+    }
+  });
+
+/** Correct a quick bill from customer statement. */
+export const updateStatementQuickBillSchema = z
+  .object({
+    invoiceId: z.string().uuid("Invalid invoice ID"),
+    clientId: z.string().uuid("Customer is required"),
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    paymentMode: paymentModeSchema,
+    cashAmount: z.coerce.number().min(0).default(0),
+    bankAmount: z.coerce.number().min(0).default(0),
+    invoiceDate: z.string().min(1, "Date is required"),
+    description: z.string().max(200).optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentMode === "split") {
+      if (data.cashAmount <= 0 && data.bankAmount <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Enter a cash and/or bank amount for split payment",
+          path: ["cashAmount"],
+        });
+      }
+      return;
+    }
+
+    const breakdown = resolvePaymentBreakdown(
+      data.paymentMode,
+      data.amount,
+      0,
+      data.cashAmount,
+      data.bankAmount
+    );
+
+    if (
+      Math.abs(
+        breakdown.cashAmount +
+          breakdown.bankAmount +
+          breakdown.creditAmount -
+          data.amount
+      ) > 0.01
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Payment breakdown must equal bill amount",
+        path: ["paymentMode"],
+      });
+    }
+  });
 
 export function resolvePaymentBreakdown(
   paymentMode: z.infer<typeof paymentModeSchema>,

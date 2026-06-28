@@ -183,7 +183,7 @@ export async function getBankStatement(
   return {
     openingBalance,
     closingBalance: runningBalance,
-    lines,
+    lines: [...lines].reverse(),
   };
 }
 

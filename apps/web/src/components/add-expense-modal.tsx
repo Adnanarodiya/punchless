@@ -26,11 +26,13 @@ const fieldClass =
 
 export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props) {
   const router = useRouter();
+  const [transactionType, setTransactionType] = useState<"income" | "expense">("expense");
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
   const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     if (!open) {
+      setTransactionType("expense");
       setPaymentMode("cash");
       return;
     }
@@ -38,7 +40,8 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
   }, [open]);
 
   const { execute: execCreate, loading: saving } = useAction(createTransaction, {
-    successMessage: "Expense recorded.",
+    successMessage:
+      transactionType === "income" ? "Income recorded." : "Expense recorded.",
     onSuccess: () => {
       onSuccess?.();
       onOpenChange(false);
@@ -50,31 +53,56 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
     event.preventDefault();
     if (saving) return;
     const formData = new FormData(event.currentTarget);
-    formData.set("transactionType", "expense");
+    formData.set("transactionType", transactionType);
     await execCreate(formData);
   }
+
+  const isIncome = transactionType === "income";
 
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="Add expense"
+      title="Add expense / income"
       className="sm:max-w-md"
     >
       <p className="-mt-2 mb-4 text-center text-sm text-muted-foreground">
-        Chaiwala, repairs, light bill, eggs — no supplier or customer needed.
+        Scrap sale, chai, repairs, light bill — no supplier or customer needed.
       </p>
       <form key={formKey} onSubmit={handleSubmit} className="space-y-4">
         <div>
+          <label htmlFor="addExpenseType" className="mb-1 block text-sm font-medium">
+            Type
+          </label>
+          <select
+            id="addExpenseType"
+            name="transactionType"
+            required
+            value={transactionType}
+            onChange={(e) =>
+              setTransactionType(e.target.value as "income" | "expense")
+            }
+            className={fieldClass}
+          >
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+
+        <div>
           <label htmlFor="addExpenseParticular" className="mb-1 block text-sm font-medium">
-            What was it for?
+            {isIncome ? "What was the income for?" : "What was it for?"}
           </label>
           <input
             id="addExpenseParticular"
             name="particular"
             type="text"
             required
-            placeholder="e.g. Chaiwala, AC repair, Eggs"
+            placeholder={
+              isIncome
+                ? "e.g. Scrap sale, Old parts"
+                : "e.g. Chaiwala, AC repair, Eggs"
+            }
             className={fieldClass}
             autoFocus
           />
@@ -97,7 +125,7 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
 
         <div>
           <label htmlFor="addExpensePaymentMode" className="mb-1 block text-sm font-medium">
-            Paid by
+            {isIncome ? "Received in" : "Paid by"}
           </label>
           <PaymentModeSelect
             id="addExpensePaymentMode"
@@ -166,7 +194,7 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
             Cancel
           </Button>
           <Button type="submit" loading={saving} disabled={saving}>
-            Save expense
+            {isIncome ? "Save income" : "Save expense"}
           </Button>
         </div>
       </form>

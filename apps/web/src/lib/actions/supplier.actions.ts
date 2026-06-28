@@ -5,8 +5,10 @@ import { protectedAction } from "@/lib/server/protected-action";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import {
   createSupplierSchema,
+  deleteSupplierPaymentSchema,
   paySupplierSchema,
   quickSupplierSchema,
+  updateSupplierPaymentSchema,
   updateSupplierSchema,
 } from "@/lib/validations/supplier.schema";
 
@@ -259,6 +261,144 @@ export const paySupplier = protectedAction<FormData>({
 
   if (ledgerError) {
     return { success: false, error: ledgerError.message };
+  }
+
+  revalidateSupplierPages(supplierId);
+  return { success: true };
+});
+
+export const updateSupplierPayment = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "update_supplier_payment", entityType: "supplier" },
+})(async (formData, { supabase, me }) => {
+  const parsed = updateSupplierPaymentSchema.safeParse({
+    paymentId: formData.get("paymentId"),
+    supplierId: formData.get("supplierId"),
+    amount: formData.get("amount"),
+    paymentMode: formData.get("paymentMode"),
+    paymentDate: formData.get("paymentDate"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { paymentId, supplierId, amount, paymentMode, paymentDate, remark } =
+    parsed.data;
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("supplier_payments")
+    .select("id, supplier_id")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  if (existing.supplier_id !== supplierId) {
+    return { success: false, error: "Payment does not belong to this supplier" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("supplier_payments")
+    .update({
+      amount,
+      payment_mode: paymentMode,
+      payment_date: paymentDate,
+      remark: remark || null,
+    } as never)
+    .eq("id", paymentId);
+
+  if (updateError) {
+    return { success: false, error: updateError.message };
+  }
+
+  const { error: deleteLedgerError } = await supabase
+    .from("ledger_entries")
+    .delete()
+    .eq("entity_type", "supplier")
+    .eq("entity_id", supplierId)
+    .eq("reference_type", "payment")
+    .eq("reference_id", paymentId);
+
+  if (deleteLedgerError) {
+    return { success: false, error: deleteLedgerError.message };
+  }
+
+  const { error: ledgerError } = await supabase.from("ledger_entries").insert({
+    company_id: me.company_id,
+    entity_type: "supplier",
+    entity_id: supplierId,
+    entry_type: "debit",
+    amount,
+    payment_mode: paymentMode,
+    reference_type: "payment",
+    reference_id: paymentId,
+    remark: remark || `Payment made (${paymentMode})`,
+    entry_date: paymentDate,
+    created_by: me.id,
+  } as never);
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateSupplierPages(supplierId);
+  return { success: true };
+});
+
+export const deleteSupplierPayment = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "delete_supplier_payment", entityType: "supplier" },
+})(async (formData, { supabase }) => {
+  const parsed = deleteSupplierPaymentSchema.safeParse({
+    supplierId: formData.get("supplierId"),
+    paymentId: formData.get("paymentId"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const { supplierId, paymentId } = parsed.data;
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("supplier_payments")
+    .select("id, supplier_id")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  if (existing.supplier_id !== supplierId) {
+    return { success: false, error: "Payment does not belong to this supplier" };
+  }
+
+  const { error: deleteLedgerError } = await supabase
+    .from("ledger_entries")
+    .delete()
+    .eq("entity_type", "supplier")
+    .eq("entity_id", supplierId)
+    .eq("reference_type", "payment")
+    .eq("reference_id", paymentId);
+
+  if (deleteLedgerError) {
+    return { success: false, error: deleteLedgerError.message };
+  }
+
+  const { error: deletePaymentError } = await supabase
+    .from("supplier_payments")
+    .delete()
+    .eq("id", paymentId);
+
+  if (deletePaymentError) {
+    return { success: false, error: deletePaymentError.message };
   }
 
   revalidateSupplierPages(supplierId);

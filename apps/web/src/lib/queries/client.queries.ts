@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@punchless/types/database.types";
 import {
+  displayStatementLinesNewestFirst,
   getBalanceMeta,
   resolveStatementSource,
   type StatementResult,
@@ -361,9 +362,32 @@ export async function getClientsSummary(): Promise<ClientSummary> {
   };
 }
 
+function resolveEditableEntity(
+  entry: PreparedStatementEntry,
+  invoiceIdSet: Set<string>
+): { entity: "invoice" | "client_payment" | null; id: string | null } {
+  if (entry.reference_type === "opening_balance" || !entry.reference_id) {
+    return { entity: null, id: null };
+  }
+
+  if (entry.reference_type === "invoice") {
+    return { entity: "invoice", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "payment") {
+    if (invoiceIdSet.has(entry.reference_id)) {
+      return { entity: "invoice", id: entry.reference_id };
+    }
+    return { entity: "client_payment", id: entry.reference_id };
+  }
+
+  return { entity: null, id: null };
+}
+
 async function enrichClientStatementLines(
   entries: PreparedStatementEntry[],
-  runningStart: number
+  runningStart: number,
+  invoiceIdSet: Set<string>
 ): Promise<{
   lines: StatementResult["lines"];
   closingBalance: number;
@@ -373,9 +397,21 @@ async function enrichClientStatementLines(
 
   const invoiceIds = [
     ...new Set(
-      entries
-        .filter((entry) => entry.reference_type === "invoice" && entry.reference_id)
-        .map((entry) => entry.reference_id as string)
+      entries.flatMap((entry) => {
+        const editable = resolveEditableEntity(entry, invoiceIdSet);
+        return editable.entity === "invoice" && editable.id ? [editable.id] : [];
+      })
+    ),
+  ];
+
+  const paymentIds = [
+    ...new Set(
+      entries.flatMap((entry) => {
+        const editable = resolveEditableEntity(entry, invoiceIdSet);
+        return editable.entity === "client_payment" && editable.id
+          ? [editable.id]
+          : [];
+      })
     ),
   ];
 
@@ -387,12 +423,20 @@ async function enrichClientStatementLines(
     ),
   ];
 
-  const [invoiceResult, userResult] = await Promise.all([
+  const [invoiceResult, paymentResult, userResult] = await Promise.all([
     invoiceIds.length > 0
       ? supabase
           .from("invoices")
-          .select("id, invoice_number, vehicle_number")
+          .select(
+            "id, invoice_number, vehicle_number, taxable_amount, payment_mode, cash_amount, bank_amount, gst_percent"
+          )
           .in("id", invoiceIds)
+      : Promise.resolve({ data: [] }),
+    paymentIds.length > 0
+      ? supabase
+          .from("client_payments")
+          .select("id, payment_mode")
+          .in("id", paymentIds)
       : Promise.resolve({ data: [] }),
     userIds.length > 0
       ? supabase.from("users").select("id, full_name").in("id", userIds)
@@ -401,6 +445,9 @@ async function enrichClientStatementLines(
 
   const invoiceMap = new Map(
     (invoiceResult.data ?? []).map((invoice) => [invoice.id, invoice])
+  );
+  const paymentMap = new Map(
+    (paymentResult.data ?? []).map((payment) => [payment.id, payment])
   );
   const userMap = new Map(
     (userResult.data ?? []).map((user) => [user.id, user.full_name])
@@ -420,9 +467,14 @@ async function enrichClientStatementLines(
       totalCredit = Math.round((totalCredit + entry.credit) * 100) / 100;
       index += 1;
 
+      const editable = resolveEditableEntity(entry, invoiceIdSet);
       const invoice =
-        entry.reference_type === "invoice" && entry.reference_id
-          ? invoiceMap.get(entry.reference_id)
+        editable.entity === "invoice" && editable.id
+          ? invoiceMap.get(editable.id)
+          : null;
+      const payment =
+        editable.entity === "client_payment" && editable.id
+          ? paymentMap.get(editable.id)
           : null;
 
       return {
@@ -443,6 +495,18 @@ async function enrichClientStatementLines(
           ? (userMap.get(entry.created_by) ?? null)
           : null,
         source: resolveStatementSource(entry.reference_type),
+        editable_entity: editable.entity,
+        editable_id: editable.id,
+        payment_mode:
+          payment?.payment_mode ??
+          invoice?.payment_mode ??
+          null,
+        bill_amount: invoice ? parseLedgerAmount(invoice.taxable_amount) : null,
+        is_quick_bill: invoice
+          ? invoice.gst_percent === 0 && !invoice.invoice_number
+          : false,
+        cash_amount: invoice ? parseLedgerAmount(invoice.cash_amount) : null,
+        bank_amount: invoice ? parseLedgerAmount(invoice.bank_amount) : null,
       };
     })
     .filter((line) => line.debit > 0 || line.credit > 0);
@@ -483,6 +547,7 @@ export async function getClientStatement(
 
   const ledgerRows = (refreshedEntries as LedgerRow[]) ?? entries;
   const fullyPaidInvoiceIds = getFullyPaidInvoiceIds(invoices);
+  const invoiceIdSet = new Set(invoices.map((invoice) => invoice.id));
 
   const beforePeriod = prepareStatementEntries(
     ledgerRows.filter((entry) => entry.entry_date < startDate),
@@ -497,12 +562,16 @@ export async function getClientStatement(
 
   const openingBalance = sumPreparedBalance(beforePeriod);
   const opening = getBalanceMeta(openingBalance, "client");
-  const enriched = await enrichClientStatementLines(inPeriod, openingBalance);
+  const enriched = await enrichClientStatementLines(
+    inPeriod,
+    openingBalance,
+    invoiceIdSet
+  );
 
   return {
     opening,
     closing: getBalanceMeta(enriched.closingBalance, "client"),
     totals: enriched.totals,
-    lines: enriched.lines,
+    lines: displayStatementLinesNewestFirst(enriched.lines),
   };
 }

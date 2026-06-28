@@ -166,7 +166,7 @@
 | `src/components/statement-entity-box.tsx` | 13.5 | Dashed "Statement To" entity box with date range |
 | `src/components/balance-badge.tsx` | 13.5 | Running balance with Due/Nil B/F/Advance labels |
 | `src/components/statement-toolbar.tsx` | 13.5 | Search + Print controls (screen only) |
-| `src/components/statement-table.tsx` | 13.5 | Shahin-style ledger table with opening/total/closing rows |
+| `src/components/statement-table.tsx` | 13.5 | Ledger table — transaction rows (newest first) + period total; no opening/closing rows |
 | `src/components/statement-format.ts` | 13.5 | Shared statement date/amount formatting helpers |
 
 ---
@@ -219,10 +219,11 @@
 | `dashboard/dashboard-pending-dues.tsx` | 15/**P1-3** | “Who owes what” — Collect/Pay deep links per row |
 | `dashboard/daily-report/page.tsx` | **Daily report** | Dedicated daily cash book page (Shahin-style) |
 | `dashboard/daily-report/daily-report-manager.tsx` | **Daily report** | Shahin table — Income/Expense/Transfer/Purchase columns, totals row, balance footer, delete |
-| `components/add-expense-modal.tsx` | **Simple home** | Modal — chaiwala, repairs, petty cash (no supplier/client) |
-| `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense → New bill → Collect → Pay supplier → Pay employee |
+| `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
+| `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense / income → New bill → Collect → Pay supplier → Pay employee |
 | `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
-| `lib/queries/daily-book.queries.ts` | **Daily report** | `getDailyBookReport(date)` — columnar rows + bank transfers + purchase bills + user names |
+| `lib/queries/daily-book.queries.ts` | **Daily report** | Full day book — invoices, payments, salary, expenses, bank tx; typed rows + 5-card summary vs yesterday |
+| `components/daily-report-summary-cards.tsx` | **Daily report** | Billing, cash, bank, udhar, expenses KPI cards with yesterday % change |
 | `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
 | `dashboard/dashboard-quick-actions.tsx` | 15/**P1-5** | 6 primary shortcuts + collapsible “More shortcuts” (under Show more) |
@@ -231,22 +232,26 @@
 | `dashboard/customers/page.tsx` | 11B/3/**UX** | Server component: customers + summary; `CommerceFlowPanel`; `?customer=` (legacy `?client=`) deep links |
 | `dashboard/customers/customer-manager.tsx` | 11B/3/**UX** | Customer CRUD, receive payment (₹5k+ confirm), invoice row action, soft delete/recover — all UI says “customer” |
 | `dashboard/customers/[id]/statement/page.tsx` | 11B | Server component: customer statement with date range |
-| `dashboard/customers/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style customer statement — letterhead, entity box, ledger table, search, print |
+| `dashboard/customers/[id]/statement/statement-manager.tsx` | 13.5 | Customer statement — edit/delete rows (payments + quick bills) with confirm + correction modal |
+| `components/client-statement-row-actions.tsx` | **UX** | Statement row Edit (confirm → modal) + Delete confirm for customer ledger entries |
+| `components/edit-client-statement-entry-modal.tsx` | **UX** | Correct payment or quick bill amount/date/mode from customer statement |
 | `dashboard/customers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable customer statement (minimal chrome) |
 | `dashboard/customers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for customer statement print route |
 | `dashboard/suppliers/page.tsx` | 12/3/**P0-3** | Suppliers page + `SupplierFlowPanel`; `?supplier=&open=pay` deep links |
 | `dashboard/suppliers/supplier-manager.tsx` | 12/3 | CRUD, Pay Now modal (₹5k+ confirm), statement link, `?supplier=` deep link, soft delete/recover |
 | `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
-| `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Shahin-style supplier statement — same components, payable labels |
+| `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Supplier statement — edit/delete rows (payments + bills) with confirm + correction modal |
+| `components/supplier-statement-row-actions.tsx` | **UX** | Statement row Edit (confirm → modal) + Delete confirm for supplier ledger entries |
+| `components/edit-supplier-statement-entry-modal.tsx` | **UX** | Correct supplier payment amount/date/mode from statement; bills link to Purchases |
 | `dashboard/suppliers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable supplier statement |
 | `dashboard/suppliers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for supplier statement print route |
 | `dashboard/purchases/page.tsx` | 12/**UX** | Server component: supplier bills + active suppliers (route `/dashboard/purchases`) |
 | `dashboard/purchases/purchase-manager.tsx` | 12/**UX** | Supplier bills UI — page title, forms, table; GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
-| `quick-bill-modal.tsx` | **P1-2** | Quick bill — searchable customer picker, inline create, paid now / udhar |
-| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, inline create, cash/bank payment |
-| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, inline create, cash/bank receipt |
+| `quick-bill-modal.tsx` | **P1-2** | Quick bill — searchable customer picker, auto-create customer, payment: cash / bank / credit / cash+bank split |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, auto-create new supplier on blur/submit, cash/bank payment |
+| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, auto-create new customer on blur/submit, cash/bank receipt |
 | `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
 | `fy-calendar-hint.tsx` | **P2-4** | InfoHint — Indian FY (Apr–Mar) vs calendar year on Home Show more |
 | `lib/content/fy-calendar-copy.ts` | **P2-4** | Shared FY vs calendar copy for dashboard + reports |
@@ -390,8 +395,9 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
+| `entity-picker.ts` | **UX** | Shared customer/supplier search helpers — filter, exact match, auto-create name detection |
 | `formatting.ts` | 4/13.5 | Date/time/currency formatters + `formatMonthYear()` + `formatStatementDate()` (DD-MMM-YYYY) |
-| `statement.ts` | 13.5 | `StatementResult`, `BalanceMeta`, `getBalanceMeta()`, `formatStatementAmount()` |
+| `statement.ts` | 13.5 | `StatementResult`, `BalanceMeta`, `getBalanceMeta()`, `formatStatementAmount()`, `displayStatementLinesNewestFirst()` — newest entry #1 |
 | `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
 | `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
 | `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
@@ -477,9 +483,9 @@
 | `settings.actions.ts` | 7/13.5/**Phase 0**/**P0-1** | `updateDashboardExperience`, work schedule (+ OT multiplier), profile, data lock PIN |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
-| `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `softDeleteClient()`, `recoverClient()`, `receiveClientPayment()` |
-| `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()` |
-| `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` |
+| `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `receiveClientPayment()`, `updateClientPayment()`, `deleteClientPayment()` |
+| `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()`, `updateSupplierPayment()`, `deleteSupplierPayment()` |
+| `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` + ledger sync on update/delete |
 | `invoice.actions.ts` | 13 | `createInvoice()`, `updateInvoice()`, `softDeleteInvoice()` + ledger sync |
 | `bank.actions.ts` | 14 | Bank CRUD, `recordBankTransaction()`, `recordBankTransfer()` + ledger writes |
 | `transaction.actions.ts` | 14/18 | `createTransaction()`, `deleteTransaction()` + ledger writes; audit on writes |
@@ -505,7 +511,7 @@
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
 | `dashboard.queries.ts` | 15/19 | Stats, `getFinancialYearsWithData()`, FY-scoped financial summary, revenue charts |
 | `client.queries.ts` | 11B/13.5 | `getClientStatement()` → enriched `StatementResult` with invoice/vehicle/user metadata |
-| `supplier.queries.ts` | 12/13.5 | Supplier CRUD + enriched `getSupplierStatement()` with purchase no. + user |
+| `supplier.queries.ts` | 12/13.5 | Supplier CRUD + enriched `getSupplierStatement()` — editable metadata, newest-first display |
 | `purchase.queries.ts` | 12 | `getPurchaseInvoices()` with supplier join |
 | `invoice.queries.ts` | 13 | `getInvoices()`, `getInvoiceById()`, `getNextInvoiceNumber()` |
 | `bank.queries.ts` | 14 | `getBanks()`, `getBankById()`, `getBankStatement()`, `getBankTransactions()`, `getBankTransfers()` |
@@ -546,6 +552,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `package.json` | 8 | Expo SDK 54 app, deps: expo-router, expo-location, expo-notifications, expo-device, Supabase, Zustand, Lucide RN |
+| `metro.config.js` | 8 | Monorepo Metro config — watches `packages/` only (avoids Next.js `.next` watcher crash) |
 | `tsconfig.json` | 1 | TypeScript config |
 | `app.json` | 8 | Expo config: light UI mode, scheme, plugins (expo-router, expo-location, expo-notifications), iOS/Android location permissions, EAS projectId |
 | `.env` | 1 | Mobile env vars — NOT committed |

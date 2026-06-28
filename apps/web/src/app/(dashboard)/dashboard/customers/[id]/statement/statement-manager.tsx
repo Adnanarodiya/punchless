@@ -1,5 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
+import { ClientStatementRowActions } from "@/components/client-statement-row-actions";
 import { StatementScreen } from "@/components/statement-screen";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
@@ -20,6 +23,8 @@ export function StatementManager({
   endDate,
   statement,
 }: Props) {
+  const router = useRouter();
+
   const entityLines = [
     { label: "Name", value: client.name },
     ...(client.contact ? [{ label: "Contact", value: client.contact }] : []),
@@ -50,6 +55,13 @@ export function StatementManager({
         showVehicleColumn: true,
         dueBadgePrefix: "Due",
       }}
+      renderRowActions={(line) => (
+        <ClientStatementRowActions
+          clientId={client.id}
+          line={line}
+          onSuccess={() => router.refresh()}
+        />
+      )}
     />
   );
 }

@@ -47,12 +47,8 @@ export function StatementPrintDocument({
       />
 
       <StatementTable
-        opening={statement.opening}
-        closing={statement.closing}
         totals={statement.totals}
         lines={statement.lines}
-        startDate={startDate}
-        endDate={endDate}
         labels={tableLabels}
       />
     </div>

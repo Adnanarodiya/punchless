@@ -41,6 +41,8 @@ import { getActiveClients } from "@/lib/queries/client.queries";
 import { getActiveSuppliers } from "@/lib/queries/supplier.queries";
 import { DashboardHomeModals } from "@/components/dashboard-home-modals";
 import { FyCalendarHint } from "@/components/fy-calendar-hint";
+import { getTodaysBookSummary } from "@/lib/queries/cash-book.queries";
+import { DashboardTodaysBook } from "./dashboard-todays-book";
 
 import { DashboardStickyNotes } from "./dashboard-sticky-notes";
 import { DashboardTodaysPayments } from "./dashboard-todays-payments";
@@ -70,6 +72,7 @@ export default async function DashboardPage({
     clients,
     suppliers,
     banks,
+    todaysBook,
   ] = await Promise.all([
     getFinancialYearsWithData(),
     getDashboardStats(),
@@ -83,6 +86,7 @@ export default async function DashboardPage({
     getActiveClients(),
     getActiveSuppliers(),
     getBanks(),
+    getTodaysBookSummary(new Date().toISOString().slice(0, 10)),
   ]);
 
   const fyStartYear = resolveDashboardFinancialYear(
@@ -130,7 +134,12 @@ export default async function DashboardPage({
 
   return (
     <Suspense fallback={<div className="space-y-8 animate-pulse rounded-xl bg-muted/30 p-8" />}>
-      <DashboardHomeModals clients={clients} suppliers={suppliers} banks={banks}>
+      <DashboardHomeModals
+        clients={clients}
+        suppliers={suppliers}
+        banks={banks}
+        invoicePrefix={settings?.sales_invoice_prefix ?? "ISHABA"}
+      >
         <div className="space-y-8">
       <PageHeader
         title="Home"
@@ -145,6 +154,8 @@ export default async function DashboardPage({
       <DashboardMoneyHero summary={financial} hasDataLockPin={hasDataLockPin} />
 
       <DashboardPrimaryActions />
+
+      <DashboardTodaysBook book={todaysBook} />
 
       <DashboardPendingDues dues={pendingDues} hasDataLockPin={hasDataLockPin} />
 

@@ -67,6 +67,22 @@ export const navGroups: NavGroup[] = [
         simpleGroup: "Overview",
       },
       {
+        label: "Cash book",
+        href: "/dashboard/cash-book",
+        icon: Wallet,
+        roles: ["owner", "admin"],
+        simpleTier: "primary",
+        simpleGroup: "Overview",
+      },
+      {
+        label: "Bank book",
+        href: "/dashboard/bank-book",
+        icon: Landmark,
+        roles: ["owner", "admin"],
+        simpleTier: "primary",
+        simpleGroup: "Overview",
+      },
+      {
         label: "Today's entry",
         href: "/dashboard/todays-entry",
         icon: ClipboardList,
@@ -121,13 +137,6 @@ export const navGroups: NavGroup[] = [
         roles: ["owner", "admin"],
         simpleTier: "primary",
         simpleGroup: "Commerce",
-      },
-      {
-        label: "Invoices",
-        href: "/dashboard/invoices",
-        icon: FileText,
-        roles: ["owner", "admin"],
-        simpleTier: "full-only",
       },
       {
         label: "Supplier bills",

@@ -1,0 +1,130 @@
+---
+pid: 3060
+cwd: "D:\Coding\punchless"
+command: "Set-Location D:\\Coding\\punchless; pnpm --filter @punchless/web build"
+started_at: 2026-06-28T14:31:50.514Z
+running_for_ms: 3100004  
+---
+
+> @punchless/web@0.1.0 build D:\Coding\punchless\apps\web
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+(node:13800) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ Compiled successfully in 7.7s
+   Linting and checking validity of types ...
+
+./src/app/(dashboard)/dashboard/history/history-manager.tsx
+76:10  Warning: 'tick' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+387:3  Warning: 'period' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/(dashboard)/dashboard/invoices/invoice-manager.tsx
+193:6  Warning: React Hook useEffect has missing dependencies: 'openAdd' and 'openConvertToGst'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(dashboard)/dashboard/jobs/job-manager.tsx
+315:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/app/(dashboard)/dashboard/requests/requests-manager.tsx
+5:20  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+12:10  Warning: 'useAction' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/map-picker.tsx
+36:5  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/components/sidebar-config.ts
+6:3  Warning: 'DollarSign' is defined but never used.  @typescript-eslint/no-unused-vars
+12:3  Warning: 'FileText' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/queries/advance.queries.ts
+37:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/lib/queries/settings.queries.ts
+64:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/lib/utils/salary-calculation.ts
+43:10  Warning: 'formatDateOnly' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/49) ...
+   Generating static pages (12/49) 
+   Generating static pages (24/49) 
+   Generating static pages (36/49) 
+ ✓ Generating static pages (49/49)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                       Size  First Load JS
+┌ ○ /                                            144 B         103 kB
+├ ○ /_not-found                                  995 B         104 kB
+├ ƒ /api/history                                 144 B         103 kB
+├ ƒ /api/salary/export                           144 B         103 kB
+├ ƒ /api/search                                  144 B         103 kB
+├ ƒ /dashboard                                 19.8 kB         176 kB
+├ ƒ /dashboard/advances                        7.41 kB         159 kB
+├ ƒ /dashboard/attendance                      7.52 kB         159 kB
+├ ƒ /dashboard/audit-log                       5.78 kB         137 kB
+├ ƒ /dashboard/bank-book                       2.71 kB         135 kB
+├ ƒ /dashboard/banks                             10 kB         161 kB
+├ ƒ /dashboard/banks/[id]/statement            4.07 kB         135 kB
+├ ƒ /dashboard/banks/transactions              4.62 kB         145 kB
+├ ƒ /dashboard/banks/transfer                  4.59 kB         145 kB
+├ ƒ /dashboard/billing                           779 B         132 kB
+├ ƒ /dashboard/cash-book                       2.69 kB         135 kB
+├ ƒ /dashboard/customers                       7.74 kB         186 kB
+├ ƒ /dashboard/customers/[id]/statement        4.12 kB         190 kB
+├ ƒ /dashboard/customers/[id]/statement/print  3.15 kB         118 kB
+├ ƒ /dashboard/daily-report                      142 B         162 kB
+├ ƒ /dashboard/employees                       6.88 kB         161 kB
+├ ƒ /dashboard/employees/[id]/statement         4.6 kB         136 kB
+├ ƒ /dashboard/employees/[id]/statement/print  1.48 kB         116 kB
+├ ƒ /dashboard/history                         5.53 kB         136 kB
+├ ƒ /dashboard/invoices                        6.66 kB         192 kB
+├ ƒ /dashboard/invoices/[id]                     779 B         132 kB
+├ ƒ /dashboard/invoices/[id]/print             1.27 kB         116 kB
+├ ƒ /dashboard/jobs                            5.36 kB         146 kB
+├ ƒ /dashboard/jobs/[id]                         779 B         132 kB
+├ ƒ /dashboard/learn                           6.32 kB         137 kB
+├ ƒ /dashboard/posts                           6.43 kB         158 kB
+├ ƒ /dashboard/purchases                       3.69 kB         185 kB
+├ ƒ /dashboard/reports                           779 B         132 kB
+├ ƒ /dashboard/reports/balance-sheet             133 B         135 kB
+├ ƒ /dashboard/reports/daily                     132 B         135 kB
+├ ƒ /dashboard/reports/expenses                  132 B         135 kB
+├ ƒ /dashboard/reports/gst                       131 B         135 kB
+├ ƒ /dashboard/reports/income-expense            132 B         135 kB
+├ ƒ /dashboard/reports/invoices                  132 B         135 kB
+├ ƒ /dashboard/reports/monthly                   141 B         162 kB
+├ ƒ /dashboard/reports/rojmel                    132 B         135 kB
+├ ƒ /dashboard/reports/yearly                    133 B         135 kB
+├ ƒ /dashboard/requests                        3.47 kB         144 kB
+├ ƒ /dashboard/salary                          10.7 kB         190 kB
+├ ƒ /dashboard/salary/deposits                 7.11 kB         159 kB
+├ ƒ /dashboard/salary/payments                 3.23 kB         164 kB
+├ ƒ /dashboard/salary/payments/[id]/slip       1.55 kB         116 kB
+├ ƒ /dashboard/settings                        9.78 kB         163 kB
+├ ƒ /dashboard/settings/password               1.85 kB         142 kB
+├ ƒ /dashboard/settings/users                  4.09 kB         144 kB
+├ ƒ /dashboard/suppliers                       7.04 kB         182 kB
+├ ƒ /dashboard/suppliers/[id]/statement        6.49 kB         163 kB
+├ ƒ /dashboard/suppliers/[id]/statement/print  3.15 kB         118 kB
+├ ƒ /dashboard/todays-entry                    5.56 kB         147 kB
+├ ƒ /dashboard/transactions                    6.85 kB         161 kB
+├ ƒ /dashboard/workshops                       7.23 kB         161 kB
+├ ○ /login                                     2.31 kB         117 kB
+└ ○ /signup                                    2.15 kB         117 kB
++ First Load JS shared by all                   103 kB
+  ├ chunks/18-3ce15d1c40878474.js              46.4 kB
+  ├ chunks/87c73c54-09e1ba5c70e60a51.js        54.2 kB
+  └ other shared chunks (total)                2.58 kB
+
+
+ƒ Middleware                                   81.4 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

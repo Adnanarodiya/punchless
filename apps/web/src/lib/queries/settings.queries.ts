@@ -15,6 +15,7 @@ export type SalaryMode = "hourly" | "fixed";
 export type CompanySettings = {
   id: string;
   name: string;
+  sales_invoice_prefix: string;
   dashboard_experience: DashboardExperience;
   ui_language: UiLanguage;
   salary_mode: SalaryMode;
@@ -53,7 +54,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, name, dashboard_experience, ui_language, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, ot_rate_multiplier, data_lock_pin_hash, tagline, address, phone, email, logo_url"
+      "id, name, sales_invoice_prefix, dashboard_experience, ui_language, salary_mode, work_start_time, grace_period_minutes, daily_work_hours, working_days_per_month, ot_rate_multiplier, data_lock_pin_hash, tagline, address, phone, email, logo_url"
     )
     .eq("id", (userData as { company_id: string }).company_id)
     .single();
@@ -65,6 +66,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
   return {
     id: row.id,
     name: row.name,
+    sales_invoice_prefix: row.sales_invoice_prefix ?? "ISHABA",
     dashboard_experience:
       row.dashboard_experience === "full" ? "full" : "simple",
     ui_language:

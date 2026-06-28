@@ -12,6 +12,9 @@ export type OwnerLabelKey =
   | "nav.learn"
   | "nav.dailyReport"
   | "action.newBill"
+  | "action.salesBill"
+  | "action.purchaseBill"
+  | "action.general"
   | "action.collectPayment"
   | "action.paySupplier"
   | "action.payStaff"
@@ -37,6 +40,9 @@ const EN: Record<OwnerLabelKey, string> = {
   "nav.learn": "Learn",
   "nav.dailyReport": "Daily report",
   "action.newBill": "New bill",
+  "action.salesBill": "Sales bill",
+  "action.purchaseBill": "Purchase bill",
+  "action.general": "General",
   "action.collectPayment": "Collect payment",
   "action.paySupplier": "Pay supplier",
   "action.payStaff": "Pay employee",

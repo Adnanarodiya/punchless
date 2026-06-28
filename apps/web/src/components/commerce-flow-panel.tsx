@@ -21,7 +21,7 @@ export function CommerceFlowPanel({ className }: { className?: string }) {
         {
           step: 2,
           label: "New bill",
-          hint: "Quick bill or GST invoice",
+          hint: "Sales bill — posts to customer ledger",
           icon: FileText,
           href: "/dashboard?quickBill=1",
         },

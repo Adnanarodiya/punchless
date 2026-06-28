@@ -68,7 +68,17 @@ export const updateInvoiceSchema = createInvoiceSchema.extend({
   invoiceId: z.string().uuid("Invalid invoice ID"),
 });
 
-/** P1-2 — Quick bill: client + amount + cash / bank / credit / split. */
+/** V3 — Sales bill: ISHABA suffix, date, party, amount (credit / udhar). */
+export const salesBillSchema = z.object({
+  clientId: z.string().uuid("Customer is required"),
+  invoiceSuffix: z.string().min(1, "Invoice number is required").max(40),
+  invoiceDate: z.string().min(1, "Date is required"),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  gstNumber: z.string().max(20).optional().or(z.literal("")),
+  remark: z.string().max(500).optional().or(z.literal("")),
+});
+
+/** Legacy quick bill — kept for statement corrections. */
 export const quickBillSchema = z
   .object({
     clientId: z.string().uuid("Customer is required"),

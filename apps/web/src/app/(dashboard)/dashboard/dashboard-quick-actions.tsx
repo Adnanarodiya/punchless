@@ -94,16 +94,6 @@ const primaryQuickActions: QuickAction[] = [
 
 const moreQuickActions: QuickAction[] = [
   {
-    label: "GST invoices",
-    description: "Full tax invoices",
-    href: "/dashboard/invoices",
-    icon: FileText,
-    iconClass: "text-success",
-    bgClass: "bg-success/15 group-hover:bg-success/25",
-    borderClass: "hover:border-success/40",
-    simpleMode: false,
-  },
-  {
     label: "Supplier bills",
     description: "Supplier bills & credit notes",
     href: "/dashboard/purchases",

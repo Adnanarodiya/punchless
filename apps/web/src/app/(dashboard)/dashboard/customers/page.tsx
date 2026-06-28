@@ -1,12 +1,10 @@
 import { getClients, getClientsSummary, getActiveClients } from "@/lib/queries/client.queries";
-import { getInvoices, getNextInvoiceNumber } from "@/lib/queries/invoice.queries";
-import { getJobs } from "@/lib/queries/job.queries";
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
 import { CustomerManager } from "./customer-manager";
 import { CustomerCommerceHub, type CustomerCommerceTab } from "./customer-commerce-hub";
 
-const VALID_TABS = new Set<CustomerCommerceTab>(["customers", "new-bill", "bills"]);
+const VALID_TABS = new Set<CustomerCommerceTab>(["customers", "new-bill"]);
 
 export default async function CustomersPage({
   searchParams,
@@ -27,24 +25,17 @@ export default async function CustomersPage({
     tabParam && VALID_TABS.has(tabParam) ? tabParam : "customers";
 
   if (isSimple) {
-    const [customers, summary, invoices, invoiceClients, jobs, suggestedInvoiceNumber] =
-      await Promise.all([
-        getClients({ includeDeleted: true }),
-        getClientsSummary(),
-        getInvoices(),
-        getActiveClients(),
-        getJobs(),
-        getNextInvoiceNumber(),
-      ]);
+    const [customers, summary, billClients] = await Promise.all([
+      getClients({ includeDeleted: true }),
+      getClientsSummary(),
+      getActiveClients(),
+    ]);
 
     return (
       <CustomerCommerceHub
         customers={customers}
         summary={summary}
-        invoices={invoices}
-        invoiceClients={invoiceClients}
-        jobs={jobs}
-        suggestedInvoiceNumber={suggestedInvoiceNumber}
+        billClients={billClients}
         initialCustomerId={customerId}
         initialOpen={
           params.open === "pay" || params.open === "invoice" ? params.open : undefined

@@ -10,15 +10,18 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { AddExpenseModal } from "@/components/add-expense-modal";
-import { CollectPaymentModal } from "@/components/collect-payment-modal";
+import { GeneralEntryModal } from "@/components/general-entry-modal";
+import { PurchaseBillModal } from "@/components/purchase-bill-modal";
 import { QuickBillModal } from "@/components/quick-bill-modal";
-import { PaySupplierModal } from "@/components/pay-supplier-modal";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 
 type DashboardHomeModalsContextValue = {
+  openSalesBill: (clientId?: string) => void;
+  openPurchaseBill: (supplierId?: string) => void;
+  openGeneralEntry: () => void;
+  /** @deprecated Use openSalesBill */
   openQuickBill: (clientId?: string) => void;
   openCollectPayment: (clientId?: string) => void;
   openPaySupplier: (supplierId?: string) => void;
@@ -44,23 +47,31 @@ type Props = {
   clients: ClientWithDue[];
   suppliers: SupplierWithPayable[];
   banks: BankWithBalance[];
+  invoicePrefix?: string;
   children: ReactNode;
 };
 
-export function DashboardHomeModals({ clients, suppliers, banks, children }: Props) {
+export function DashboardHomeModals({
+  clients,
+  suppliers,
+  banks,
+  invoicePrefix = "ISHABA",
+  children,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [quickBillOpen, setQuickBillOpen] = useState(false);
-  const [collectPaymentOpen, setCollectPaymentOpen] = useState(false);
-  const [paySupplierOpen, setPaySupplierOpen] = useState(false);
-  const [addExpenseOpen, setAddExpenseOpen] = useState(false);
+  const [salesBillOpen, setSalesBillOpen] = useState(false);
+  const [purchaseBillOpen, setPurchaseBillOpen] = useState(false);
+  const [generalOpen, setGeneralOpen] = useState(false);
   const [initialClientId, setInitialClientId] = useState("");
-  const [initialCollectClientId, setInitialCollectClientId] = useState("");
   const [initialSupplierId, setInitialSupplierId] = useState("");
 
   const clearHomeModalParams = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("quickBill");
+    params.delete("salesBill");
+    params.delete("purchaseBill");
+    params.delete("general");
     params.delete("collectPayment");
     params.delete("paySupplier");
     params.delete("addExpense");
@@ -71,87 +82,85 @@ export function DashboardHomeModals({ clients, suppliers, banks, children }: Pro
     router.replace(qs ? `/dashboard?${qs}` : "/dashboard", { scroll: false });
   }, [router, searchParams]);
 
-  const openQuickBill = useCallback((clientId?: string) => {
+  const openSalesBill = useCallback((clientId?: string) => {
     setInitialClientId(clientId ?? "");
-    setQuickBillOpen(true);
+    setSalesBillOpen(true);
   }, []);
 
-  const openCollectPayment = useCallback((clientId?: string) => {
-    setInitialCollectClientId(clientId ?? "");
-    setCollectPaymentOpen(true);
-  }, []);
-
-  const openPaySupplier = useCallback((supplierId?: string) => {
+  const openPurchaseBill = useCallback((supplierId?: string) => {
     setInitialSupplierId(supplierId ?? "");
-    setPaySupplierOpen(true);
+    setPurchaseBillOpen(true);
   }, []);
 
-  const openAddExpense = useCallback(() => {
-    setAddExpenseOpen(true);
+  const openGeneralEntry = useCallback(() => {
+    setGeneralOpen(true);
   }, []);
 
   useEffect(() => {
-    const quickBill = searchParams.get("quickBill");
-    const collectPayment = searchParams.get("collectPayment");
-    const paySupplier = searchParams.get("paySupplier");
-    const addExpense = searchParams.get("addExpense");
+    const salesBill = searchParams.get("salesBill") ?? searchParams.get("quickBill");
+    const purchaseBill = searchParams.get("purchaseBill");
+    const general = searchParams.get("general") ?? searchParams.get("addExpense");
     const customerId = searchParams.get("customer");
     const supplierId = searchParams.get("supplier");
-    const open = searchParams.get("open");
 
-    if (quickBill === "1") {
-      openQuickBill(customerId ?? undefined);
+    if (salesBill === "1") {
+      openSalesBill(customerId ?? undefined);
       clearHomeModalParams();
-    } else if (collectPayment === "1" || (customerId && open === "pay")) {
-      openCollectPayment(customerId ?? undefined);
+    } else if (purchaseBill === "1") {
+      openPurchaseBill(supplierId ?? undefined);
       clearHomeModalParams();
-    } else if (paySupplier === "1" || (supplierId && open === "pay")) {
-      openPaySupplier(supplierId ?? undefined);
-      clearHomeModalParams();
-    } else if (addExpense === "1") {
-      openAddExpense();
+    } else if (general === "1") {
+      openGeneralEntry();
       clearHomeModalParams();
     }
-  }, [
-    searchParams,
-    openQuickBill,
-    openCollectPayment,
-    openPaySupplier,
-    openAddExpense,
-    clearHomeModalParams,
-  ]);
+  }, [searchParams, openSalesBill, openPurchaseBill, openGeneralEntry, clearHomeModalParams]);
+
+  const refresh = () => router.refresh();
 
   return (
     <DashboardHomeModalsContext.Provider
-      value={{ openQuickBill, openCollectPayment, openPaySupplier, openAddExpense }}
+      value={{
+        openSalesBill,
+        openPurchaseBill,
+        openGeneralEntry,
+        openQuickBill: openSalesBill,
+        openCollectPayment: (id) => {
+          openGeneralEntry();
+          void id;
+        },
+        openPaySupplier: (id) => {
+          openGeneralEntry();
+          void id;
+        },
+        openAddExpense: openGeneralEntry,
+      }}
     >
       {children}
 
       <QuickBillModal
-        open={quickBillOpen}
-        onOpenChange={setQuickBillOpen}
+        open={salesBillOpen}
+        onOpenChange={setSalesBillOpen}
         clients={clients}
+        invoicePrefix={invoicePrefix}
         initialClientId={initialClientId}
+        onSuccess={refresh}
       />
 
-      <CollectPaymentModal
-        open={collectPaymentOpen}
-        onOpenChange={setCollectPaymentOpen}
-        clients={clients}
-        initialClientId={initialCollectClientId}
-      />
-
-      <PaySupplierModal
-        open={paySupplierOpen}
-        onOpenChange={setPaySupplierOpen}
+      <PurchaseBillModal
+        open={purchaseBillOpen}
+        onOpenChange={setPurchaseBillOpen}
         suppliers={suppliers}
         initialSupplierId={initialSupplierId}
+        onSuccess={refresh}
       />
 
-      <AddExpenseModal
-        open={addExpenseOpen}
-        onOpenChange={setAddExpenseOpen}
+      <GeneralEntryModal
+        open={generalOpen}
+        onOpenChange={setGeneralOpen}
+        clients={clients}
+        suppliers={suppliers}
         banks={banks}
+        onSuccess={refresh}
       />
     </DashboardHomeModalsContext.Provider>
   );

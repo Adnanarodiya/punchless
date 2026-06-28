@@ -1,0 +1,70 @@
+---
+pid: 19492
+cwd: "D:\Coding\punchless"
+command: "Set-Location D:\\Coding\\punchless; pnpm --filter @punchless/web build"
+started_at: 2026-06-28T14:15:11.911Z
+running_for_ms: 4100004  
+---
+
+> @punchless/web@0.1.0 build D:\Coding\punchless\apps\web
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+(node:18956) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ Compiled successfully in 6.7s
+   Linting and checking validity of types ...
+
+./src/app/(dashboard)/dashboard/history/history-manager.tsx
+76:10  Warning: 'tick' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+387:3  Warning: 'period' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/app/(dashboard)/dashboard/invoices/invoice-manager.tsx
+193:6  Warning: React Hook useEffect has missing dependencies: 'openAdd' and 'openConvertToGst'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./src/app/(dashboard)/dashboard/jobs/job-manager.tsx
+315:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/app/(dashboard)/dashboard/requests/requests-manager.tsx
+5:20  Warning: 'Clock' is defined but never used.  @typescript-eslint/no-unused-vars
+12:10  Warning: 'useAction' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/components/map-picker.tsx
+36:5  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/components/sidebar-config.ts
+6:3  Warning: 'DollarSign' is defined but never used.  @typescript-eslint/no-unused-vars
+12:3  Warning: 'FileText' is defined but never used.  @typescript-eslint/no-unused-vars
+
+./src/lib/queries/advance.queries.ts
+37:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/lib/queries/settings.queries.ts
+64:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+
+./src/lib/utils/salary-calculation.ts
+43:10  Warning: 'formatDateOnly' is defined but never used.  @typescript-eslint/no-unused-vars
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+Failed to compile.
+
+./src/components/general-entry-modal.tsx:94:34
+Type error: Argument of type 'ClientWithDue[] | SupplierWithPayable[]' is not assignable to parameter of type 'ClientWithDue[]'.
+  Type 'SupplierWithPayable[]' is not assignable to type 'ClientWithDue[]'.
+    Type 'SupplierWithPayable' is not assignable to type 'ClientWithDue'.
+      Property 'due_amount' is missing in type 'SupplierWithPayable' but required in type '{ due_amount: number; }'.
+
+  92 |   const filteredParties = useMemo(() => {
+  93 |     const list = partySide === "client" ? clientOptions : supplierOptions;
+> 94 |     return filterEntitiesByQuery(list, partyQuery);
+     |                                  ^
+  95 |   }, [partySide, clientOptions, supplierOptions, partyQuery]);
+  96 |
+  97 |   const selectedParty =
+D:\Coding\punchless\apps\web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @punchless/web@0.1.0 build: `next build`
+Exit status 1
+Next.js build worker exited with code: 1 and signal: null

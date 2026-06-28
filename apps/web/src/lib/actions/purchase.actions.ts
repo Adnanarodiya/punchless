@@ -6,6 +6,7 @@ import {
   calculateGstAmount,
   calculatePurchaseTotal,
   createPurchaseInvoiceSchema,
+  quickPurchaseBillSchema,
   updatePurchaseInvoiceSchema,
 } from "@/lib/validations/purchase.schema";
 
@@ -65,6 +66,81 @@ async function writePurchaseLedgerEntry(
 
   return error?.message ?? null;
 }
+
+export const createQuickPurchaseBill = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_quick_purchase_bill", entityType: "purchase" },
+})(async (formData, { supabase, me }) => {
+  const parsed = quickPurchaseBillSchema.safeParse({
+    supplierId: formData.get("supplierId"),
+    invoiceNumber: formData.get("invoiceNumber"),
+    invoiceDate: formData.get("invoiceDate"),
+    amount: formData.get("amount"),
+    gstNumber: formData.get("gstNumber"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+
+  if (data.gstNumber?.trim()) {
+    await supabase
+      .from("suppliers")
+      .update({ gst_number: data.gstNumber.trim() } as never)
+      .eq("id", data.supplierId);
+  }
+
+  const gstPercent = 0;
+  const totalAmount = data.amount;
+
+  const { data: purchase, error } = await supabase
+    .from("purchase_invoices")
+    .insert({
+      company_id: me.company_id,
+      supplier_id: data.supplierId,
+      invoice_type: "purchase",
+      invoice_number: data.invoiceNumber,
+      invoice_date: data.invoiceDate,
+      taxable_amount: totalAmount,
+      gst_percent: gstPercent,
+      gst_amount: 0,
+      total_amount: totalAmount,
+      remark: data.remark || null,
+      entry_category: "purchase_bill",
+      created_by: me.id,
+    } as never)
+    .select("id")
+    .single();
+
+  if (error || !purchase) {
+    return { success: false, error: error?.message || "Failed to create purchase bill" };
+  }
+
+  const ledgerError = await writePurchaseLedgerEntry(supabase, {
+    companyId: me.company_id,
+    supplierId: data.supplierId,
+    purchaseId: purchase.id,
+    invoiceType: "purchase",
+    invoiceNumber: data.invoiceNumber,
+    invoiceDate: data.invoiceDate,
+    totalAmount,
+    remark: data.remark || `Purchase bill #${data.invoiceNumber}`,
+    createdBy: me.id,
+  });
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError };
+  }
+
+  revalidatePurchasePages(data.supplierId);
+  revalidatePath("/dashboard/cash-book");
+  revalidatePath("/dashboard/bank-book");
+  return { success: true, data: { purchaseId: purchase.id } };
+});
 
 export const createPurchaseInvoice = protectedAction<FormData>({
   roles: ["owner", "admin"],

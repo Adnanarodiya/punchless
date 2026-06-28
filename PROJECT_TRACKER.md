@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-27 (P2 complete — FY hints, Customers hub, Gujarati/Hindi, first-visit tips)
+> **Last updated:** 2026-06-28 (Cash/Bank book — daily-report table + from/to date range, default today)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -28,9 +28,10 @@
 | 13 | Tax Invoices + GST | ✅ Done | invoices, line items, GST slabs, split payment, print, ledger auto-write |
 | **13.5** | **Statement UI Redesign** | ✅ Done | Shahin-style client + supplier statements — letterhead, ledger table, print |
 | 14 | Banks + Transactions | 🟡 Built — needs QA | bank accounts, income/expense |
-| 15 | Financial Dashboard Home | ☐ Pending | Shahin-style financial HQ |
-| 16 | HR Extensions | ☐ Pending | posts, staff payments, deposits |
-| 17 | Reports Suite | ☐ Pending | 8 reports + print + Excel |
+| **V3-A** | **V3 Cleanup** | ✅ Done | `V3.md`, delete old MDs, remove GST from New Bill UI |
+| **V3-B** | **Entry Forms** | ☐ Pending | Sales bill (ISHABA), purchase bill, General receipt/payment |
+| **V3-C** | **Ledgers & Books** | ☐ Pending | Party ledgers, cash book, bank book, outstanding logic |
+| **V3-D** | **Polish** | ☐ Pending | Home dashboard, simple reports (no GST) |
 
 ---
 
@@ -46,18 +47,10 @@
 | `.env` | 1 | Root env vars (Supabase URL, keys) — NOT committed |
 | `.env.example` | 1 | Template for root `.env` |
 | `.gitignore` | 1 | Git ignore rules (node_modules, .env, .next, etc.) |
-| `AGENT.md` | 1 | AI agent rules — 14 rules for code style, conventions |
-| `DOCS_INDEX.md` | 1 | Index of all documentation files |
-| `README.md` | 1 | Project overview and setup instructions |
-| `PROJECT_TRACKER.md` | 6 | **This file** — tracks all files and progress |
-| `grok-md.md` | 9 | Shahin Motors BMS full website review + Punchless dashboard gap analysis (read-only audit) |
-| `SHAHIN_IMPLEMENTATION_PLAN.md` | 11 | Shahin → Punchless phased implementation plan with ✅/🟡/☐ checklist, accessibility UX, DB schema, routes |
-| `NEW_START.md` | 11 | Quick-start guide — which MD files to use, phase order, workflow steps |
-| `TODAY_TESTING_2026-06-24.md` | 13 | **Today's testing guide** — Phase 13 + ledger fixes, step-by-step manual tests |
-| `PHASE_14_TESTING.md` | 14 | **Phase 14 testing plan** — 2 dummy banks, 15 tests; Test 3 clarifies 3-page navigation flow |
-| `DASHBOARD_EXECUTION_PLAN.md` | 11 | **Locked execution plan** — dashboard 11A→17 first, mobile later, no Stripe |
-| `DASHBOARD_USABILITY_AUDIT.md` | UX | **Web dashboard usability audit** — owner assessment + **Phase 0 fingerprint upload → Shahin salary report** (GPS/mobile paused) |
-| `OWNER_USABILITY_TEST.md` | UX | **Owner usability gate** — 6-block manual test; Block D facilitator table (supplier → purchase → pay) |
+| `AGENT.md` | V3 | AI agent rules — coding conventions (read `V3.md` first) |
+| `V3.md` | **V3** | **Product spec** — bookkeeping flows, entry types, phases, removed scope |
+| `README.md` | V3 | Setup instructions — points to `V3.md` |
+| `PROJECT_TRACKER.md` | V3 | **This file** — tracks all files and progress |
 | `may 2026 attandence.xlsx` | UX/ref | Owner fingerprint export sample (`rptMonthlyWorkDurationSummary`) — parser reference |
 | `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
@@ -71,25 +64,16 @@
 | `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
 | `scripts/e2e-p0-audit.mts` | **P0/E2E** | Automated audit — fingerprint parser, salary math, HTTP smoke, P0-1–5 source checks (`pnpm e2e:p0`) |
 | `scripts/e2e-owner-test.mts` | **§10/E2E** | Owner usability gate — 6 blocks A–F via Supabase flows (`pnpm e2e:owner`) |
-| `OWNER_USABILITY_TEST.md` | UX | Facilitator script for human owner test (Section 10) |
-| `docs/12_STATEMENT_UI_PLAN.md` | 13.5 | **🔴 Priority plan** — Shahin-style statement UI (7 phases, print, company profile migration) |
-
-### Documentation (`/docs/`)
+### Documentation
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `01_PROJECT_OVERVIEW.md` | 1 | Business idea, target users, pricing model |
-| `02_ARCHITECTURE.md` | 1 | Tech stack, monorepo structure, data flow |
-| `03_GETTING_STARTED.md` | 1 | Setup instructions, env vars, dev commands |
-| `04_BUILD_PHASES.md` | 1 | All 10 phases with detailed tasks |
-| `05_DATABASE_SCHEMA.md` | 1 | Table definitions, relationships, RLS policies |
-| `06_ATTENDANCE_ENGINE.md` | 1 | GPS geofence logic, state machine, background tracking |
-| `07_WEB_DASHBOARD.md` | 1/4 | Full dashboard route map (44 pages), shell UX, money flows, roles |
-| `08_SALARY_CALCULATION.md` | 1 | Hourly/travel rates, overtime, deductions |
-| `09_MOBILE_APP.md` | 1 | Expo app screens, GPS permissions |
-| `10_STRIPE_BILLING.md` | 1 | Subscription model, webhooks, usage metering |
-| `11_THEMING_AND_COLORS.md` | 1 | CSS variable system, color tokens |
-| `12_STATEMENT_UI_PLAN.md` | 13.5 | **Priority** — Statement UI redesign plan (client + supplier, Shahin reference) |
+| `V3.md` | **V3** | Bookkeeping product spec — entry flows, ledgers, phases |
+| `docs/11_THEMING_AND_COLORS.md` | 1 | CSS variable color tokens for Tailwind v4 |
+
+### Legacy documentation (deleted 2026-06-28)
+
+All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shahin plans, usability audits, testing guides.
 
 ### Supabase (`/supabase/`)
 
@@ -224,6 +208,11 @@
 | `dashboard/dashboard-pending-dues.tsx` | 15/**P1-3** | “Who owes what” — Collect/Pay deep links per row |
 | `dashboard/daily-report/page.tsx` | **Daily report** | Dedicated daily cash book page (Shahin-style) |
 | `dashboard/daily-report/daily-report-manager.tsx` | **Daily report** | Shahin table — Income/Expense/Transfer/Purchase columns, totals row, balance footer, delete |
+| `dashboard/cash-book/page.tsx` | **V3-C** | Cash book — from/to date range (default today), daily-report-style table |
+| `dashboard/bank-book/page.tsx` | **V3-C** | Bank book — from/to date range (default today), daily-report-style table |
+| `components/book-report-manager.tsx` | **V3-C** | Shared cash/bank shell — date range filter, summary strip, ledger table |
+| `components/ledger-book-table.tsx` | **V3-C** | Reusable Shahin ledger table (pagination, totals, delete, balance footer) |
+| `lib/queries/cash-book.queries.ts` | **V3-C** | Cash/bank book queries — filter daily book by mode; single day or date range |
 | `dashboard/todays-entry/page.tsx` | **Today's entry** | Server page — date picker, saved import days, sales register upload for one day |
 | `dashboard/todays-entry/todays-entry-manager.tsx` | **Today's entry** | Upload imports all days in file; date picker views one day; saved-days list; table + pagination |
 | `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
@@ -256,13 +245,16 @@
 | `dashboard/purchases/purchase-manager.tsx` | 12/**UX** | Supplier bills UI — page title, forms, table; GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
-| `quick-bill-modal.tsx` | **P1-2** | Quick bill — searchable customer picker, auto-create customer, payment: cash / bank / credit / cash+bank split |
+| `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — customer autocomplete, auto-create party, payment modes; **no GST link** |
+| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — cash indirect asks “what for?” → saved as `particular` in reports |
+| `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + indirect transactions; bank ledger writes for bank mode |
+| `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode + bank account required when payment mode is bank |
 | `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, auto-create new supplier on blur/submit, cash/bank payment |
 | `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, auto-create new customer on blur/submit, cash/bank receipt |
 | `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
 | `fy-calendar-hint.tsx` | **P2-4** | InfoHint — Indian FY (Apr–Mar) vs calendar year on Home Show more |
 | `lib/content/fy-calendar-copy.ts` | **P2-4** | Shared FY vs calendar copy for dashboard + reports |
-| `customers/customer-commerce-hub.tsx` | **P2-3** | Simple mode tabs — Customers \| New bill \| All bills; Invoices nav full-only |
+| `customers/customer-commerce-hub.tsx` | **V3-A** | Simple mode tabs — Customers \| New bill only; GST bills tab removed |
 | `ui-language-toggle.tsx` | **P2-2** | Settings — English / Gujarati / Hindi for nav + home labels |
 | `lib/i18n/owner-labels.ts` | **P2-2** | Translated owner-facing label keys (nav, home actions, hero) |
 | `lib/stores/ui-language.store.ts` | **P2-2** | Zustand — `ui_language` hydrated from shell |
@@ -271,7 +263,7 @@
 | `support-button.tsx` | **P3-2** | Floating WhatsApp help button on dashboard (`NEXT_PUBLIC_SUPPORT_PHONE`) |
 | `lib/utils/support-contact.ts` | **P3-2** | `wa.me` / `tel:` helpers for support contact |
 | `lib/utils/dashboard-experience-guard.ts` | **P3-1** | `redirectUnlessFullDashboard()` — block Simple mode on full-only routes |
-| `lib/content/reports-nav.ts` | **P3-1** | Report list with `simple` / `full` tier; Balance Sheet in full tier only |
+| `lib/content/reports-nav.ts` | **V3-A** | Report list — GST report removed; sales bills report renamed |
 | `lib/actions/client.actions.ts` | 11B/**P1-2** | `createQuickCustomer` — name-only customer from quick bill (returns id) |
 | `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice with payment summary + pending balance due |
 | `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
@@ -374,7 +366,7 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A/**P0-1** | Grouped collapsible sidebar; filters by `dashboard_experience`; Simple mode badge |
-| `sidebar-config.ts` | 11A/**P0-1**/**P1-1**/**P3-1** | Simple Commerce primary; **Today's entry** in More tools; Posts, Audit Log, Billing `full-only` |
+| `sidebar-config.ts` | **V3-A** | Commerce nav — Invoices (GST) link removed; Today's entry in More tools |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |

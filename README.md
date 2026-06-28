@@ -1,16 +1,15 @@
-# ⚡ Punchless
+# Punchless V3 — Bookkeeping
 
-**Attendance that works without the punch.**
+Simple daily bookkeeping for workshops: sales bills, purchase bills, cash & bank receipts/payments, and party ledgers.
 
-GPS-based automatic attendance, job tracking, travel time logging, and salary calculation — built for workshops and service businesses.
+**Product spec:** see [`V3.md`](./V3.md) — the single source of truth for what we are building.
 
 ---
 
 ## Tech Stack
 
-- **Web Dashboard:** Next.js 15 (App Router, TypeScript, Tailwind CSS)
-- **Mobile App:** React Native + Expo (iOS & Android)
-- **Backend:** Supabase (PostgreSQL, Auth, RLS, Edge Functions)
+- **Web Dashboard:** Next.js 15 (App Router, TypeScript, Tailwind CSS v4)
+- **Backend:** Supabase (PostgreSQL, Auth, RLS)
 - **State Management:** Zustand
 - **Icons:** Lucide
 - **Monorepo:** Turborepo + pnpm
@@ -22,18 +21,18 @@ GPS-based automatic attendance, job tracking, travel time logging, and salary ca
 ```
 punchless/
 ├── apps/
-│   ├── web/              # Next.js Admin Dashboard
-│   └── mobile/           # Expo Employee App
+│   ├── web/              # Next.js bookkeeping dashboard
+│   └── mobile/           # (deferred — not V3 focus)
 ├── packages/
 │   ├── types/            # Shared TypeScript types
 │   ├── config/           # Shared configuration
 │   └── ui/               # Shared UI components
 ├── supabase/
 │   ├── migrations/       # Database migrations
-│   ├── functions/        # Edge Functions
 │   └── seed.sql          # Dev seed data
-├── turbo.json
-└── pnpm-workspace.yaml
+├── V3.md                 # Product spec & build plan
+├── AGENT.md              # Developer / AI rules
+└── PROJECT_TRACKER.md    # File map & progress
 ```
 
 ---
@@ -55,21 +54,28 @@ pnpm install
 ### Development
 
 ```bash
-# Run all apps
-pnpm dev
+pnpm dev                    # Run all apps
+pnpm --filter @punchless/web dev   # Web dashboard only
+```
 
-# Run only web dashboard
-pnpm --filter @punchless/web dev
+### Database
 
-# Run only mobile app
-pnpm --filter @punchless/mobile dev
+```bash
+pnpm db:push                # Push migrations to Supabase
+pnpm db:gen-types           # Regenerate TypeScript DB types
+pnpm db:wipe-keep-user:confirm   # Wipe data, keep owner login
 ```
 
 ---
 
 ## Documentation
 
-See `DOCS_INDEX.md` at root for full documentation index, or check the `docs/` folder.
+| File | Purpose |
+|------|---------|
+| [`V3.md`](./V3.md) | Bookkeeping product spec & implementation phases |
+| [`AGENT.md`](./AGENT.md) | Coding rules for AI and developers |
+| [`PROJECT_TRACKER.md`](./PROJECT_TRACKER.md) | File map and phase progress |
+| [`docs/11_THEMING_AND_COLORS.md`](./docs/11_THEMING_AND_COLORS.md) | CSS color tokens |
 
 ---
 

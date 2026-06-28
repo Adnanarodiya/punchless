@@ -11,19 +11,28 @@ import { maskAmount } from "@/lib/utils/mask-financial";
 interface MaskedAmountProps {
   amount: number;
   className?: string;
-  /** Custom formatter (e.g. signed net amounts). */
+  /** Prefix for ledger lines — safe to pass from Server Components. */
+  sign?: "plus" | "minus";
+  /** Custom formatter (client components only — do not pass from RSC). */
   format?: (amount: number) => string;
   children?: (formatted: string, locked: boolean) => ReactNode;
+}
+
+function applySign(value: string, sign?: "plus" | "minus") {
+  if (sign === "plus") return `+${value}`;
+  if (sign === "minus") return `-${value}`;
+  return value;
 }
 
 export function MaskedAmount({
   amount,
   className,
+  sign,
   format = formatCurrency,
   children,
 }: MaskedAmountProps) {
   const locked = useFinancialLocked();
-  const formatted = format(amount);
+  const formatted = applySign(format(amount), sign);
   const display = maskAmount(locked, formatted);
 
   if (children) {

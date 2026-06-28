@@ -1,6 +1,8 @@
 # 🤖 AGENT.md — Project Rules & Working Guidelines
 
-## Project: Punchless — Workshop Attendance SaaS
+## Project: Punchless V3 — Bookkeeping Software
+
+> **Read `V3.md` before any feature work.** Attendance/mobile code may exist but is not the V3 product focus. No GST tax invoice UI — bookkeeping entries only.
 
 ---
 
@@ -93,8 +95,8 @@ pnpm supabase:status        # Check local Supabase status
 
 | What | Where |
 |---|---|
-| All documentation | `docs/` folder |
-| Doc index/agenda | `DOCS_INDEX.md` (root) |
+| Product spec | `V3.md` (root) |
+| Theming reference | `docs/11_THEMING_AND_COLORS.md` |
 | Agent rules | `AGENT.md` (root, this file) |
 | Next.js dashboard | `apps/web/` |
 | Expo mobile app | `apps/mobile/` |
@@ -209,20 +211,16 @@ lib/actions/salary.actions.ts
 
 ---
 
-## 🏗️ Build Order (Strict)
+## 🏗️ Build Order (V3 — see `V3.md` §9)
 
 ```
-Phase 1: Project Setup (monorepo, supabase, basic auth)
-Phase 2: Database & Core Schema
-Phase 3: Attendance Engine (GPS + state machine)
-Phase 4: Job & Travel Tracking
-Phase 5: Salary Calculation
-Phase 6: Salary Advance Feature
-Phase 7: Web Dashboard (owner/admin UI)
-Phase 8: Mobile App (employee UI)
-Phase 9: Polish, Testing, Edge Cases
-Phase 10: Stripe Billing (LAST!)
+Phase A: Cleanup — V3.md, remove GST UI, wipe demo data
+Phase B: Entry forms — Sales bill, Purchase bill, General receipt/payment
+Phase C: Ledgers & books — party ledgers, cash book, bank book
+Phase D: Polish — home dashboard, simple reports, print statements
 ```
+
+Legacy attendance/mobile/salary code exists but is **out of scope** until V3 core bookkeeping is done.
 
 ---
 
@@ -236,7 +234,7 @@ Phase 10: Stripe Billing (LAST!)
 
 ## 📝 When Adding a New Feature
 
-1. Read the relevant `docs/` file
+1. Read `V3.md` and any relevant section
 2. Write/update the database migration if needed
 3. Update `packages/types/` with new types
 4. Build backend logic (Supabase edge function or RLS)

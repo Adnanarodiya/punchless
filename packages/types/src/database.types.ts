@@ -471,10 +471,12 @@ export type Database = {
         Row: {
           amount: number
           bank_id: string | null
+          bank_sub_mode: Database["public"]["Enums"]["bank_sub_mode"] | null
           client_id: string
           company_id: string
           created_at: string | null
           created_by: string | null
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           id: string
           payment_date: string
           payment_mode: string
@@ -483,10 +485,12 @@ export type Database = {
         Insert: {
           amount: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           client_id: string
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           payment_date?: string
           payment_mode: string
@@ -495,10 +499,12 @@ export type Database = {
         Update: {
           amount?: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           client_id?: string
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           payment_date?: string
           payment_mode?: string
@@ -603,6 +609,7 @@ export type Database = {
           ot_rate_multiplier: number
           phone: string | null
           salary_mode: string
+          sales_invoice_prefix: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
@@ -627,6 +634,7 @@ export type Database = {
           ot_rate_multiplier?: number
           phone?: string | null
           salary_mode?: string
+          sales_invoice_prefix?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -651,6 +659,7 @@ export type Database = {
           ot_rate_multiplier?: number
           phone?: string | null
           salary_mode?: string
+          sales_invoice_prefix?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
@@ -849,6 +858,7 @@ export type Database = {
           created_by: string | null
           credit_amount: number
           deleted_at: string | null
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           gst_amount: number
           gst_percent: number
           id: string
@@ -873,6 +883,7 @@ export type Database = {
           created_by?: string | null
           credit_amount?: number
           deleted_at?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
           gst_percent: number
           id?: string
@@ -897,6 +908,7 @@ export type Database = {
           created_by?: string | null
           credit_amount?: number
           deleted_at?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
           gst_percent?: number
           id?: string
@@ -1035,11 +1047,13 @@ export type Database = {
         Row: {
           amount: number
           bank_id: string | null
+          bank_sub_mode: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at: string | null
           created_by: string | null
           entity_id: string
           entity_type: string
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           entry_date: string
           entry_type: string
           id: string
@@ -1051,11 +1065,13 @@ export type Database = {
         Insert: {
           amount: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at?: string | null
           created_by?: string | null
           entity_id: string
           entity_type: string
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           entry_date?: string
           entry_type: string
           id?: string
@@ -1067,11 +1083,13 @@ export type Database = {
         Update: {
           amount?: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id?: string
           created_at?: string | null
           created_by?: string | null
           entity_id?: string
           entity_type?: string
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           entry_date?: string
           entry_type?: string
           id?: string
@@ -1148,6 +1166,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           deleted_at: string | null
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           gst_amount: number
           gst_percent: number
           id: string
@@ -1166,6 +1185,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
           gst_percent: number
           id?: string
@@ -1184,6 +1204,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           deleted_at?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
           gst_percent?: number
           id?: string
@@ -1571,9 +1592,11 @@ export type Database = {
         Row: {
           amount: number
           bank_id: string | null
+          bank_sub_mode: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at: string | null
           created_by: string | null
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           id: string
           payment_date: string
           payment_mode: string
@@ -1583,9 +1606,11 @@ export type Database = {
         Insert: {
           amount: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           payment_date?: string
           payment_mode: string
@@ -1595,9 +1620,11 @@ export type Database = {
         Update: {
           amount?: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           payment_date?: string
           payment_mode?: string
@@ -1685,9 +1712,11 @@ export type Database = {
         Row: {
           amount: number
           bank_id: string | null
+          bank_sub_mode: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at: string | null
           created_by: string | null
+          entry_category: Database["public"]["Enums"]["entry_category"] | null
           id: string
           particular: string
           payment_mode: string
@@ -1698,9 +1727,11 @@ export type Database = {
         Insert: {
           amount: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           particular: string
           payment_mode: string
@@ -1711,9 +1742,11 @@ export type Database = {
         Update: {
           amount?: number
           bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          entry_category?: Database["public"]["Enums"]["entry_category"] | null
           id?: string
           particular?: string
           payment_mode?: string
@@ -1921,7 +1954,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      bank_sub_mode: "upi" | "net_banking"
+      entry_category:
+        | "sales_bill"
+        | "purchase_bill"
+        | "receipt"
+        | "payment"
+        | "indirect_income"
+        | "indirect_expense"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2051,6 +2091,16 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      bank_sub_mode: ["upi", "net_banking"],
+      entry_category: [
+        "sales_bill",
+        "purchase_bill",
+        "receipt",
+        "payment",
+        "indirect_income",
+        "indirect_expense",
+      ],
+    },
   },
 } as const

@@ -28,6 +28,7 @@
     "db:import-full-data:confirm": "node scripts/import-full-data.mjs --confirm",
     "e2e:p0": "npx tsx scripts/e2e-p0-audit.mts",
     "e2e:owner": "npx tsx scripts/e2e-owner-test.mts",
+    "e2e:v3": "npx tsx scripts/e2e-v3-bookkeeping.mts",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status"

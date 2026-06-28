@@ -1,0 +1,17 @@
+---
+pid: 10828
+cwd: "D:\Coding\punchless"
+command: "Set-Location D:\\Coding\\punchless; npx supabase db push"
+started_at: 2026-06-28T14:03:56.497Z
+running_for_ms: 4775002  
+---
+npm warn Unknown project config "node-linker". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+Initialising login role...
+Connecting to remote database...
+Skipping migration .gitkeep... (file name must match pattern "<timestamp>_name.sql")
+Do you want to push these migrations to the remote database?
+ • 20260628180000_v3_bookkeeping.sql
+
+ [Y/n] Finished supabase db push.
+
+Applying migration 20260628180000_v3_bookkeeping.sql...

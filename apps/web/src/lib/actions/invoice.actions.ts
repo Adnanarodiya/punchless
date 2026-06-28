@@ -6,6 +6,7 @@ import {
   calculateGstAmount,
   createInvoiceSchema,
   quickBillSchema,
+  salesBillSchema,
   resolvePaymentBreakdown,
   updateInvoiceSchema,
   updateStatementQuickBillSchema,
@@ -72,8 +73,8 @@ async function writeInvoiceLedgerEntries(
   }
 ) {
   const remarkBase = params.invoiceNumber
-    ? `Tax invoice #${params.invoiceNumber}`
-    : "Tax invoice";
+    ? `Sales bill #${params.invoiceNumber}`
+    : "Sales bill";
 
   // Shahin-style net posting: only the unpaid (credit) portion increases client due.
   // Cash/bank received is credited immediately — full cash invoice = credit only (reduces due).
@@ -235,6 +236,112 @@ export const createInvoice = protectedAction<FormData>({
   return { success: true };
 });
 
+export const createSalesBill = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_sales_bill", entityType: "invoice" },
+})(async (formData, { supabase, me }) => {
+  const parsed = salesBillSchema.safeParse({
+    clientId: formData.get("clientId"),
+    invoiceSuffix: formData.get("invoiceSuffix"),
+    invoiceDate: formData.get("invoiceDate"),
+    amount: formData.get("amount"),
+    gstNumber: formData.get("gstNumber"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("sales_invoice_prefix")
+    .eq("id", me.company_id)
+    .single();
+
+  const prefix =
+    (company as { sales_invoice_prefix?: string } | null)?.sales_invoice_prefix ?? "ISHABA";
+  const { formatSalesInvoiceNumber } = await import("@/lib/utils/invoice-number");
+  const invoiceNumber = formatSalesInvoiceNumber(prefix, data.invoiceSuffix);
+
+  if (data.gstNumber?.trim()) {
+    await supabase
+      .from("clients")
+      .update({ gst_number: data.gstNumber.trim() } as never)
+      .eq("id", data.clientId);
+  }
+
+  const gstPercent = 0;
+  const totalAmount = data.amount;
+
+  const { data: invoice, error } = await supabase
+    .from("invoices")
+    .insert({
+      company_id: me.company_id,
+      client_id: data.clientId,
+      job_id: null,
+      invoice_number: invoiceNumber,
+      invoice_date: data.invoiceDate,
+      vehicle_number: null,
+      taxable_amount: totalAmount,
+      gst_percent: gstPercent,
+      gst_amount: 0,
+      total_amount: totalAmount,
+      payment_mode: "credit",
+      cash_amount: 0,
+      bank_amount: 0,
+      credit_amount: totalAmount,
+      remark: data.remark || null,
+      entry_category: "sales_bill",
+      created_by: me.id,
+    } as never)
+    .select("id")
+    .single();
+
+  if (error || !invoice) {
+    return { success: false, error: error?.message || "Failed to create sales bill" };
+  }
+
+  const { error: lineError } = await supabase.from("invoice_line_items").insert({
+    invoice_id: invoice.id,
+    description: data.remark?.trim() || `Sales bill ${invoiceNumber}`,
+    quantity: 1,
+    unit_price: totalAmount,
+    gst_percent: gstPercent,
+    amount: totalAmount,
+    sort_order: 0,
+  } as never);
+
+  if (lineError) {
+    return { success: false, error: lineError.message };
+  }
+
+  const ledgerError = await writeInvoiceLedgerEntries(supabase, {
+    companyId: me.company_id,
+    clientId: data.clientId,
+    invoiceId: invoice.id,
+    invoiceDate: data.invoiceDate,
+    invoiceNumber,
+    totalAmount,
+    cashAmount: 0,
+    bankAmount: 0,
+    createdBy: me.id,
+  });
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateInvoicePages(invoice.id);
+  revalidatePath("/dashboard/cash-book");
+  revalidatePath("/dashboard/bank-book");
+  return { success: true, data: { invoiceId: invoice.id, invoiceNumber } };
+});
+
+/** @deprecated Use createSalesBill — kept for legacy quick-bill flows. */
 export const createQuickBill = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "create_quick_bill", entityType: "invoice" },

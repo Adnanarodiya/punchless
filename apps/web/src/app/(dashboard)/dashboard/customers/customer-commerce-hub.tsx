@@ -1,31 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Building2, FileText, Receipt } from "lucide-react";
+import { Building2, Receipt } from "lucide-react";
 
 import { cn } from "@punchless/ui/lib/utils";
 import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
 import { QuickBillModal } from "@/components/quick-bill-modal";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
-import type { InvoiceWithDetails } from "@/lib/queries/invoice.queries";
-import type { JobWithDetails } from "@/lib/queries/job.queries";
 import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
 import { CustomerManager } from "./customer-manager";
-import { InvoiceManager } from "../invoices/invoice-manager";
 
-export type CustomerCommerceTab = "customers" | "new-bill" | "bills";
+export type CustomerCommerceTab = "customers" | "new-bill";
 
 type ClientSummary = { totalClients: number; totalDue: number };
 
 type Props = {
   customers: ClientWithDue[];
   summary: ClientSummary;
-  invoices: InvoiceWithDetails[];
-  invoiceClients: ClientWithDue[];
-  jobs: JobWithDetails[];
-  suggestedInvoiceNumber: string;
+  billClients: ClientWithDue[];
   initialCustomerId?: string;
   initialOpen?: "pay" | "invoice";
   initialTab?: CustomerCommerceTab;
@@ -34,16 +27,12 @@ type Props = {
 const TABS: { id: CustomerCommerceTab; label: string; icon: typeof Building2 }[] = [
   { id: "customers", label: "Customers", icon: Building2 },
   { id: "new-bill", label: "New bill", icon: Receipt },
-  { id: "bills", label: "All bills", icon: FileText },
 ];
 
 export function CustomerCommerceHub({
   customers,
   summary,
-  invoices,
-  invoiceClients,
-  jobs,
-  suggestedInvoiceNumber,
+  billClients,
   initialCustomerId,
   initialOpen,
   initialTab = "customers",
@@ -109,12 +98,6 @@ export function CustomerCommerceHub({
             </button>
           );
         })}
-        <Link
-          href="/dashboard/invoices?openForm=1"
-          className="ml-auto inline-flex items-center gap-1.5 self-center text-xs text-primary hover:underline"
-        >
-          GST tax invoice →
-        </Link>
       </nav>
 
       {tab === "customers" ? (
@@ -133,7 +116,7 @@ export function CustomerCommerceHub({
         <div className="rounded-xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Bill a customer</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quick bill — no GST. Use the form below or open it as a popup.
+            Record a sales bill — it posts to the customer ledger automatically.
           </p>
           <button
             type="button"
@@ -145,23 +128,13 @@ export function CustomerCommerceHub({
         </div>
       ) : null}
 
-      {tab === "bills" ? (
-        <InvoiceManager
-          invoices={invoices}
-          clients={invoiceClients}
-          jobs={jobs}
-          suggestedInvoiceNumber={suggestedInvoiceNumber}
-          embedded
-        />
-      ) : null}
-
       <QuickBillModal
         open={quickBillOpen}
         onOpenChange={(open) => {
           setQuickBillOpen(open);
-          if (!open && tab === "new-bill") selectTab("bills");
+          if (!open && tab === "new-bill") selectTab("customers");
         }}
-        clients={invoiceClients}
+        clients={billClients}
         initialClientId={initialCustomerId ?? ""}
       />
     </div>

@@ -1,14 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { FileText, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
-import { createQuickBill } from "@/lib/actions/invoice.actions";
+import { createSalesBill } from "@/lib/actions/invoice.actions";
 import { createQuickCustomer } from "@/lib/actions/client.actions";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { useAction } from "@/hooks/use-action";
@@ -18,17 +17,6 @@ import {
   findEntityByQuery,
   isNewEntityName,
 } from "@/lib/utils/entity-picker";
-import { resolvePaymentBreakdown } from "@/lib/validations/invoice.schema";
-import { formatCurrency } from "@/lib/utils/formatting";
-
-type QuickBillPaymentMode = "cash" | "bank" | "credit" | "split";
-
-const QUICK_BILL_PAYMENT_OPTIONS: { value: QuickBillPaymentMode; label: string }[] = [
-  { value: "cash", label: "Cash" },
-  { value: "bank", label: "Bank" },
-  { value: "credit", label: "Credit (Udhar)" },
-  { value: "split", label: "Cash + Bank" },
-];
 
 const fieldClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -37,6 +25,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clients: ClientWithDue[];
+  invoicePrefix?: string;
   initialClientId?: string;
   onSuccess?: () => void;
 };
@@ -49,6 +38,7 @@ export function QuickBillModal({
   open,
   onOpenChange,
   clients,
+  invoicePrefix = "ISHABA",
   initialClientId = "",
   onSuccess,
 }: Props) {
@@ -56,12 +46,15 @@ export function QuickBillModal({
   const [clientId, setClientId] = useState(initialClientId);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
+  const [invoiceSuffix, setInvoiceSuffix] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(todayDate());
+  const [gstNumber, setGstNumber] = useState("");
   const [amount, setAmount] = useState("");
-  const [paymentMode, setPaymentMode] = useState<QuickBillPaymentMode>("cash");
-  const [cashAmount, setCashAmount] = useState("");
-  const [bankAmount, setBankAmount] = useState("");
+  const [remark, setRemark] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const customerInputRef = useRef<HTMLInputElement>(null);
+
+  const prefix = invoicePrefix.trim().toUpperCase() || "ISHABA";
 
   useEffect(() => {
     setClientOptions(clients);
@@ -71,10 +64,11 @@ export function QuickBillModal({
     if (!open) {
       setCustomerQuery("");
       setShowCustomerList(false);
+      setInvoiceSuffix("");
+      setInvoiceDate(todayDate());
+      setGstNumber("");
       setAmount("");
-      setPaymentMode("cash");
-      setCashAmount("");
-      setBankAmount("");
+      setRemark("");
       if (!initialClientId) setClientId("");
       return;
     }
@@ -82,7 +76,10 @@ export function QuickBillModal({
     if (initialClientId) {
       setClientId(initialClientId);
       const match = clientOptions.find((c) => c.id === initialClientId);
-      if (match) setCustomerQuery(entityDisplayLabel(match));
+      if (match) {
+        setCustomerQuery(entityDisplayLabel(match));
+        setGstNumber(match.gst_number ?? "");
+      }
     }
   }, [open, initialClientId, clientOptions]);
 
@@ -96,21 +93,8 @@ export function QuickBillModal({
   const isNewCustomer = isNewEntityName(clientOptions, customerQuery);
   const selectedClient = clientOptions.find((c) => c.id === clientId);
 
-  const splitPreview = useMemo(() => {
-    const billTotal = parseFloat(amount) || 0;
-    if (paymentMode !== "split" || billTotal <= 0) return null;
-
-    return resolvePaymentBreakdown(
-      "split",
-      billTotal,
-      0,
-      parseFloat(cashAmount) || 0,
-      parseFloat(bankAmount) || 0
-    );
-  }, [amount, paymentMode, cashAmount, bankAmount]);
-
-  const { execute, loading } = useAction(createQuickBill, {
-    successMessage: "Bill saved.",
+  const { execute, loading } = useAction(createSalesBill, {
+    successMessage: "Sales bill saved.",
     onSuccess: () => {
       onSuccess?.();
       onOpenChange(false);
@@ -120,6 +104,7 @@ export function QuickBillModal({
   function selectCustomer(client: ClientWithDue) {
     setClientId(client.id);
     setCustomerQuery(entityDisplayLabel(client));
+    setGstNumber(client.gst_number ?? "");
     setShowCustomerList(false);
   }
 
@@ -141,6 +126,7 @@ export function QuickBillModal({
     try {
       const fd = new FormData();
       fd.set("name", name);
+      if (gstNumber.trim()) fd.set("gstNumber", gstNumber.trim());
       const result = await createQuickCustomer(fd);
 
       if (!result.success || !result.data) {
@@ -160,6 +146,11 @@ export function QuickBillModal({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (loading || creatingCustomer) return;
+
+    if (!invoiceSuffix.trim()) {
+      toast.error("Enter invoice number after the prefix");
+      return;
+    }
 
     const id = await ensureCustomerSelected();
     if (!id) {
@@ -183,25 +174,60 @@ export function QuickBillModal({
   }
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Bill a customer">
+    <Modal open={open} onOpenChange={onOpenChange} title="Sales bill">
       <p className="mb-4 text-sm text-muted-foreground">
-        Quick bill — no GST. Search a customer or type a new name — new names are saved
-        automatically. You can add GST later from Invoices.
+        Record a sales bill — posts to the customer ledger. Collect payment separately via General.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="salesBillInvoiceSuffix" className="mb-1 block text-sm font-medium">
+            Invoice number
+          </label>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-10 shrink-0 items-center rounded-lg border border-input bg-muted px-3 text-sm font-semibold">
+              {prefix}-
+            </span>
+            <input
+              id="salesBillInvoiceSuffix"
+              name="invoiceSuffix"
+              type="text"
+              required
+              placeholder="1042"
+              value={invoiceSuffix}
+              onChange={(e) => setInvoiceSuffix(e.target.value)}
+              className={fieldClass}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="salesBillDate" className="mb-1 block text-sm font-medium">
+            Date
+          </label>
+          <input
+            id="salesBillDate"
+            name="invoiceDate"
+            type="date"
+            required
+            value={invoiceDate}
+            onChange={(e) => setInvoiceDate(e.target.value)}
+            className={fieldClass}
+          />
+        </div>
+
         <div className="relative">
-          <label htmlFor="quickBillCustomerSearch" className="mb-1 block text-sm font-medium">
-            Customer
+          <label htmlFor="salesBillCustomer" className="mb-1 block text-sm font-medium">
+            Party name
           </label>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={customerInputRef}
-              id="quickBillCustomerSearch"
+              id="salesBillCustomer"
               type="text"
               autoComplete="off"
-              placeholder="Search or type new customer name"
+              placeholder="Search or type party name"
               value={customerQuery}
               onChange={(e) => {
                 setCustomerQuery(e.target.value);
@@ -220,7 +246,7 @@ export function QuickBillModal({
             </p>
           ) : isNewCustomer ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              New customer — will be added when you save the bill
+              New party — will be added when you save
             </p>
           ) : null}
 
@@ -246,21 +272,33 @@ export function QuickBillModal({
                   </button>
                 </li>
               ))}
-              {isNewCustomer && filteredCustomers.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-muted-foreground">
-                  Press Tab or save — &quot;{trimmedQuery}&quot; will be added as a new customer
-                </li>
-              ) : null}
             </ul>
           ) : null}
         </div>
 
         <div>
-          <label htmlFor="quickBillAmount" className="mb-1 block text-sm font-medium">
+          <label htmlFor="salesBillGst" className="mb-1 block text-sm font-medium">
+            Party GST number{" "}
+            <span className="font-normal text-muted-foreground">(optional)</span>
+          </label>
+          <input
+            id="salesBillGst"
+            name="gstNumber"
+            type="text"
+            maxLength={20}
+            value={gstNumber}
+            onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+            placeholder="15-digit GSTIN"
+            className={fieldClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="salesBillAmount" className="mb-1 block text-sm font-medium">
             Amount (₹)
           </label>
           <input
-            id="quickBillAmount"
+            id="salesBillAmount"
             name="amount"
             type="number"
             min="0.01"
@@ -273,134 +311,28 @@ export function QuickBillModal({
         </div>
 
         <div>
-          <span className="mb-2 block text-sm font-medium">Payment</span>
-          <div className="grid grid-cols-2 gap-2">
-            {QUICK_BILL_PAYMENT_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className={cn(
-                  "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition",
-                  paymentMode === option.value
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-input text-muted-foreground hover:bg-accent/50"
-                )}
-              >
-                <input
-                  type="radio"
-                  name="paymentMode"
-                  value={option.value}
-                  checked={paymentMode === option.value}
-                  onChange={() => setPaymentMode(option.value)}
-                  className="sr-only"
-                />
-                {option.label}
-              </label>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Cash/Bank = paid now. Credit = udhar. Cash + Bank = split part cash, part bank.
-          </p>
-        </div>
-
-        {paymentMode === "split" ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="quickBillCashAmount" className="mb-1 block text-sm font-medium">
-                Cash amount (₹)
-              </label>
-              <input
-                id="quickBillCashAmount"
-                name="cashAmount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={cashAmount}
-                onChange={(e) => setCashAmount(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="quickBillBankAmount" className="mb-1 block text-sm font-medium">
-                Bank amount (₹)
-              </label>
-              <input
-                id="quickBillBankAmount"
-                name="bankAmount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={bankAmount}
-                onChange={(e) => setBankAmount(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-            {splitPreview ? (
-              <p className="text-xs text-muted-foreground sm:col-span-2">
-                Cash {formatCurrency(splitPreview.cashAmount)} · Bank{" "}
-                {formatCurrency(splitPreview.bankAmount)}
-                {splitPreview.creditAmount > 0
-                  ? ` · Udhar ${formatCurrency(splitPreview.creditAmount)}`
-                  : null}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <input type="hidden" name="cashAmount" value="0" />
-            <input type="hidden" name="bankAmount" value="0" />
-          </>
-        )}
-
-        <div>
-          <label htmlFor="quickBillDate" className="mb-1 block text-sm font-medium">
-            Date
+          <label htmlFor="salesBillRemark" className="mb-1 block text-sm font-medium">
+            Remark <span className="font-normal text-muted-foreground">(optional)</span>
           </label>
           <input
-            id="quickBillDate"
-            name="invoiceDate"
-            type="date"
-            required
-            defaultValue={todayDate()}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="quickBillDescription" className="mb-1 block text-sm font-medium">
-            Note <span className="font-normal text-muted-foreground">(optional)</span>
-          </label>
-          <input
-            id="quickBillDescription"
-            name="description"
+            id="salesBillRemark"
+            name="remark"
             type="text"
-            maxLength={200}
-            placeholder="Workshop bill"
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            maxLength={500}
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            className={fieldClass}
           />
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            type="submit"
-            loading={loading || creatingCustomer}
-            disabled={loading || creatingCustomer}
-            className="sm:min-w-28"
-          >
-            Save bill
-          </Button>
-          <Link
-            href={
-              clientId
-                ? `/dashboard/invoices?openForm=1&customer=${clientId}`
-                : "/dashboard/invoices?openForm=1"
-            }
-            className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            onClick={() => onOpenChange(false)}
-          >
-            <FileText className="size-3.5" />
-            Need GST? Full tax invoice
-          </Link>
-        </div>
+        <Button
+          type="submit"
+          loading={loading || creatingCustomer}
+          disabled={loading || creatingCustomer}
+          className="w-full sm:w-auto sm:min-w-28"
+        >
+          Save bill
+        </Button>
       </form>
     </Modal>
   );

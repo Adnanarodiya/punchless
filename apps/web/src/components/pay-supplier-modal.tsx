@@ -138,6 +138,8 @@ export function PaySupplierModal({
     event.preventDefault();
     if (paying || creatingSupplier) return;
 
+    const form = event.currentTarget;
+
     const resolvedSupplierId = await ensureSupplierSelected();
     if (!resolvedSupplierId) {
       toast.error("Enter a supplier name");
@@ -145,7 +147,7 @@ export function PaySupplierModal({
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     const amount = Number(formData.get("amount") || 0);
 
     if (amount >= CLIENT_PAYMENT_CONFIRM_THRESHOLD) {

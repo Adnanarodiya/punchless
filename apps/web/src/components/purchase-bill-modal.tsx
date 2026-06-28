@@ -143,6 +143,8 @@ export function PurchaseBillModal({
     event.preventDefault();
     if (loading || creatingSupplier) return;
 
+    const form = event.currentTarget;
+
     const id = await ensureSupplierSelected();
     if (!id) {
       toast.error("Enter a supplier name");
@@ -150,7 +152,7 @@ export function PurchaseBillModal({
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     formData.set("supplierId", id);
     await execute(formData);
   }

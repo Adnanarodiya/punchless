@@ -147,6 +147,8 @@ export function QuickBillModal({
     event.preventDefault();
     if (loading || creatingCustomer) return;
 
+    const form = event.currentTarget;
+
     if (!invoiceSuffix.trim()) {
       toast.error("Enter invoice number after the prefix");
       return;
@@ -159,7 +161,7 @@ export function QuickBillModal({
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     formData.set("clientId", id);
     await execute(formData);
   }

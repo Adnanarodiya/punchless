@@ -165,7 +165,8 @@ export function GeneralEntryModal({
     event.preventDefault();
     if (loading || creatingParty) return;
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const resolvedEntryKind = paymentMode === "bank" ? "party" : entryKind;
     formData.set("direction", direction);
     formData.set("paymentMode", paymentMode);

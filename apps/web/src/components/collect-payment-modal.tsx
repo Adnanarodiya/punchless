@@ -141,6 +141,8 @@ export function CollectPaymentModal({
     event.preventDefault();
     if (paying || creatingCustomer) return;
 
+    const form = event.currentTarget;
+
     const resolvedClientId = await ensureCustomerSelected();
     if (!resolvedClientId) {
       toast.error("Enter a customer name");
@@ -148,7 +150,7 @@ export function CollectPaymentModal({
       return;
     }
 
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     const amount = Number(formData.get("amount") || 0);
 
     if (amount >= CLIENT_PAYMENT_CONFIRM_THRESHOLD) {

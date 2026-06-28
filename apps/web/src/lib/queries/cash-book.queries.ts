@@ -76,7 +76,7 @@ function summarizeLines(lines: BookLine[]) {
 
 function normalizeRange(startDate: string, endDate: string) {
   const start = startDate.trim();
-  let end = endDate.trim() || start;
+  const end = endDate.trim() || start;
   if (end < start) {
     return { start: end, end: start };
   }

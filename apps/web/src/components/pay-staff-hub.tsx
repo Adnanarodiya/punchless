@@ -15,6 +15,7 @@ import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { EmployeeSalaryPayable } from "@/lib/queries/salary.queries";
 import type { StaffPaymentWithDetails } from "@/lib/queries/staff-payment.queries";
+import type { AttendanceImportSummary } from "@/lib/queries/attendance-import.queries";
 import type { FingerprintSalaryReport } from "@/lib/utils/fingerprint-salary-report";
 import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
 import { fetchEmployeeSalaryPayable } from "@/lib/actions/staff-payment.actions";
@@ -24,6 +25,7 @@ type Tab = "this-month" | "history";
 type Props = {
   currentMonth: string;
   fingerprintReport: FingerprintSalaryReport | null;
+  savedMonths: AttendanceImportSummary[];
   employeesForMapping: Array<{ id: string; fullName: string }>;
   payments: StaffPaymentWithDetails[];
   employees: EmployeeWithWorkshop[];
@@ -49,6 +51,7 @@ function buildSalaryUrl(
 export function PayStaffHub({
   currentMonth,
   fingerprintReport,
+  savedMonths,
   employeesForMapping,
   payments,
   employees,
@@ -161,6 +164,7 @@ export function PayStaffHub({
           <FingerprintSalarySection
             currentMonth={currentMonth}
             report={fingerprintReport}
+            savedMonths={savedMonths}
             employeesForMapping={employeesForMapping}
             unifiedPayStaff
             onPayEmployee={(employeeId, amount) => {

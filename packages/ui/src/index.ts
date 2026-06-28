@@ -51,6 +51,12 @@ export {
 } from "./components/collapsible-nav-group";
 export { DataTable, type DataTableProps, type DataTableColumn } from "./components/data-table";
 export {
+  TablePagination,
+  type TablePaginationProps,
+} from "./components/table-pagination";
+export { DEFAULT_TABLE_PAGE_SIZE, paginateItems } from "./lib/paginate";
+export { useTablePagination } from "./hooks/use-table-pagination";
+export {
   Tooltip,
   TooltipTrigger,
   TooltipContent,

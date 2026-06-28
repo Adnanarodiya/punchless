@@ -18,8 +18,10 @@ import { maskAmount } from "@/lib/utils/mask-financial";
 
 type Props = {
   summary: DailyBookDaySummary;
-  yesterdaySummary: DailyBookDaySummary;
+  comparisonSummary: DailyBookDaySummary;
   hasDataLockPin: boolean;
+  periodLabel?: string;
+  comparisonLabel?: string;
 };
 
 type CardConfig = {
@@ -83,15 +85,17 @@ function round2(n: number) {
 }
 
 function TrendBadge({
-  today,
-  yesterday,
+  current,
+  previous,
+  previousLabel,
   invert,
 }: {
-  today: number;
-  yesterday: number;
+  current: number;
+  previous: number;
+  previousLabel: string;
   invert?: boolean;
 }) {
-  const change = percentChange(today, yesterday);
+  const change = percentChange(current, previous);
   if (change === null) return null;
 
   const isUp = change > 0;
@@ -103,7 +107,9 @@ function TrendBadge({
 
   return (
     <p className="mt-2 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-      <span>Yesterday: {formatCurrency(yesterday)}</span>
+      <span>
+        {previousLabel}: {formatCurrency(previous)}
+      </span>
       {!isFlat ? (
         <span
           className={cn(
@@ -129,21 +135,23 @@ function TrendBadge({
 
 export function DailyReportSummaryCards({
   summary,
-  yesterdaySummary,
+  comparisonSummary,
   hasDataLockPin,
+  periodLabel = "Today",
+  comparisonLabel = "Yesterday",
 }: Props) {
   const locked = useFinancialLocked(hasDataLockPin);
 
   return (
-    <section aria-labelledby="daily-summary-heading">
-      <h2 id="daily-summary-heading" className="sr-only">
-        Daily summary
+    <section aria-labelledby="book-summary-heading">
+      <h2 id="book-summary-heading" className="sr-only">
+        Period summary
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {CARDS.map((card) => {
           const Icon = card.icon;
           const value = summary[card.key];
-          const yesterdayValue = yesterdaySummary[card.key];
+          const comparisonValue = comparisonSummary[card.key];
 
           return (
             <div
@@ -155,7 +163,7 @@ export function DailyReportSummaryCards({
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {card.label}
                   </p>
-                  <p className="text-xs text-muted-foreground">Today</p>
+                  <p className="text-xs text-muted-foreground">{periodLabel}</p>
                 </div>
                 <div className={cn("rounded-lg p-2", card.bg, card.color)}>
                   <Icon className="size-4" />
@@ -171,8 +179,9 @@ export function DailyReportSummaryCards({
               </p>
               {!locked ? (
                 <TrendBadge
-                  today={value}
-                  yesterday={yesterdayValue}
+                  current={value}
+                  previous={comparisonValue}
+                  previousLabel={comparisonLabel}
                   invert={card.invertTrend}
                 />
               ) : null}

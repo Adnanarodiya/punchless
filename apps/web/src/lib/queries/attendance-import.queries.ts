@@ -259,6 +259,59 @@ export async function getFingerprintEmployeePayable(
   };
 }
 
+export type AttendanceImportSummary = {
+  salaryMonth: string;
+  label: string;
+  fileName: string;
+  uploadedAt: string;
+  employeeCount: number;
+};
+
+export async function getAttendanceImportMonths(): Promise<AttendanceImportSummary[]> {
+  const supabase = await createClient();
+  const config = await getCompanyFingerprintConfig(supabase);
+  if (!config) return [];
+
+  const { data: imports } = await supabase
+    .from("attendance_imports")
+    .select("id, salary_month, file_name, uploaded_at")
+    .eq("company_id", config.companyId)
+    .order("salary_month", { ascending: false });
+
+  if (!imports?.length) return [];
+
+  const importIds = (imports as Array<{ id: string }>).map((row) => row.id);
+  const { data: rows } = await supabase
+    .from("attendance_import_rows")
+    .select("import_id")
+    .in("import_id", importIds);
+
+  const countByImport = new Map<string, number>();
+  for (const row of (rows as Array<{ import_id: string }> | null) ?? []) {
+    countByImport.set(row.import_id, (countByImport.get(row.import_id) ?? 0) + 1);
+  }
+
+  return (imports as Array<{
+    id: string;
+    salary_month: string;
+    file_name: string;
+    uploaded_at: string;
+  }>).map((row) => {
+    const [year, month] = row.salary_month.split("-").map(Number);
+    const label = new Date(year, month - 1, 1).toLocaleDateString("en-IN", {
+      month: "long",
+      year: "numeric",
+    });
+    return {
+      salaryMonth: row.salary_month,
+      label,
+      fileName: row.file_name,
+      uploadedAt: row.uploaded_at,
+      employeeCount: countByImport.get(row.id) ?? 0,
+    };
+  });
+}
+
 export async function getActiveEmployeesForMapping(): Promise<
   Array<{ id: string; fullName: string }>
 > {

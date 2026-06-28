@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@punchless/ui/components/button";
+import { TablePagination } from "@punchless/ui/components/table-pagination";
+import { useTablePagination } from "@punchless/ui/hooks/use-table-pagination";
 import { cn } from "@punchless/ui/lib/utils";
 import {
   AlertCircle,
@@ -20,6 +22,7 @@ import { TableEmptyState } from "@/components/table-empty-state";
 import { FingerprintNameMapModal } from "@/components/fingerprint-name-map-modal";
 import { stickyFirstTdClass, stickyFirstThClass } from "@/lib/constants/table-styles";
 import { uploadFingerprintAttendance } from "@/lib/actions/attendance-import.actions";
+import type { AttendanceImportSummary } from "@/lib/queries/attendance-import.queries";
 
 import {
   buildFingerprintExportRows,
@@ -37,6 +40,7 @@ import { toast } from "sonner";
 type Props = {
   currentMonth: string;
   report: FingerprintSalaryReport | null;
+  savedMonths: AttendanceImportSummary[];
   employeesForMapping: Array<{ id: string; fullName: string }>;
   /** When true, Pay opens modal on Pay Staff hub (no page navigation). */
   unifiedPayStaff?: boolean;
@@ -68,9 +72,20 @@ function buildPayHref(
   return `/dashboard/salary/payments?${params.toString()}`;
 }
 
+function formatUploadDate(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function FingerprintSalarySection({
   currentMonth,
   report,
+  savedMonths,
   employeesForMapping,
   unifiedPayStaff = false,
   onPayEmployee,
@@ -92,6 +107,9 @@ export function FingerprintSalarySection({
     line.employeeName.toLowerCase().includes(filterText.toLowerCase())
   );
 
+  const tablePagination = useTablePagination(lines, { resetKey: filterText });
+  const visibleLines = tablePagination.items;
+
   const totalEarned = lines.reduce((sum, line) => sum + line.earnedSalary, 0);
   const totalOt = lines.reduce((sum, line) => sum + line.otPay, 0);
   const totalAdvance = lines.reduce((sum, line) => sum + line.advanceDeduction, 0);
@@ -112,14 +130,31 @@ export function FingerprintSalarySection({
         toast.error(result.error ?? "Upload failed");
         return;
       }
-      const uploadedMonth = (
-        result.data as { salaryMonth?: string } | undefined
-      )?.salaryMonth;
-      toast.success(
-        uploadedMonth && uploadedMonth !== currentMonth
-          ? `Attendance saved — showing ${uploadedMonth}`
-          : "Attendance uploaded — salary report ready."
-      );
+      const data = result.data as
+        | {
+            salaryMonth?: string;
+            alreadyExists?: boolean;
+            fileName?: string;
+            employeeCount?: number;
+          }
+        | undefined;
+      const uploadedMonth = data?.salaryMonth;
+
+      if (data?.alreadyExists) {
+        const label =
+          savedMonths.find((m) => m.salaryMonth === uploadedMonth)?.label ??
+          uploadedMonth;
+        toast.message(`Attendance for ${label} is already saved`, {
+          description: "Opening saved data — file was not uploaded again.",
+        });
+      } else {
+        toast.success(
+          uploadedMonth && uploadedMonth !== currentMonth
+            ? `Attendance saved — showing ${uploadedMonth}`
+            : "Attendance uploaded — salary report ready."
+        );
+      }
+
       if (uploadedMonth && uploadedMonth !== currentMonth) {
         router.push(`/dashboard/salary?month=${uploadedMonth}`);
       } else {
@@ -172,8 +207,31 @@ export function FingerprintSalarySection({
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-lg font-semibold">Fingerprint attendance upload</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Calendar className="size-4 text-muted-foreground" />
+                {savedMonths.length > 0 ? (
+                  <select
+                    value={
+                      savedMonths.some((m) => m.salaryMonth === currentMonth)
+                        ? currentMonth
+                        : ""
+                    }
+                    onChange={(e) => {
+                      if (e.target.value) handleMonthChange(e.target.value);
+                    }}
+                    className="h-9 min-w-[12rem] rounded-lg border border-input bg-background px-3 text-sm"
+                    aria-label="Saved attendance month"
+                  >
+                    <option value="" disabled>
+                      Saved months
+                    </option>
+                    {savedMonths.map((month) => (
+                      <option key={month.salaryMonth} value={month.salaryMonth}>
+                        {month.label} ({month.employeeCount} staff)
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <input
                   type="month"
                   value={currentMonth}
@@ -184,8 +242,8 @@ export function FingerprintSalarySection({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Pick the month to view, or just upload — we read the month from the file
-              automatically (e.g. May export → May salary).
+              Upload reads the month from the file. Each month is saved once — uploading the
+              same month again opens the saved report without re-importing.
             </p>
             {report?.fileName ? (
               <p className="text-xs text-muted-foreground">
@@ -255,6 +313,36 @@ export function FingerprintSalarySection({
             <span className="rounded-full bg-muted px-2.5 py-1">
               Sundays excluded from absent penalty
             </span>
+          </div>
+        ) : null}
+
+        {savedMonths.length > 0 ? (
+          <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+            <p className="mb-3 text-sm font-medium">Saved attendance uploads</p>
+            <ul className="space-y-2">
+              {savedMonths.map((month) => (
+                <li key={month.salaryMonth}>
+                  <button
+                    type="button"
+                    onClick={() => handleMonthChange(month.salaryMonth)}
+                    className={cn(
+                      "flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent/50",
+                      month.salaryMonth === currentMonth
+                        ? "border-primary/40 bg-primary/5"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    <span className="font-medium">{month.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {month.employeeCount} staff · {month.fileName}
+                    </span>
+                    <span className="w-full text-xs text-muted-foreground sm:w-auto sm:text-right">
+                      {formatUploadDate(month.uploadedAt)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
       </div>
@@ -338,13 +426,13 @@ export function FingerprintSalarySection({
                       </td>
                     </tr>
                   ) : (
-                    lines.map((line, index) => (
+                    visibleLines.map((line, index) => (
                       <tr
                         key={line.importRowId ?? `${line.fingerprintName}-${index}`}
                         className="group border-b border-border last:border-0 hover:bg-muted/50"
                       >
                         <td className={cn("p-4 text-muted-foreground", stickyFirstTdClass)}>
-                          {index + 1}
+                          {tablePagination.startIndex + index + 1}
                         </td>
                         <td className={cn("p-4 font-medium", stickyFirstTdClass)}>
                           <div className="flex flex-col gap-0.5">
@@ -442,6 +530,17 @@ export function FingerprintSalarySection({
                 </tbody>
               </table>
             </div>
+            {lines.length > 0 ? (
+              <div className="border-t border-border px-4 py-3">
+                <TablePagination
+                  page={tablePagination.page}
+                  totalPages={tablePagination.totalPages}
+                  totalItems={tablePagination.totalItems}
+                  pageSize={tablePagination.pageSize}
+                  onPageChange={tablePagination.setPage}
+                />
+              </div>
+            ) : null}
           </div>
         </section>
       )}

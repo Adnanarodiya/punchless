@@ -512,3 +512,377 @@ export async function getRojmelReport(
   dataRows.reverse();
   return openingRow ? [openingRow, ...dataRows] : dataRows;
 }
+
+export type BalanceSheetRow = {
+  id: string;
+  section: "asset" | "liability";
+  label: string;
+  opening: number;
+  closing: number;
+};
+
+export type BalanceSheetBankRow = {
+  id: string;
+  bankName: string;
+  opening: number;
+  closing: number;
+};
+
+export type BalanceSheetReport = {
+  startDate: string;
+  endDate: string;
+  rows: BalanceSheetRow[];
+  banks: BalanceSheetBankRow[];
+  openingAssets: number;
+  closingAssets: number;
+  openingLiabilities: number;
+  closingLiabilities: number;
+  openingNetWorth: number;
+  closingNetWorth: number;
+};
+
+type BalanceSnapshot = {
+  cash: number;
+  bank: number;
+  customerReceivable: number;
+  customerAdvance: number;
+  supplierPayable: number;
+  staffPayable: number;
+  bankById: Record<string, number>;
+};
+
+function sumPositive(values: number[]) {
+  return round2(values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0));
+}
+
+function sumNegativeAsPositive(values: number[]) {
+  return round2(
+    values.reduce((sum, value) => sum + (value < 0 ? Math.abs(value) : 0), 0)
+  );
+}
+
+function applyLedgerDelta(
+  balances: Record<string, number>,
+  entityId: string,
+  entryType: string,
+  amount: number,
+  mode: "client" | "credit-normal"
+) {
+  if (!balances[entityId]) balances[entityId] = 0;
+  if (mode === "client") {
+    balances[entityId] =
+      entryType === "debit"
+        ? balances[entityId] + amount
+        : balances[entityId] - amount;
+  } else {
+    balances[entityId] =
+      entryType === "credit"
+        ? balances[entityId] + amount
+        : balances[entityId] - amount;
+  }
+}
+
+async function getBalanceSnapshot(
+  asOfDate: string,
+  inclusive: boolean
+): Promise<BalanceSnapshot> {
+  const supabase = await createClient();
+  const dateFilter = inclusive ? "lte" : "lt";
+
+  const ledgerQuery = supabase
+    .from("ledger_entries")
+    .select("entity_type, entity_id, entry_type, amount, entry_date");
+
+  const { data: ledgerRows } =
+    dateFilter === "lte"
+      ? await ledgerQuery.lte("entry_date", asOfDate)
+      : await ledgerQuery.lt("entry_date", asOfDate);
+
+  const clientBalances: Record<string, number> = {};
+  const supplierBalances: Record<string, number> = {};
+  const staffBalances: Record<string, number> = {};
+  const bankBalances: Record<string, number> = {};
+
+  for (const row of ledgerRows ?? []) {
+    const amount = parseAmount(row.amount);
+    const entityId = row.entity_id as string;
+    if (!entityId) continue;
+
+    switch (row.entity_type) {
+      case "client":
+        applyLedgerDelta(clientBalances, entityId, row.entry_type, amount, "client");
+        break;
+      case "supplier":
+        applyLedgerDelta(
+          supplierBalances,
+          entityId,
+          row.entry_type,
+          amount,
+          "credit-normal"
+        );
+        break;
+      case "staff":
+        applyLedgerDelta(
+          staffBalances,
+          entityId,
+          row.entry_type,
+          amount,
+          "credit-normal"
+        );
+        break;
+      case "bank":
+        applyLedgerDelta(
+          bankBalances,
+          entityId,
+          row.entry_type,
+          amount,
+          "credit-normal"
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  const paymentDateFilter = (query: ReturnType<typeof supabase.from>) =>
+    dateFilter === "lte"
+      ? query.lte("payment_date", asOfDate)
+      : query.lt("payment_date", asOfDate);
+
+  const transactionDateFilter = (query: ReturnType<typeof supabase.from>) =>
+    dateFilter === "lte"
+      ? query.lte("transaction_date", asOfDate)
+      : query.lt("transaction_date", asOfDate);
+
+  const invoiceDateFilter = (query: ReturnType<typeof supabase.from>) =>
+    dateFilter === "lte"
+      ? query.lte("invoice_date", asOfDate)
+      : query.lt("invoice_date", asOfDate);
+
+  const [
+    { data: clientPayments },
+    { data: invoices },
+    { data: transactions },
+    { data: supplierPayments },
+    { data: staffPayments },
+    { data: advances },
+  ] = await Promise.all([
+    paymentDateFilter(
+      supabase
+        .from("client_payments")
+        .select("amount")
+        .eq("payment_mode", "cash")
+    ),
+    invoiceDateFilter(
+      supabase.from("invoices").select("cash_amount").eq("is_deleted", false)
+    ),
+    transactionDateFilter(
+      supabase.from("transactions").select("amount, transaction_type, payment_mode")
+    ),
+    paymentDateFilter(
+      supabase
+        .from("supplier_payments")
+        .select("amount")
+        .eq("payment_mode", "cash")
+    ),
+    paymentDateFilter(
+      supabase.from("staff_payments").select("amount, payment_mode")
+    ),
+    supabase
+      .from("salary_advances")
+      .select("amount, approved_at")
+      .eq("status", "approved"),
+  ]);
+
+  let cash = 0;
+
+  for (const row of clientPayments ?? []) {
+    cash += parseAmount(row.amount);
+  }
+
+  for (const row of invoices ?? []) {
+    cash += parseAmount(row.cash_amount);
+  }
+
+  for (const row of transactions ?? []) {
+    const amount = parseAmount(row.amount);
+    if (row.payment_mode !== "cash") continue;
+    if (row.transaction_type === "income") cash += amount;
+    else cash -= amount;
+  }
+
+  for (const row of supplierPayments ?? []) {
+    cash -= parseAmount(row.amount);
+  }
+
+  for (const row of staffPayments ?? []) {
+    if (row.payment_mode !== "cash") continue;
+    cash -= parseAmount(row.amount);
+  }
+
+  for (const row of advances ?? []) {
+    if (!row.approved_at) continue;
+    const approvedDate = row.approved_at.slice(0, 10);
+    const inRange =
+      dateFilter === "lte" ? approvedDate <= asOfDate : approvedDate < asOfDate;
+    if (inRange) cash -= parseAmount(row.amount);
+  }
+
+  const staffAdvanceQuery =
+    dateFilter === "lte"
+      ? supabase
+          .from("salary_advances")
+          .select("amount, employee_id, approved_at")
+          .eq("status", "approved")
+          .lte("approved_at", `${asOfDate}T23:59:59`)
+      : supabase
+          .from("salary_advances")
+          .select("amount, employee_id, approved_at")
+          .eq("status", "approved")
+          .lt("approved_at", `${asOfDate}T00:00:00`);
+
+  const { data: staffAdvanceRows } = await staffAdvanceQuery;
+
+  for (const row of staffAdvanceRows ?? []) {
+    const employeeId = row.employee_id as string;
+    if (!employeeId) continue;
+    if (!staffBalances[employeeId]) staffBalances[employeeId] = 0;
+    staffBalances[employeeId] -= parseAmount(row.amount);
+  }
+
+  const customerReceivable = sumPositive(Object.values(clientBalances));
+  const customerAdvance = sumNegativeAsPositive(Object.values(clientBalances));
+  const supplierPayable = sumPositive(Object.values(supplierBalances));
+  const staffPayable = sumPositive(Object.values(staffBalances));
+  const bank = round2(
+    Object.values(bankBalances).reduce((sum, value) => sum + value, 0)
+  );
+
+  const bankById: Record<string, number> = {};
+  for (const [id, value] of Object.entries(bankBalances)) {
+    bankById[id] = round2(value);
+  }
+
+  return {
+    cash: round2(cash),
+    bank,
+    customerReceivable,
+    customerAdvance,
+    supplierPayable,
+    staffPayable,
+    bankById,
+  };
+}
+
+function buildBalanceSheetRows(
+  opening: BalanceSnapshot,
+  closing: BalanceSnapshot
+): BalanceSheetRow[] {
+  const rows: BalanceSheetRow[] = [
+    {
+      id: "cash",
+      section: "asset",
+      label: "Cash in hand",
+      opening: opening.cash,
+      closing: closing.cash,
+    },
+    {
+      id: "bank",
+      section: "asset",
+      label: "Bank balance (all accounts)",
+      opening: opening.bank,
+      closing: closing.bank,
+    },
+    {
+      id: "customer-due",
+      section: "asset",
+      label: "Customer dues (receivable)",
+      opening: opening.customerReceivable,
+      closing: closing.customerReceivable,
+    },
+  ];
+
+  if (opening.customerAdvance > 0 || closing.customerAdvance > 0) {
+    rows.push({
+      id: "customer-advance",
+      section: "liability",
+      label: "Customer advances",
+      opening: opening.customerAdvance,
+      closing: closing.customerAdvance,
+    });
+  }
+
+  rows.push(
+    {
+      id: "supplier-payable",
+      section: "liability",
+      label: "Supplier payable",
+      opening: opening.supplierPayable,
+      closing: closing.supplierPayable,
+    },
+    {
+      id: "staff-payable",
+      section: "liability",
+      label: "Staff salary payable",
+      opening: opening.staffPayable,
+      closing: closing.staffPayable,
+    }
+  );
+
+  return rows;
+}
+
+function sumSection(rows: BalanceSheetRow[], section: "asset" | "liability") {
+  const opening = round2(
+    rows
+      .filter((row) => row.section === section)
+      .reduce((sum, row) => sum + row.opening, 0)
+  );
+  const closing = round2(
+    rows
+      .filter((row) => row.section === section)
+      .reduce((sum, row) => sum + row.closing, 0)
+  );
+  return { opening, closing };
+}
+
+export async function getBalanceSheetReport(
+  startDate: string,
+  endDate: string
+): Promise<BalanceSheetReport> {
+  const supabase = await createClient();
+
+  const [opening, closing, { data: banks }] = await Promise.all([
+    getBalanceSnapshot(startDate, false),
+    getBalanceSnapshot(endDate, true),
+    supabase
+      .from("bank_accounts")
+      .select("id, bank_name")
+      .eq("is_deleted", false)
+      .order("bank_name", { ascending: true }),
+  ]);
+
+  const rows = buildBalanceSheetRows(opening, closing);
+  const assets = sumSection(rows, "asset");
+  const liabilities = sumSection(rows, "liability");
+
+  const bankRows: BalanceSheetBankRow[] = (banks ?? []).map((bank) => ({
+    id: bank.id,
+    bankName: bank.bank_name,
+    opening: opening.bankById[bank.id] ?? 0,
+    closing: closing.bankById[bank.id] ?? 0,
+  }));
+
+  return {
+    startDate,
+    endDate,
+    rows,
+    banks: bankRows,
+    openingAssets: assets.opening,
+    closingAssets: assets.closing,
+    openingLiabilities: liabilities.opening,
+    closingLiabilities: liabilities.closing,
+    openingNetWorth: round2(assets.opening - liabilities.opening),
+    closingNetWorth: round2(assets.closing - liabilities.closing),
+  };
+}

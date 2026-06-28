@@ -57,7 +57,8 @@ export type DailyBookDaySummary = {
 };
 
 export type DailyBookReport = {
-  date: string;
+  periodStart: string;
+  periodEnd: string;
   totalIncome: number;
   totalExpense: number;
   totalTransfer: number;
@@ -71,7 +72,7 @@ export type DailyBookReport = {
   expenseEntries: number;
   purchasesBilled: number;
   summary: DailyBookDaySummary;
-  yesterdaySummary: DailyBookDaySummary;
+  comparisonSummary: DailyBookDaySummary;
   lines: DailyBookLine[];
 };
 
@@ -83,13 +84,25 @@ const STAFF_TYPE_CATEGORY: Record<string, string> = {
 
 type BuildResult = Omit<
   DailyBookReport,
-  "date" | "yesterdaySummary"
+  "periodStart" | "periodEnd" | "comparisonSummary"
 >;
 
-async function buildDailyBookForDate(date: string): Promise<BuildResult> {
+function previousMonthBounds(startDate: string): { start: string; end: string } {
+  const d = new Date(`${startDate}T12:00:00`);
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  const start = d.toISOString().slice(0, 10);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return { start, end };
+}
+
+async function buildDailyBookForRange(
+  startDate: string,
+  endDate: string
+): Promise<BuildResult> {
   const supabase = await createClient();
-  const dayStart = `${date}T00:00:00`;
-  const dayEnd = `${date}T23:59:59`;
+  const rangeStart = `${startDate}T00:00:00`;
+  const rangeEnd = `${endDate}T23:59:59`;
 
   const [
     { data: invoices },
@@ -109,58 +122,66 @@ async function buildDailyBookForDate(date: string): Promise<BuildResult> {
         "id, total_amount, cash_amount, bank_amount, credit_amount, payment_mode, invoice_number, invoice_date, remark, created_at, gst_percent, clients(name), creator:users!invoices_created_by_fkey(full_name)"
       )
       .eq("is_deleted", false)
-      .eq("invoice_date", date),
+      .gte("invoice_date", startDate)
+      .lte("invoice_date", endDate),
     supabase
       .from("client_payments")
       .select(
         "id, amount, payment_mode, remark, payment_date, created_at, clients(name), creator:users!client_payments_created_by_fkey(full_name)"
       )
-      .eq("payment_date", date),
+      .gte("payment_date", startDate)
+      .lte("payment_date", endDate),
     supabase
       .from("supplier_payments")
       .select(
         "id, amount, payment_mode, remark, payment_date, created_at, suppliers(name), creator:users!supplier_payments_created_by_fkey(full_name)"
       )
-      .eq("payment_date", date),
+      .gte("payment_date", startDate)
+      .lte("payment_date", endDate),
     supabase
       .from("staff_payments")
       .select(
         "id, amount, payment_mode, payment_type, remark, payment_date, created_at, users!staff_payments_employee_id_fkey(full_name), creator:users!staff_payments_created_by_fkey(full_name)"
       )
-      .eq("payment_date", date),
+      .gte("payment_date", startDate)
+      .lte("payment_date", endDate),
     supabase
       .from("salary_advances")
       .select(
         "id, amount, reason, approved_at, users!salary_advances_employee_id_fkey(full_name), approver:users!salary_advances_approved_by_fkey(full_name)"
       )
       .eq("status", "approved")
-      .gte("approved_at", dayStart)
-      .lte("approved_at", dayEnd),
+      .gte("approved_at", rangeStart)
+      .lte("approved_at", rangeEnd),
     supabase
       .from("transactions")
       .select(
         "id, amount, transaction_type, payment_mode, particular, remark, transaction_date, created_at, creator:users!transactions_created_by_fkey(full_name)"
       )
-      .eq("transaction_date", date),
+      .gte("transaction_date", startDate)
+      .lte("transaction_date", endDate),
     supabase
       .from("purchase_invoices")
       .select(
         "id, total_amount, invoice_number, invoice_date, remark, created_at, suppliers(name), creator:users!purchase_invoices_created_by_fkey(full_name)"
       )
       .eq("is_deleted", false)
-      .eq("invoice_date", date),
+      .gte("invoice_date", startDate)
+      .lte("invoice_date", endDate),
     supabase
       .from("bank_transfers")
       .select(
         "id, amount, remark, transfer_date, created_at, from_bank_id, to_bank_id, creator:users!bank_transfers_created_by_fkey(full_name)"
       )
-      .eq("transfer_date", date),
+      .gte("transfer_date", startDate)
+      .lte("transfer_date", endDate),
     supabase
       .from("bank_transactions")
       .select(
         "id, amount, transaction_type, remark, transaction_date, created_at, bank_accounts(bank_name), creator:users!bank_transactions_created_by_fkey(full_name)"
       )
-      .eq("transaction_date", date),
+      .gte("transaction_date", startDate)
+      .lte("transaction_date", endDate),
     supabase.from("bank_accounts").select("id, bank_name"),
   ]);
 
@@ -335,7 +356,7 @@ async function buildDailyBookForDate(date: string): Promise<BuildResult> {
     };
     const amount = parseAmount(r.amount);
     const name = r.users?.full_name ?? "Staff";
-    const approvedDate = r.approved_at?.slice(0, 10) ?? date;
+    const approvedDate = r.approved_at?.slice(0, 10) ?? startDate;
 
     totalExpense += amount;
     advanceGiven += amount;
@@ -623,13 +644,32 @@ async function buildDailyBookForDate(date: string): Promise<BuildResult> {
 
 export async function getDailyBookReport(date: string): Promise<DailyBookReport> {
   const [today, yesterday] = await Promise.all([
-    buildDailyBookForDate(date),
-    buildDailyBookForDate(shiftDate(date, -1)),
+    buildDailyBookForRange(date, date),
+    buildDailyBookForRange(shiftDate(date, -1), shiftDate(date, -1)),
   ]);
 
   return {
-    date,
+    periodStart: date,
+    periodEnd: date,
     ...today,
-    yesterdaySummary: yesterday.summary,
+    comparisonSummary: yesterday.summary,
+  };
+}
+
+export async function getMonthlyBookReport(
+  startDate: string,
+  endDate: string
+): Promise<DailyBookReport> {
+  const previous = previousMonthBounds(startDate);
+  const [current, prior] = await Promise.all([
+    buildDailyBookForRange(startDate, endDate),
+    buildDailyBookForRange(previous.start, previous.end),
+  ]);
+
+  return {
+    periodStart: startDate,
+    periodEnd: endDate,
+    ...current,
+    comparisonSummary: prior.summary,
   };
 }

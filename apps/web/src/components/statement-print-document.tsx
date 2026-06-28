@@ -50,6 +50,7 @@ export function StatementPrintDocument({
         totals={statement.totals}
         lines={statement.lines}
         labels={tableLabels}
+        enablePagination={false}
       />
     </div>
   );

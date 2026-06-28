@@ -5,6 +5,7 @@ import {
   CalendarRange,
   FileText,
   Receipt,
+  Scale,
   ScrollText,
   TrendingDown,
   TrendingUp,
@@ -31,7 +32,7 @@ export const REPORT_NAV_ITEMS: ReportNavItem[] = [
   {
     href: "/dashboard/reports/monthly",
     title: "Monthly Report",
-    description: "Month-wise P&L and activity totals.",
+    description: "Full month book — every bill, payment, salary, and expense with summary cards.",
     icon: Calendar,
     tier: "simple",
   },
@@ -75,6 +76,13 @@ export const REPORT_NAV_ITEMS: ReportNavItem[] = [
     title: "Daily cash book",
     description: "Rojmel — every money movement with running balance.",
     icon: ScrollText,
+    tier: "full",
+  },
+  {
+    href: "/dashboard/reports/balance-sheet",
+    title: "Balance Sheet",
+    description: "Assets vs liabilities — opening and closing snapshot for any date range.",
+    icon: Scale,
     tier: "full",
   },
 ];

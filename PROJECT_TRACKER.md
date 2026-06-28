@@ -63,6 +63,7 @@
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
 | `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
 | `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner (`pnpm db:reset-company-data`) |
+| `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login only (`pnpm db:wipe-keep-user:confirm`, default `aiarodiya07@gmail.com`) |
 | `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
 | `apps/web/vercel.json` | **Deploy** | Vercel monorepo install/build commands (root dir = `apps/web`) |
@@ -112,6 +113,7 @@
 | `migrations/20260626120000_company_profile_fields.sql` | 13.5 | `companies` letterhead fields: `tagline`, `address`, `phone`, `email`, `logo_url` |
 | `migrations/20260627120000_salary_mode_and_daily_payroll.sql` | 6 | `companies.salary_mode` (hourly/fixed) + `get_daily_attendance_payroll()` RPC (grace half-days, IST) |
 | `migrations/20260627140000_fingerprint_attendance_import.sql` | **Phase 0** | `companies.ot_rate_multiplier`; `attendance_imports`, `attendance_import_rows`, `employee_fingerprint_aliases` + RLS |
+| `migrations/20260628120000_sales_register_imports.sql` | **Today's entry** | `sales_register_imports` — one row per company per `entry_date`; tracks CSV upload metadata + RLS |
 | `migrations/20260627160000_dashboard_experience.sql` | **P0-1** | `companies.dashboard_experience` (`simple` \| `full`, default `simple`) — Simple Owner Mode nav filter |
 | `migrations/20260627180000_ui_language.sql` | **P2-2** | `companies.ui_language` (`en` \| `gu` \| `hi`) — owner dashboard label language |
 | `migrations/20260627200000_staff_payment_salary_slip.sql` | **Pay UX** | `staff_payments.salary_month` + `slip_snapshot` JSONB for printable salary slips |
@@ -159,14 +161,17 @@
 | `src/components/page-header.tsx` | 11A/9 | Page title + optional `titleAddon` + description + actions slot |
 | `src/components/breadcrumbs.tsx` | 11A | Accessible breadcrumb navigation |
 | `src/components/collapsible-nav-group.tsx` | 11A | Collapsible sidebar section group |
-| `src/components/data-table.tsx` | 11A/4 | Data table — search, ReactNode empty state, optional sticky first column |
+| `src/components/data-table.tsx` | 11A/4 | Data table — search, pagination (50/page), ReactNode empty state, sticky first column |
+| `src/components/table-pagination.tsx` | **P3-1** | Reusable table pagination — Previous/Next, page count, showing X–Y of Z |
+| `src/hooks/use-table-pagination.ts` | **P3-1** | Client hook for paginated slices; expands all rows on print |
+| `src/lib/paginate.ts` | **P3-1** | `paginateItems` utility + `DEFAULT_TABLE_PAGE_SIZE` (50) |
 | `src/components/tooltip.tsx` | 4 | Radix tooltip primitive (TooltipProvider, Trigger, Content) |
 | `src/components/payment-mode-select.tsx` | 11B | Cash/Bank/Credit payment mode select |
 | `src/components/statement-letterhead.tsx` | 13.5 | Company gradient letterhead for printable statements |
 | `src/components/statement-entity-box.tsx` | 13.5 | Dashed "Statement To" entity box with date range |
 | `src/components/balance-badge.tsx` | 13.5 | Running balance with Due/Nil B/F/Advance labels |
 | `src/components/statement-toolbar.tsx` | 13.5 | Search + Print controls (screen only) |
-| `src/components/statement-table.tsx` | 13.5 | Ledger table — transaction rows (newest first) + period total; no opening/closing rows |
+| `src/components/statement-table.tsx` | 13.5 | Ledger table — paginated rows (50/page) + period total; print shows all rows |
 | `src/components/statement-format.ts` | 13.5 | Shared statement date/amount formatting helpers |
 
 ---
@@ -219,10 +224,12 @@
 | `dashboard/dashboard-pending-dues.tsx` | 15/**P1-3** | “Who owes what” — Collect/Pay deep links per row |
 | `dashboard/daily-report/page.tsx` | **Daily report** | Dedicated daily cash book page (Shahin-style) |
 | `dashboard/daily-report/daily-report-manager.tsx` | **Daily report** | Shahin table — Income/Expense/Transfer/Purchase columns, totals row, balance footer, delete |
+| `dashboard/todays-entry/page.tsx` | **Today's entry** | Server page — date picker, saved import days, sales register upload for one day |
+| `dashboard/todays-entry/todays-entry-manager.tsx` | **Today's entry** | Upload imports all days in file; date picker views one day; saved-days list; table + pagination |
 | `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
 | `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense / income → New bill → Collect → Pay supplier → Pay employee |
 | `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
-| `lib/queries/daily-book.queries.ts` | **Daily report** | Full day book — invoices, payments, salary, expenses, bank tx; typed rows + 5-card summary vs yesterday |
+| `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; typed rows + 5-card summary vs prior period |
 | `components/daily-report-summary-cards.tsx` | **Daily report** | Billing, cash, bank, udhar, expenses KPI cards with yesterday % change |
 | `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
@@ -264,7 +271,7 @@
 | `support-button.tsx` | **P3-2** | Floating WhatsApp help button on dashboard (`NEXT_PUBLIC_SUPPORT_PHONE`) |
 | `lib/utils/support-contact.ts` | **P3-2** | `wa.me` / `tel:` helpers for support contact |
 | `lib/utils/dashboard-experience-guard.ts` | **P3-1** | `redirectUnlessFullDashboard()` — block Simple mode on full-only routes |
-| `lib/content/reports-nav.ts` | **P3-1** | Report list with `simple` / `full` tier; Daily + Monthly only in Simple |
+| `lib/content/reports-nav.ts` | **P3-1** | Report list with `simple` / `full` tier; Balance Sheet in full tier only |
 | `lib/actions/client.actions.ts` | 11B/**P1-2** | `createQuickCustomer` — name-only customer from quick bill (returns id) |
 | `dashboard/invoices/[id]/print/page.tsx` | 13 | Printable tax invoice with payment summary + pending balance due |
 | `dashboard/invoices/[id]/print/print-actions.tsx` | 13 | Print/back buttons (hidden in print) |
@@ -367,24 +374,25 @@
 | File | Phase | Description |
 |------|-------|-------------|
 | `sidebar.tsx` | 11A/**P0-1** | Grouped collapsible sidebar; filters by `dashboard_experience`; Simple mode badge |
-| `sidebar-config.ts` | 11A/**P0-1**/**P1-1**/**P3-1** | Simple Commerce primary; Posts, Audit Log, Billing `full-only`; Supplier bills in Commerce |
+| `sidebar-config.ts` | 11A/**P0-1**/**P1-1**/**P3-1** | Simple Commerce primary; **Today's entry** in More tools; Posts, Audit Log, Billing `full-only` |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
 | `export-xlsx.ts` | 19 | `downloadXlsx()` via SheetJS; CSV fallback on failure |
-| `report-table.tsx` | 17 | Server-friendly printable table for report pages |
+| `report-table.tsx` | 17 | Paginated report table (50/page) for all report pages |
 | `report-period.ts` | 17 | `resolveReportPeriod()` — today/week/month/year/custom + month/year modes |
 | `export-csv.ts` | 17 | Client CSV download helper |
-| `report.queries.ts` | 17 | Daily, monthly, yearly, GST, invoice, income-expense, expense, rojmel queries |
-| `dashboard/reports/page.tsx` | 17 | Reports hub — links to all 8 reports |
+| `report.queries.ts` | 17 | Daily, monthly, yearly, GST, invoice, income-expense, expense, rojmel, balance sheet queries |
+| `dashboard/reports/page.tsx` | 17 | Reports hub — links to all 9 reports |
 | `dashboard/reports/daily/page.tsx` | 17 | Daily summary report |
-| `dashboard/reports/monthly/page.tsx` | 17 | Monthly P&L report |
+| `dashboard/reports/monthly/page.tsx` | 17 | Monthly report — same UI as daily report (full month book + summary cards) |
 | `dashboard/reports/yearly/page.tsx` | 17 | Yearly 12-month report |
 | `dashboard/reports/gst/page.tsx` | 17 | GST slab summary |
 | `dashboard/reports/invoices/page.tsx` | 17 | Invoice list report |
 | `dashboard/reports/income-expense/page.tsx` | 17 | Particular-wise income/expense |
 | `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
 | `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
+| `dashboard/reports/balance-sheet/page.tsx` | 17 | Balance sheet — assets vs liabilities with opening/closing snapshot |
 | `dashboard-shell.tsx` | 11A/4/**P0-1** | Shell: skip-to-content, mobile nav, hydrates dashboard experience store, data-lock idle |
 | `dashboard-header.tsx` | 11A/9 | Top header: Learn button, search, mobile menu, user name + role + logout |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
@@ -404,6 +412,8 @@
 | `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
 | `fingerprint-attendance-parser.ts` | **Phase 0** | Parse `rptMonthlyWorkDurationSummary` xlsx — NONAME skip, Sunday filter, SUMMERY OT |
 | `fingerprint-salary-report.ts` | **Phase 0** | Shahin salary line calc (÷ eligible days, OT × multiplier) + export rows |
+| `sales-register-parser.ts` | **Today's entry** | Parse `Sales Register` CSV/xlsx; `resolveSalesRegisterEntryDate()` — fallback to latest bill day ≤ selected date |
+| `client-match.ts` | **Today's entry** | Customer resolve — exact name → GST number → create new client |
 
 #### Server Utilities (`src/lib/server/`)
 
@@ -477,7 +487,8 @@
 | `staff-payment.actions.ts` | 16 | `fetchEmployeeSalaryPayable`, `createStaffPayment`, `createSalaryDeposit`, delete; writes staff + expense/bank ledgers |
 | `workshop.actions.ts` | 3 | `createWorkshop()`; `updateWorkshop()` — name/address/lat/lng/radius; `toggleWorkshopStatus()`; `deleteWorkshop()` |
 | `attendance.actions.ts` | 4/16 | Manual sessions + `bulkMarkAttendance()` for daily present marking |
-| `attendance-import.actions.ts` | **Phase 0** | `uploadFingerprintAttendance()`, `mapFingerprintEmployeeAlias()` |
+| `attendance-import.actions.ts` | **Phase 0** | Upload fingerprint sheet — skips re-import if month already saved; optional `replace=1` to overwrite |
+| `sales-register-import.actions.ts` | **Today's entry** | `uploadSalesRegister()` — imports all bill days in file; skips saved days + duplicate invoices; client match name → GST |
 | `job.actions.ts` | 5/8 | `createJob()` / `updateJob()` — push "New job assigned" to assignee; `deleteJob()` |
 | `advance.actions.ts` | 7/8 | `createAdvance()`; `approveAdvance()` / `rejectAdvance()` — push advance status to employee; `deleteAdvance()` |
 | `settings.actions.ts` | 7/13.5/**Phase 0**/**P0-1** | `updateDashboardExperience`, work schedule (+ OT multiplier), profile, data lock PIN |
@@ -505,7 +516,8 @@
 | `advance.queries.ts` | 7 | `getAdvances()` — all advances with employee/approver name joins; `getApprovedAdvancesForMonth()` — total for salary deduction; `getPendingAdvanceCount()` — for dashboard stats |
 | `settings.queries.ts` | 7/13.5/**P0-1** | Company settings (+ `dashboard_experience`), `getDashboardShellPrefs()`, profile |
 | `salary.queries.ts` | 6 | Unified payroll: `getSalaryReport()` + `getEmployeeSalaryPayable()` — hourly or fixed mode, grace half-days, joining-date pro-rata, advance deductions |
-| `attendance-import.queries.ts` | **Phase 0** | `getFingerprintSalaryReport()`, `getUnmatchedFingerprintRows()`, `getActiveEmployeesForMapping()` |
+| `attendance-import.queries.ts` | **Phase 0** | Fingerprint salary report + `getAttendanceImportMonths()` saved upload list |
+| `sales-register-import.queries.ts` | **Today's entry** | `getSalesRegisterImportDays()`, `getTodaysEntryReport()` — saved days + imported invoice lines |
 | `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
@@ -526,7 +538,7 @@
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `client.ts` | 2 | Browser Supabase client (`createBrowserClient`) |
+| `client.ts` | 2 | Browser Supabase client (`createBrowserClient`) — types from `@punchless/types/database.types` |
 | `server.ts` | 2 | SSR Supabase client (reads cookies for auth session) |
 | `admin.ts` | 2 | Service-role client (bypasses RLS, used for admin operations) |
 

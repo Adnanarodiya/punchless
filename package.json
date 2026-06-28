@@ -22,6 +22,8 @@
     "db:reset-company-data:confirm": "node scripts/reset-company-data.mjs --confirm",
     "db:cleanup-extras": "node scripts/cleanup-extras.mjs --dry-run",
     "db:cleanup-extras:confirm": "node scripts/cleanup-extras.mjs --confirm",
+    "db:wipe-keep-user": "node scripts/wipe-database-keep-user.mjs --dry-run",
+    "db:wipe-keep-user:confirm": "node scripts/wipe-database-keep-user.mjs --confirm",
     "db:import-full-data": "node scripts/import-full-data.mjs --dry-run",
     "db:import-full-data:confirm": "node scripts/import-full-data.mjs --confirm",
     "e2e:p0": "npx tsx scripts/e2e-p0-audit.mts",

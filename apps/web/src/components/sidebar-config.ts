@@ -19,6 +19,7 @@ import {
   Shield,
   GraduationCap,
   ScrollText,
+  ClipboardList,
 } from "lucide-react";
 
 export type NavTier = "primary" | "advanced" | "full-only";
@@ -64,6 +65,13 @@ export const navGroups: NavGroup[] = [
         roles: ["owner", "admin"],
         simpleTier: "primary",
         simpleGroup: "Overview",
+      },
+      {
+        label: "Today's entry",
+        href: "/dashboard/todays-entry",
+        icon: ClipboardList,
+        roles: ["owner", "admin"],
+        simpleTier: "advanced",
       },
       {
         label: "Learn",

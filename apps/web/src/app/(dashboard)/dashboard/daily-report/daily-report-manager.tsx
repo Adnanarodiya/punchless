@@ -8,6 +8,8 @@ import { CalendarDays, Trash2 } from "lucide-react";
 import { Breadcrumbs } from "@punchless/ui/components/breadcrumbs";
 import { Button } from "@punchless/ui/components/button";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
+import { TablePagination } from "@punchless/ui/components/table-pagination";
+import { useTablePagination } from "@punchless/ui/hooks/use-table-pagination";
 import { cn } from "@punchless/ui/lib/utils";
 import { DailyReportSummaryCards } from "@/components/daily-report-summary-cards";
 import { PageHeader } from "@/components/page-header";
@@ -20,9 +22,11 @@ import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 import { maskAmount } from "@/lib/utils/mask-financial";
 
+export type BookReportMode = "day" | "month";
+
 type Props = {
+  mode: BookReportMode;
   report: DailyBookReport;
-  bookDate: string;
   hasDataLockPin: boolean;
   showFullReportLink?: boolean;
 };
@@ -37,11 +41,36 @@ function yesterdayIso() {
   return d.toISOString().slice(0, 10);
 }
 
+function currentMonthIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function previousMonthIso() {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function buildDailyReportUrl(bookDate: string) {
   const params = new URLSearchParams();
   if (bookDate !== todayIso()) params.set("date", bookDate);
   const q = params.toString();
   return q ? `/dashboard/daily-report?${q}` : "/dashboard/daily-report";
+}
+
+function buildMonthlyReportUrl(month: string) {
+  const params = new URLSearchParams();
+  if (month !== currentMonthIso()) params.set("month", month);
+  const q = params.toString();
+  return q ? `/dashboard/reports/monthly?${q}` : "/dashboard/reports/monthly";
+}
+
+function formatMonthLabel(month: string) {
+  const [year, m] = month.split("-").map(Number);
+  const d = new Date(year, m - 1, 1);
+  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
 function formatMode(mode: string | null) {
@@ -69,14 +98,18 @@ function AmountCell({
 }
 
 export function DailyReportManager({
+  mode,
   report,
-  bookDate,
   hasDataLockPin,
   showFullReportLink = false,
 }: Props) {
   const router = useRouter();
   const locked = useFinancialLocked(hasDataLockPin);
   const [deleteTarget, setDeleteTarget] = useState<DailyBookLine | null>(null);
+
+  const isDay = mode === "day";
+  const bookDate = report.periodStart;
+  const monthValue = report.periodStart.slice(0, 7);
 
   const { execute: execDeleteTx, loading: deletingTx } = useAction(deleteTransaction, {
     successMessage: "Entry deleted",
@@ -99,13 +132,27 @@ export function DailyReportManager({
 
   const deleting = deletingTx || deletingStaff;
 
-  function handleDateChange(formData: FormData) {
+  const tablePagination = useTablePagination(report.lines, {
+    resetKey: `${report.periodStart}-${report.periodEnd}`,
+  });
+  const visibleLines = tablePagination.items;
+
+  function handleDayChange(formData: FormData) {
     const date = String(formData.get("bookDate") || todayIso());
     router.push(buildDailyReportUrl(date));
   }
 
+  function handleMonthChange(formData: FormData) {
+    const month = String(formData.get("reportMonth") || currentMonthIso());
+    router.push(buildMonthlyReportUrl(month));
+  }
+
   function jumpToDate(date: string) {
     router.push(buildDailyReportUrl(date));
+  }
+
+  function jumpToMonth(month: string) {
+    router.push(buildMonthlyReportUrl(month));
   }
 
   async function confirmDelete() {
@@ -123,6 +170,22 @@ export function DailyReportManager({
   const thClass =
     "whitespace-nowrap border border-border bg-muted/60 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide";
 
+  const periodLabel = isDay
+    ? formatDate(bookDate)
+    : formatMonthLabel(monthValue);
+
+  const ledgerHref = isDay
+    ? `/dashboard/reports/rojmel?period=custom&start=${bookDate}&end=${bookDate}`
+    : `/dashboard/reports/rojmel?period=custom&start=${report.periodStart}&end=${report.periodEnd}`;
+
+  const breadcrumbs = isDay
+    ? [{ label: "Home", href: "/dashboard" }, { label: "Daily report" }]
+    : [
+        { label: "Home", href: "/dashboard" },
+        { label: "Reports", href: "/dashboard/reports" },
+        { label: "Monthly report" },
+      ];
+
   return (
     <div className="space-y-6">
       <Breadcrumbs
@@ -131,56 +194,85 @@ export function DailyReportManager({
             {children}
           </Link>
         )}
-        items={[
-          { label: "Home", href: "/dashboard" },
-          { label: "Daily report" },
-        ]}
+        items={breadcrumbs}
       />
 
       <PageHeader
-        title="Daily report"
-        description="Full day book — every bill, payment, salary, expense, and transfer with today vs yesterday summary."
+        title={isDay ? "Daily report" : "Monthly report"}
+        description={
+          isDay
+            ? "Full day book — every bill, payment, salary, expense, and transfer with today vs yesterday summary."
+            : "Full month book — every bill, payment, salary, expense, and transfer with this month vs previous month summary."
+        }
       >
         {showFullReportLink ? (
           <Button variant="outline" asChild>
-            <Link
-              href={`/dashboard/reports/rojmel?period=custom&start=${bookDate}&end=${bookDate}`}
-            >
-              Full ledger
-            </Link>
+            <Link href={ledgerHref}>Full ledger</Link>
           </Button>
         ) : null}
       </PageHeader>
 
-      <form
-        action={handleDateChange}
-        className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4"
-      >
-        <div>
-          <label htmlFor="bookDate" className="mb-1 block text-sm font-medium">
-            Date
-          </label>
-          <input
-            id="bookDate"
-            name="bookDate"
-            type="date"
-            required
-            defaultValue={bookDate}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-          />
-        </div>
-        <Button type="submit">Show</Button>
-        <Button type="button" variant="outline" onClick={() => jumpToDate(todayIso())}>
-          Today
-        </Button>
-        <Button type="button" variant="outline" onClick={() => jumpToDate(yesterdayIso())}>
-          Yesterday
-        </Button>
-      </form>
+      {isDay ? (
+        <form
+          action={handleDayChange}
+          className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4"
+        >
+          <div>
+            <label htmlFor="bookDate" className="mb-1 block text-sm font-medium">
+              Date
+            </label>
+            <input
+              id="bookDate"
+              name="bookDate"
+              type="date"
+              required
+              defaultValue={bookDate}
+              className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+            />
+          </div>
+          <Button type="submit">Show</Button>
+          <Button type="button" variant="outline" onClick={() => jumpToDate(todayIso())}>
+            Today
+          </Button>
+          <Button type="button" variant="outline" onClick={() => jumpToDate(yesterdayIso())}>
+            Yesterday
+          </Button>
+        </form>
+      ) : (
+        <form
+          action={handleMonthChange}
+          className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-card p-4"
+        >
+          <div>
+            <label htmlFor="reportMonth" className="mb-1 block text-sm font-medium">
+              Month
+            </label>
+            <input
+              id="reportMonth"
+              name="reportMonth"
+              type="month"
+              required
+              defaultValue={monthValue}
+              className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+            />
+          </div>
+          <Button type="submit">Show</Button>
+          <Button type="button" variant="outline" onClick={() => jumpToMonth(currentMonthIso())}>
+            This month
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => jumpToMonth(previousMonthIso())}
+          >
+            Previous month
+          </Button>
+        </form>
+      )}
 
       <p className="text-sm text-muted-foreground">
         <CalendarDays className="mr-1 inline size-4" aria-hidden />
-        {formatDate(bookDate)}
+        {periodLabel}
         {report.lines.length === 0
           ? " — no entries"
           : ` — ${report.lines.length} entries`}
@@ -188,11 +280,14 @@ export function DailyReportManager({
 
       <DailyReportSummaryCards
         summary={report.summary}
-        yesterdaySummary={report.yesterdaySummary}
+        comparisonSummary={report.comparisonSummary}
         hasDataLockPin={hasDataLockPin}
+        periodLabel={isDay ? "Today" : "This month"}
+        comparisonLabel={isDay ? "Yesterday" : "Previous month"}
       />
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card">
+      <div className="space-y-3">
+        <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[1100px] border-collapse text-sm">
           <thead>
             <tr>
@@ -217,14 +312,16 @@ export function DailyReportManager({
                   colSpan={12}
                   className="border border-border px-4 py-10 text-center text-muted-foreground"
                 >
-                  No bills, payments, salary, expenses, or transfers on this date.
+                  {isDay
+                    ? "No bills, payments, salary, expenses, or transfers on this date."
+                    : "No bills, payments, salary, expenses, or transfers in this month."}
                 </td>
               </tr>
             ) : (
-              report.lines.map((row, index) => (
+              visibleLines.map((row, index) => (
                 <tr key={row.id} className="hover:bg-muted/30">
                   <td className="border border-border px-2 py-2 text-center tabular-nums text-muted-foreground">
-                    {index + 1}
+                    {tablePagination.startIndex + index + 1}
                   </td>
                   <td className="border border-border px-2 py-2 text-xs font-medium text-muted-foreground">
                     {row.category}
@@ -306,6 +403,17 @@ export function DailyReportManager({
             </tfoot>
           ) : null}
         </table>
+        </div>
+
+        {report.lines.length > 0 ? (
+          <TablePagination
+            page={tablePagination.page}
+            totalPages={tablePagination.totalPages}
+            totalItems={tablePagination.totalItems}
+            pageSize={tablePagination.pageSize}
+            onPageChange={tablePagination.setPage}
+          />
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm font-medium">
@@ -340,7 +448,7 @@ export function DailyReportManager({
         title="Delete this entry?"
         description={
           deleteTarget
-            ? `Remove "${deleteTarget.particular}" from the daily report. This cannot be undone.`
+            ? `Remove "${deleteTarget.particular}" from the ${isDay ? "daily" : "monthly"} report. This cannot be undone.`
             : ""
         }
         variant="destructive"

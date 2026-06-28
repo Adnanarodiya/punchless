@@ -98,18 +98,39 @@ export const uploadFingerprintAttendance = protectedAction<FormData>({
     fetchAliases(supabase, me.company_id),
   ]);
 
+  const forceReplace = formData.get("replace") === "1";
+
   const { data: existingImport } = await supabase
     .from("attendance_imports")
-    .select("id")
+    .select("id, file_name")
     .eq("company_id", me.company_id)
     .eq("salary_month", salaryMonth)
     .maybeSingle();
 
-  if (existingImport) {
+  if (existingImport && !forceReplace) {
+    const { count } = await supabase
+      .from("attendance_import_rows")
+      .select("*", { count: "exact", head: true })
+      .eq("import_id", (existingImport as { id: string }).id);
+
+    revalidatePath("/dashboard/salary");
+    return {
+      success: true,
+      data: {
+        salaryMonth,
+        alreadyExists: true,
+        fileName: (existingImport as { file_name: string }).file_name,
+        employeeCount: count ?? 0,
+      },
+    };
+  }
+
+  if (existingImport && forceReplace) {
+    const existingId = (existingImport as { id: string }).id;
     const { error: deleteRowsError } = await supabase
       .from("attendance_import_rows")
       .delete()
-      .eq("import_id", (existingImport as { id: string }).id);
+      .eq("import_id", existingId);
 
     if (deleteRowsError) {
       return { success: false, error: deleteRowsError.message };
@@ -118,7 +139,7 @@ export const uploadFingerprintAttendance = protectedAction<FormData>({
     const { error: deleteImportError } = await supabase
       .from("attendance_imports")
       .delete()
-      .eq("id", (existingImport as { id: string }).id);
+      .eq("id", existingId);
 
     if (deleteImportError) {
       return { success: false, error: deleteImportError.message };
@@ -187,6 +208,8 @@ export const uploadFingerprintAttendance = protectedAction<FormData>({
     success: true,
     data: {
       salaryMonth,
+      alreadyExists: false,
+      fileName: file.name,
       employeeCount: rowPayload.length,
       skippedNonameCount: parsed.skippedNonameCount,
       unmatchedCount,

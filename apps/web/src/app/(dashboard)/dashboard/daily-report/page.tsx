@@ -22,8 +22,8 @@ export default async function DailyReportPage({
 
   return (
     <DailyReportManager
+      mode="day"
       report={report}
-      bookDate={bookDate}
       hasDataLockPin={dataLock.hasPin}
       showFullReportLink={isFullExperience}
     />

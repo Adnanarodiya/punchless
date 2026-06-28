@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
-import { getActiveEmployeesForMapping, getFingerprintSalaryReport } from "@/lib/queries/attendance-import.queries";
+import {
+  getActiveEmployeesForMapping,
+  getAttendanceImportMonths,
+  getFingerprintSalaryReport,
+} from "@/lib/queries/attendance-import.queries";
 import { getBanks } from "@/lib/queries/bank.queries";
 import { getEmployees } from "@/lib/queries/employee.queries";
 import { getEmployeeSalaryPayable } from "@/lib/queries/salary.queries";
@@ -46,9 +50,10 @@ export default async function SalaryPage({ searchParams }: Props) {
       ? Math.round(parsedAmount)
       : undefined;
 
-  const [fingerprintReport, employeesForMapping] = await Promise.all([
+  const [fingerprintReport, employeesForMapping, savedMonths] = await Promise.all([
     getFingerprintSalaryReport(monthStr),
     getActiveEmployeesForMapping(),
+    getAttendanceImportMonths(),
   ]);
 
   if (isSimple) {
@@ -65,6 +70,7 @@ export default async function SalaryPage({ searchParams }: Props) {
       <PayStaffHub
         currentMonth={monthStr}
         fingerprintReport={fingerprintReport}
+        savedMonths={savedMonths}
         employeesForMapping={employeesForMapping}
         payments={payments}
         employees={employees}
@@ -98,6 +104,7 @@ export default async function SalaryPage({ searchParams }: Props) {
       <FingerprintSalarySection
         currentMonth={monthStr}
         report={fingerprintReport}
+        savedMonths={savedMonths}
         employeesForMapping={employeesForMapping}
       />
       {/*

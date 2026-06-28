@@ -1385,6 +1385,63 @@ export type Database = {
           },
         ]
       }
+      sales_register_imports: {
+        Row: {
+          clients_created: number
+          company_id: string
+          created_at: string
+          entry_date: string
+          file_name: string
+          id: string
+          invoice_count: number
+          skipped_existing: number
+          total_amount: number
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          clients_created?: number
+          company_id: string
+          created_at?: string
+          entry_date: string
+          file_name: string
+          id?: string
+          invoice_count?: number
+          skipped_existing?: number
+          total_amount?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          clients_created?: number
+          company_id?: string
+          created_at?: string
+          entry_date?: string
+          file_name?: string
+          id?: string
+          invoice_count?: number
+          skipped_existing?: number
+          total_amount?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_register_imports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_register_imports_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_payments: {
         Row: {
           amount: number

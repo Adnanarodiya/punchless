@@ -3,7 +3,10 @@
 import * as React from "react";
 import { Search } from "lucide-react";
 
+import { useTablePagination } from "../hooks/use-table-pagination";
+import { DEFAULT_TABLE_PAGE_SIZE } from "../lib/paginate";
 import { cn } from "../lib/utils";
+import { TablePagination } from "./table-pagination";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -23,6 +26,8 @@ export interface DataTableProps<T> {
   stickyFirstColumn?: boolean;
   className?: string;
   getRowKey: (row: T) => string;
+  pageSize?: number;
+  enablePagination?: boolean;
 }
 
 export function DataTable<T>({
@@ -35,6 +40,8 @@ export function DataTable<T>({
   stickyFirstColumn = false,
   className,
   getRowKey,
+  pageSize = DEFAULT_TABLE_PAGE_SIZE,
+  enablePagination = true,
 }: DataTableProps<T>) {
   const [query, setQuery] = React.useState("");
 
@@ -42,6 +49,13 @@ export function DataTable<T>({
     if (!enableSearch || !query.trim() || !searchFilter) return data;
     return data.filter((row) => searchFilter(row, query.trim().toLowerCase()));
   }, [data, enableSearch, query, searchFilter]);
+
+  const pagination = useTablePagination(filteredData, {
+    pageSize: enablePagination ? pageSize : filteredData.length || 1,
+    resetKey: query,
+  });
+
+  const rows = enablePagination ? pagination.items : filteredData;
 
   return (
     <div data-slot="data-table" className={cn("space-y-3", className)}>
@@ -81,7 +95,7 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {filteredData.length === 0 ? (
+            {rows.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
@@ -91,7 +105,7 @@ export function DataTable<T>({
                 </td>
               </tr>
             ) : (
-              filteredData.map((row) => (
+              rows.map((row) => (
                 <tr
                   key={getRowKey(row)}
                   className="group border-b border-border last:border-0 hover:bg-muted/30"
@@ -116,6 +130,16 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
+
+      {enablePagination ? (
+        <TablePagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          totalItems={pagination.totalItems}
+          pageSize={pagination.pageSize}
+          onPageChange={pagination.setPage}
+        />
+      ) : null}
     </div>
   );
 }

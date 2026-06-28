@@ -1,0 +1,7 @@
+---
+pid: 23160
+cwd: "D:\Coding\punchless"
+command: "cd D:\\Coding\\punchless\\apps\\web; pnpm build 2>&1 | Select-Object -Last 25"
+started_at: 2026-06-28T15:42:51.835Z
+running_for_ms: 5001     
+---

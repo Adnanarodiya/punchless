@@ -9,6 +9,7 @@ import { DataLockHeaderButton } from "@/components/data-lock-header-button";
 interface DashboardHeaderProps {
   userName: string;
   role: string;
+  hasDataLockPin: boolean;
   onMenuClick?: () => void;
   onSearchClick?: () => void;
 }
@@ -16,6 +17,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({
   userName,
   role,
+  hasDataLockPin,
   onMenuClick,
   onSearchClick,
 }: DashboardHeaderProps) {
@@ -37,7 +39,7 @@ export function DashboardHeader({
       </div>
 
       <div className="flex items-center gap-3 sm:gap-4">
-        <DataLockHeaderButton />
+        <DataLockHeaderButton hasDataLockPin={hasDataLockPin} />
         {onSearchClick ? (
           <Button
             type="button"

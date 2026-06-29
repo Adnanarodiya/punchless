@@ -94,6 +94,7 @@ export function DashboardShell({
         <DashboardHeader
           userName={userName}
           role={role}
+          hasDataLockPin={hasDataLockPin}
           onMenuClick={() => setMobileNavOpen(true)}
           onSearchClick={openSearch}
         />

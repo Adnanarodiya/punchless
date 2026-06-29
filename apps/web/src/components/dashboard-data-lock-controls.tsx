@@ -5,6 +5,7 @@ import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
+import { cn } from "@punchless/ui/lib/utils";
 
 import { verifyDataLockPinAction } from "@/lib/actions/settings.actions";
 import { useDataLockStore } from "@/lib/stores/data-lock.store";
@@ -58,13 +59,16 @@ export function DashboardDataLockControls({ hasDataLockPin }: Props) {
             variant="outline"
             size="sm"
             onClick={() => setUnlockOpen(true)}
+            className={cn(
+              "gap-2 border-warning/60 bg-warning/10 text-warning hover:bg-warning/15 hover:text-warning"
+            )}
           >
-            <Unlock className="size-4" />
+            <Unlock className="size-4 shrink-0" />
             Unlock financials
           </Button>
         ) : (
-          <Button type="button" variant="outline" size="sm" onClick={lock}>
-            <Lock className="size-4" />
+          <Button type="button" variant="outline" size="sm" onClick={lock} className="gap-2">
+            <Lock className="size-4 shrink-0" />
             Lock financials
           </Button>
         )}

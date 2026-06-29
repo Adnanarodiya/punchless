@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-29 (Fix Next.js build — dedupe React, remove ThemeProvider, force-dynamic layouts)
+> **Last updated:** 2026-06-29 (Data lock — visible Unlock financials button in header)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -315,7 +315,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/utils/salary-export.ts` | 9 | Build salary report rows for CSV/Excel export |
 | `app/api/salary/export/route.ts` | 9 | GET full-month salary report JSON for export |
 | `masked-amount.tsx` | 9 | Client component — masks currency when data lock active |
-| `data-lock-header-button.tsx` | 9 | Lock/unlock icon in dashboard header (all pages) |
+| `data-lock-header-button.tsx` | 9 | Lock/unlock labeled button in dashboard header — warning-styled “Unlock financials” when hidden |
 | `dashboard/advances/page.tsx` | 7 | Server component: fetches advances + employees, renders `AdvanceManager` |
 | `dashboard/advances/advance-manager.tsx` | 7/**Phase 0** | **Client component**: Owner records advances directly (no pending/approve workflow) — create/delete, search, deduct-month form |
 | `dashboard/settings/page.tsx` | 7 | Server component: owner-only access, fetches company settings, renders `SettingsManager` |

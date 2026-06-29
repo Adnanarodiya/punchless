@@ -6,17 +6,25 @@ import type { NextConfig } from "next";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const monorepoRoot = path.resolve(projectRoot, "../..");
 
+const reactRoot = path.join(monorepoRoot, "node_modules/react");
+const reactDomRoot = path.join(monorepoRoot, "node_modules/react-dom");
+
+const reactAliases = {
+  react: reactRoot,
+  "react-dom": reactDomRoot,
+  "react/jsx-runtime": path.join(reactRoot, "jsx-runtime.js"),
+  "react/jsx-dev-runtime": path.join(reactRoot, "jsx-dev-runtime.js"),
+};
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@punchless/ui", "@punchless/types", "@punchless/config"],
+  turbopack: {
+    resolveAlias: reactAliases,
+  },
   webpack: (config) => {
-    const reactRoot = path.join(monorepoRoot, "node_modules/react");
-    const reactDomRoot = path.join(monorepoRoot, "node_modules/react-dom");
     config.resolve.alias = {
       ...config.resolve.alias,
-      react: reactRoot,
-      "react-dom": reactDomRoot,
-      "react/jsx-runtime": path.join(reactRoot, "jsx-runtime.js"),
-      "react/jsx-dev-runtime": path.join(reactRoot, "jsx-dev-runtime.js"),
+      ...reactAliases,
     };
     return config;
   },

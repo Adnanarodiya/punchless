@@ -30,8 +30,7 @@ export type OwnerLabelKey =
   | "hero.bank"
   | "pending.whoOwesWhat"
   | "settings.uiLanguage"
-  | "settings.uiLanguageHint"
-  | "support.needHelp";
+  | "settings.uiLanguageHint";
 
 const EN: Record<OwnerLabelKey, string> = {
   "nav.home": "Home",
@@ -56,8 +55,8 @@ const EN: Record<OwnerLabelKey, string> = {
   "action.payStaff": "Pay employee",
   "action.addExpense": "Add expense / income",
   "nav.incomeExpense": "Income & expense",
-  "hero.customersOwe": "Customers owe you",
-  "hero.youOweSuppliers": "You owe suppliers",
+  "hero.customersOwe": "Customers Due Amount",
+  "hero.youOweSuppliers": "Suppliers Due Amount",
   "hero.cashBank": "Cash + Bank",
   "hero.cash": "Cash",
   "hero.bank": "Bank",
@@ -65,7 +64,6 @@ const EN: Record<OwnerLabelKey, string> = {
   "settings.uiLanguage": "Dashboard language",
   "settings.uiLanguageHint":
     "Changes sidebar and home button labels. Data entry (customer names, amounts) stays as you type.",
-  "support.needHelp": "Need help?",
 };
 
 const GU: Partial<Record<OwnerLabelKey, string>> = {
@@ -97,7 +95,6 @@ const GU: Partial<Record<OwnerLabelKey, string>> = {
   "settings.uiLanguage": "ડેશબોર્ડ ભાષા",
   "settings.uiLanguageHint":
     "સાઇડબાર અને હોમ બટનની ભાષા બદલાશે. ગ્રાહકનું નામ અને રકમ તમે જે લખો તે જ રહેશે.",
-  "support.needHelp": "મદદ જોઈએ?",
 };
 
 const HI: Partial<Record<OwnerLabelKey, string>> = {
@@ -129,7 +126,6 @@ const HI: Partial<Record<OwnerLabelKey, string>> = {
   "settings.uiLanguage": "डैशबोर्ड भाषा",
   "settings.uiLanguageHint":
     "साइडबार और होम बटन की भाषा बदलेगी। नाम और रकम वैसी ही रहेंगी जैसी आप लिखें।",
-  "support.needHelp": "मदद चाहिए?",
 };
 
 const BY_LANG: Record<UiLanguage, Partial<Record<OwnerLabelKey, string>>> = {

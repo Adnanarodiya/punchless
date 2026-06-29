@@ -1,8 +1,18 @@
 import * as XLSX from "xlsx";
 
-export const FINGERPRINT_SHEET_NAME = "rptMonthlyWorkDurationSummary";
-const LABEL_COL = 7;
+export const FINGERPRINT_SHEET_NAMES = [
+  "rptMonthlyWorkDurationSummary",
+  "rptMonthlyWorkDuration",
+] as const;
+export const FINGERPRINT_SHEET_NAME = FINGERPRINT_SHEET_NAMES[0];
 const BLOCK_ROW_LABELS = new Set(["INTIME", "OUTTIME", "DURATION", "OT", "SUMMERY"]);
+const NAME_HEADER_LABELS = new Set([
+  ...BLOCK_ROW_LABELS,
+  "NONAME",
+  "NAME",
+  "EMP ID",
+  "",
+]);
 
 export type FingerprintDayStatus = {
   day: number;
@@ -78,24 +88,39 @@ function parseMonthYearFromTitle(title: string): { year: number; month: number }
 }
 
 function findDayColumns(rows: unknown[][]): DayColumn[] {
+  const byDay = new Map<number, DayColumn>();
+
   for (const row of rows.slice(0, 20)) {
     if (!Array.isArray(row)) continue;
 
-    const dayColumns: DayColumn[] = [];
     for (let col = 0; col < row.length; col++) {
       const value = normalizeCell(row[col]);
       if (!value || Number.isNaN(Number(value))) continue;
       const day = Number(value);
       if (day < 1 || day > 31) continue;
-      dayColumns.push({ day, headerCol: col, statusCol: col - 1 });
-    }
-
-    if (dayColumns.length >= 28) {
-      return dayColumns.sort((a, b) => a.day - b.day);
+      byDay.set(day, { day, headerCol: col, statusCol: col - 1 });
     }
   }
 
-  return [];
+  const dayColumns = [...byDay.values()].sort((a, b) => a.day - b.day);
+  return dayColumns.length >= 28 ? dayColumns : [];
+}
+
+function detectLabelCol(rows: unknown[][]): number {
+  let count6 = 0;
+  let count7 = 0;
+
+  for (const row of rows) {
+    for (const col of [6, 7] as const) {
+      const label = normalizeCell(row[col]);
+      if (!label || NAME_HEADER_LABELS.has(label.toUpperCase())) continue;
+      if (/^\d/.test(label)) continue;
+      if (col === 6) count6 += 1;
+      else count7 += 1;
+    }
+  }
+
+  return count7 >= count6 ? 7 : 6;
 }
 
 function parseDurationHours(value: string | null): number {
@@ -169,13 +194,58 @@ function readDailyStatuses(
   }));
 }
 
-function findBlockRows(rows: unknown[][], startRow: number): Record<string, number> {
+function findBlockRows(
+  rows: unknown[][],
+  startRow: number,
+  labelCol: number
+): Record<string, number> {
   const map: Record<string, number> = { name: startRow };
   for (let offset = 1; offset <= 6; offset++) {
-    const label = normalizeCell(rows[startRow + offset]?.[LABEL_COL]).toUpperCase();
+    const label = normalizeCell(rows[startRow + offset]?.[labelCol]).toUpperCase();
     if (label) map[label] = startRow + offset;
   }
   return map;
+}
+
+function formatDurationHours(totalHours: number): string {
+  const hours = Math.floor(totalHours);
+  const minutes = Math.round((totalHours - hours) * 60);
+  return `${hours}:${String(minutes).padStart(2, "0")}`;
+}
+
+function buildSummaryFromBlock(
+  dailyStatuses: FingerprintDayStatus[],
+  otRow: unknown[] | undefined,
+  dayColumns: DayColumn[]
+): FingerprintSummary {
+  let present = 0;
+  let absent = 0;
+  let half = 0;
+
+  for (const day of dailyStatuses) {
+    if (day.isSunday) continue;
+    const status = day.status.toUpperCase();
+    if (status === "P") present += 1;
+    else if (status === "HP" || status === "H") half += 1;
+    else if (status === "A" || status === "0:0" || status === "00:00") absent += 1;
+  }
+
+  let otTotal = 0;
+  if (otRow) {
+    for (const col of dayColumns) {
+      otTotal += parseDurationHours(normalizeCell(otRow[col.statusCol]) || null);
+    }
+  }
+
+  return {
+    present,
+    absent,
+    half: half || null,
+    late: null,
+    weekOff: null,
+    totalHours: null,
+    otHours: otTotal > 0 ? formatDurationHours(otTotal) : null,
+  };
 }
 
 function parseEmployeeBlock(
@@ -183,17 +253,24 @@ function parseEmployeeBlock(
   startRow: number,
   dayColumns: DayColumn[],
   year: number,
-  month: number
+  month: number,
+  labelCol: number
 ): ParsedFingerprintEmployee | null {
-  const name = normalizeCell(rows[startRow]?.[LABEL_COL]);
+  const name = normalizeCell(rows[startRow]?.[labelCol]);
   if (!name || name.toUpperCase() === "NONAME") return null;
 
-  const blockRows = findBlockRows(rows, startRow);
+  const blockRows = findBlockRows(rows, startRow, labelCol);
   const summaryRowIndex = blockRows.SUMMERY;
-  if (summaryRowIndex == null) return null;
 
   const dailyStatuses = readDailyStatuses(rows[startRow], dayColumns, year, month);
-  const summary = parseSummaryRow(rows[summaryRowIndex] as unknown[]);
+  const summary =
+    summaryRowIndex != null
+      ? parseSummaryRow(rows[summaryRowIndex] as unknown[])
+      : buildSummaryFromBlock(
+          dailyStatuses,
+          rows[blockRows.OT] as unknown[] | undefined,
+          dayColumns
+        );
   const counts = countDaysWorked(dailyStatuses);
 
   const eligibleDays = dayColumns.filter((col) => !isSunday(year, month, col.day)).length;
@@ -216,15 +293,20 @@ function parseEmployeeBlock(
     eligibleDays,
     sundaysExcluded: counts.sundaysExcluded,
     weekdayAbsents: counts.weekdayAbsents,
-    rawSummaryCells: (rows[summaryRowIndex] as unknown[]).map(normalizeCell).filter(Boolean),
+    rawSummaryCells:
+      summaryRowIndex != null
+        ? (rows[summaryRowIndex] as unknown[]).map(normalizeCell).filter(Boolean)
+        : [],
   };
 }
 
 export function parseFingerprintWorkbook(buffer: ArrayBuffer): ParsedFingerprintWorkbook {
   const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
-  const sheet =
-    workbook.Sheets[FINGERPRINT_SHEET_NAME] ??
-    workbook.Sheets[workbook.SheetNames[0] ?? ""];
+  const sheetName =
+    FINGERPRINT_SHEET_NAMES.find((name) => workbook.Sheets[name]) ??
+    workbook.SheetNames[0] ??
+    "";
+  const sheet = workbook.Sheets[sheetName];
 
   if (!sheet) {
     throw new Error("Could not read the attendance spreadsheet.");
@@ -236,9 +318,13 @@ export function parseFingerprintWorkbook(buffer: ArrayBuffer): ParsedFingerprint
     raw: false,
   }) as unknown[][];
 
-  const titleRow = rows.find((row) =>
-    normalizeCell(row[1]).toLowerCase().includes("monthly work duration summary")
-  );
+  const titleRow = rows.find((row) => {
+    const title = normalizeCell(row[1]).toLowerCase();
+    return (
+      title.includes("monthly work duration summary") ||
+      title.includes("monthly work duration details")
+    );
+  });
   const period = parseMonthYearFromTitle(normalizeCell(titleRow?.[1]));
   if (!period) {
     throw new Error(
@@ -251,11 +337,12 @@ export function parseFingerprintWorkbook(buffer: ArrayBuffer): ParsedFingerprint
     throw new Error("Could not find day columns in the attendance sheet.");
   }
 
+  const labelCol = detectLabelCol(rows);
   const employees: ParsedFingerprintEmployee[] = [];
   let skippedNonameCount = 0;
 
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    const label = normalizeCell(rows[rowIndex]?.[LABEL_COL]);
+    const label = normalizeCell(rows[rowIndex]?.[labelCol]);
     if (!label || BLOCK_ROW_LABELS.has(label)) continue;
 
     if (label.toUpperCase() === "NONAME") {
@@ -263,7 +350,14 @@ export function parseFingerprintWorkbook(buffer: ArrayBuffer): ParsedFingerprint
       continue;
     }
 
-    const parsed = parseEmployeeBlock(rows, rowIndex, dayColumns, period.year, period.month);
+    const parsed = parseEmployeeBlock(
+      rows,
+      rowIndex,
+      dayColumns,
+      period.year,
+      period.month,
+      labelCol
+    );
     if (parsed) employees.push(parsed);
   }
 

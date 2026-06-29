@@ -54,11 +54,13 @@
 | `may 2026 attandence.xlsx` | UX/ref | Owner fingerprint export sample (`rptMonthlyWorkDurationSummary`) — parser reference |
 | `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
+| `scripts/seed-may-salary-payments.mts` | **Ops** | Import `MAY 2026 NEW.xlsx` attendance + mark May 2026 salary paid from bank sheet; maps Sanjitkumar Singh → SUJIT KUMAR (`pnpm db:seed-may-salary`) |
 | `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
 | `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner; includes `sales_register_imports` (`pnpm db:reset-company-data`) |
 | `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login only; includes `sales_register_imports` (`pnpm db:wipe-keep-user:confirm`, default `aiarodiya07@gmail.com`) |
 | `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
+| `scripts/import-shahin-data.mjs` | **Ops** | Import `shahin data.xlsx` — sales bills, purchase bills, cash receipts, bank book; bank receipts remark `Imported bank receipt` (no duplicate `bank_transactions` deposit row) (`pnpm db:import-shahin-data`) |
 | `apps/web/vercel.json` | **Deploy** | Vercel monorepo install/build commands (root dir = `apps/web`) |
 | `lib/utils/statement-date-range.ts` | **Pay UX** | Default employee statement window — last 6 months |
 | `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
@@ -198,7 +200,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 |------|-------|-------------|
 | `layout.tsx` | 2/**P0-1** | Dashboard shell: `force-dynamic`, fetches user + `getDashboardShellPrefs()` (data lock + experience) |
 | `dashboard/page.tsx` | 15/**P0-5** | **Simpler home** — 3 money hero cards, 4 primary actions, pending dues; chart/FY/ops under Show more |
-| `dashboard/dashboard-money-hero.tsx` | **P0-5** | Top row — Customers owe you, You owe suppliers, Cash + Bank (large clickable cards) |
+| `dashboard/dashboard-money-hero.tsx` | **P0-5** | Top row — Customers Due Amount (green ↙ arrow), Suppliers Due Amount (red ↗ arrow), Cash + Bank (large clickable cards) |
 | `dashboard/dashboard-primary-actions.tsx` | **P0-5**/**P0-2** | 4 action buttons — Pay staff → `/dashboard/salary` (unified hub) |
 | `dashboard/dashboard-show-more.tsx` | **P0-5** | Collapsible panel — financial cards, quick actions, chart, sticky notes, operations |
 | `dashboard-fy-selector.tsx` | 19 | FY `<select>` — only years with transaction data (newest first); default current FY |
@@ -220,7 +222,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
 | `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense / income → New bill → Collect → Pay supplier → Pay employee |
 | `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
-| `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; bill rows show full billing in Income (incl. credit/udhar); 5-card summary vs prior period |
+| `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; bank client receipts show once as `Bank deposit` + `Imported bank receipt` (no duplicate bank_transaction line); 5-card summary vs prior period |
 | `components/daily-report-summary-cards.tsx` | **Daily report** | Billing, cash, bank, udhar, expenses KPI cards with yesterday % change |
 | `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
@@ -264,8 +266,6 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/stores/ui-language.store.ts` | **P2-2** | Zustand — `ui_language` hydrated from shell |
 | `page-first-visit-tip.tsx` | **P2-1** | Dismissible ~30s tips on Customers, Suppliers, Pay Staff (localStorage) |
 | `lib/content/page-first-visit-tips.ts` | **P2-1** | Tip copy for customers / suppliers / salary pages |
-| `support-button.tsx` | **P3-2** | Floating WhatsApp help button on dashboard (`NEXT_PUBLIC_SUPPORT_PHONE`) |
-| `lib/utils/support-contact.ts` | **P3-2** | `wa.me` / `tel:` helpers for support contact |
 | `lib/utils/dashboard-experience-guard.ts` | **P3-1** | `redirectUnlessFullDashboard()` — block Simple mode on full-only routes |
 | `lib/content/reports-nav.ts` | **V3-A** | Report list — GST report removed; sales bills report renamed |
 | `lib/actions/client.actions.ts` | 11B/**P1-2** | `createQuickCustomer` — name-only customer from quick bill (returns id) |
@@ -409,7 +409,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
 | `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
 | `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
-| `fingerprint-attendance-parser.ts` | **Phase 0** | Parse `rptMonthlyWorkDurationSummary` xlsx — NONAME skip, Sunday filter, SUMMERY OT |
+| `fingerprint-attendance-parser.ts` | **Phase 0** | Parse fingerprint xlsx (`rptMonthlyWorkDurationSummary` + `rptMonthlyWorkDuration` details) — auto label col, multi-row day headers, SUMMERY or derived summary |
 | `fingerprint-salary-report.ts` | **Phase 0** | Shahin salary line calc (÷ eligible days, OT × multiplier) + export rows |
 | `sales-register-parser.ts` | **Today's entry** | Parse `Sales Register` CSV/xlsx; `resolveSalesRegisterEntryDate()` — fallback to latest bill day ≤ selected date |
 | `client-match.ts` | **Today's entry** | Customer resolve — exact name → GST number → create new client |

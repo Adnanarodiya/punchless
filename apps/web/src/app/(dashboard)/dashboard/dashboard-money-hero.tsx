@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownLeft, Building2, Landmark, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Landmark, Wallet } from "lucide-react";
 
 import type { FinancialSummary } from "@/lib/queries/dashboard.queries";
 import { useFinancialLocked } from "@/lib/stores/data-lock.store";
@@ -25,16 +25,16 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
       label: ownerLabel(language, "hero.customersOwe"),
       value: maskAmount(locked, formatCurrency(summary.clientCredit)),
       href: "/dashboard/customers",
-      icon: Building2,
-      accent: "text-warning",
-      accentBg: "bg-warning/10",
+      icon: ArrowDownLeft,
+      accent: "text-success",
+      accentBg: "bg-success/10",
       hint: "Total due from customers",
     },
     {
       label: ownerLabel(language, "hero.youOweSuppliers"),
       value: maskAmount(locked, formatCurrency(summary.supplierPayable)),
       href: "/dashboard/suppliers",
-      icon: ArrowDownLeft,
+      icon: ArrowUpRight,
       accent: "text-destructive",
       accentBg: "bg-destructive/10",
       hint: "Total payable to vendors",

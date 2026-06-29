@@ -15,7 +15,6 @@ import { useDashboardExperienceStore } from "@/lib/stores/dashboard-experience.s
 import { TooltipProvider } from "@punchless/ui/components/tooltip";
 import type { DashboardExperience, UiLanguage } from "@punchless/types";
 import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
-import { SupportButton } from "@/components/support-button";
 
 interface DashboardShellProps {
   role: string;
@@ -102,7 +101,6 @@ export function DashboardShell({
         <main id="main-content" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
-        <SupportButton />
       </div>
     </div>
     </TooltipProvider>

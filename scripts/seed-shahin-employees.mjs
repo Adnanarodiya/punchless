@@ -1,5 +1,5 @@
 /**
- * One-time seed: Shahin Motors real employee roster (May 2026 salary sheet).
+ * One-time seed: Shahin Motors real employee roster (Apr 2026 salary sheet).
  * - Deactivates all existing dummy employees
  * - Creates posts + employees with monthly_salary
  * - Seeds fingerprint name aliases for attendance upload matching
@@ -103,7 +103,7 @@ const EMPLOYEES = [
   {
     fullName: "AAKIB PATHAN",
     post: "DRIVER",
-    salary: 18000,
+    salary: 17545,
     fingerprintAliases: ["AAKIB PATHAN"],
   },
   {
@@ -133,6 +133,7 @@ const EMPLOYEES = [
 ];
 
 const DEFAULT_PASSWORD = "Shahin@2026";
+const KEEPER_EMAIL = "aiarodiya07@gmail.com";
 
 async function main() {
   const env = loadEnv();
@@ -149,14 +150,12 @@ async function main() {
 
   const { data: owner, error: ownerError } = await admin
     .from("users")
-    .select("id, company_id")
-    .eq("role", "owner")
-    .order("created_at", { ascending: true })
-    .limit(1)
+    .select("id, company_id, companies(name)")
+    .ilike("email", KEEPER_EMAIL)
     .maybeSingle();
 
   if (ownerError || !owner) {
-    console.error("No owner user found:", ownerError?.message);
+    console.error(`Keeper not found (${KEEPER_EMAIL}):`, ownerError?.message);
     process.exit(1);
   }
 
@@ -171,7 +170,7 @@ async function main() {
 
   const dailyHours = Number(company?.daily_work_hours ?? 8);
   const workingDays = Number(company?.working_days_per_month ?? 26);
-  console.log("Company name:", company?.name);
+  console.log("Company name:", owner.companies?.name ?? company?.name);
 
   const { data: existingEmployees } = await admin
     .from("users")

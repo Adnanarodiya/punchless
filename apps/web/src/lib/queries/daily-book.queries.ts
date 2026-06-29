@@ -14,6 +14,22 @@ function sortKey(createdAt: string | null | undefined, fallbackDate: string) {
   return createdAt ?? `${fallbackDate}T23:59:59`;
 }
 
+const BANK_RECEIPT_REMARK = "Imported bank receipt";
+
+function bankReceiptLineKey(date: string, amount: number) {
+  return `${date}|${round2(amount)}`;
+}
+
+function isImportedBankReceiptRemark(remark: string | null | undefined) {
+  if (!remark) return false;
+  const normalized = remark.trim().toLowerCase();
+  return (
+    normalized === BANK_RECEIPT_REMARK.toLowerCase() ||
+    normalized.startsWith("receipt —") ||
+    normalized.startsWith("receipt -")
+  );
+}
+
 function lineModes(
   paymentMode: string | null | undefined,
   bankId: string | null | undefined,
@@ -207,6 +223,7 @@ async function buildDailyBookForRange(
   );
 
   const lines: DailyBookLine[] = [];
+  const bankClientReceiptKeys = new Set<string>();
   let totalIncome = 0;
   let totalExpense = 0;
   let totalTransfer = 0;
@@ -309,14 +326,18 @@ async function buildDailyBookForRange(
     totalIncome += amount;
     customerCollected += amount;
     if (r.payment_mode === "cash") summary.cashReceived += amount;
-    if (r.payment_mode === "bank") summary.bankReceived += amount;
+    if (r.payment_mode === "bank") {
+      summary.bankReceived += amount;
+      bankClientReceiptKeys.add(bankReceiptLineKey(r.payment_date, amount));
+    }
 
+    const isBankReceipt = r.payment_mode === "bank";
     lines.push({
       id: `cp-${r.id}`,
       sourceType: "client_payment",
       sourceId: r.id,
       canDelete: false,
-      category: "Payment received",
+      category: isBankReceipt ? "Bank deposit" : "Payment received",
       particular: name,
       income: amount,
       expense: 0,
@@ -324,7 +345,11 @@ async function buildDailyBookForRange(
       purchase: 0,
       ...clientModes,
       date: r.payment_date,
-      remark: r.remark,
+      remark: isBankReceipt
+        ? isImportedBankReceiptRemark(r.remark)
+          ? BANK_RECEIPT_REMARK
+          : r.remark
+        : r.remark,
       userName: r.creator?.full_name ?? null,
       sortAt: sortKey(r.created_at, r.payment_date),
     });
@@ -614,6 +639,10 @@ async function buildDailyBookForRange(
     };
 
     if (isDeposit) {
+      if (bankClientReceiptKeys.has(bankReceiptLineKey(r.transaction_date, amount))) {
+        continue;
+      }
+
       totalIncome += amount;
       summary.bankReceived += amount;
       lines.push({

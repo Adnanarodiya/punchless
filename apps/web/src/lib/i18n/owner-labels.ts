@@ -15,6 +15,9 @@ export type OwnerLabelKey =
   | "action.salesBill"
   | "action.purchaseBill"
   | "action.general"
+  | "action.receipt"
+  | "action.payment"
+  | "action.journal"
   | "action.collectPayment"
   | "action.paySupplier"
   | "action.payStaff"
@@ -43,6 +46,9 @@ const EN: Record<OwnerLabelKey, string> = {
   "action.salesBill": "Sales bill",
   "action.purchaseBill": "Purchase bill",
   "action.general": "General",
+  "action.receipt": "Receipt",
+  "action.payment": "Payment",
+  "action.journal": "Journal",
   "action.collectPayment": "Collect payment",
   "action.paySupplier": "Pay supplier",
   "action.payStaff": "Pay employee",
@@ -70,6 +76,9 @@ const GU: Partial<Record<OwnerLabelKey, string>> = {
   "nav.learn": "શીખો",
   "nav.dailyReport": "દૈનિક રિપોર્ટ",
   "action.newBill": "નવું બિલ",
+  "action.receipt": "રસીદ",
+  "action.payment": "ચૂકવણી",
+  "action.journal": "જર્નલ",
   "action.collectPayment": "પેમેન્ટ લો",
   "action.paySupplier": "સપ્લાયરને પે",
   "action.payStaff": "સ્ટાફ પગાર",
@@ -97,6 +106,9 @@ const HI: Partial<Record<OwnerLabelKey, string>> = {
   "nav.learn": "सीखें",
   "nav.dailyReport": "दैनिक रिपोर्ट",
   "action.newBill": "नया बिल",
+  "action.receipt": "रसीद",
+  "action.payment": "भुगतान",
+  "action.journal": "जर्नल",
   "action.collectPayment": "पेमेंट लें",
   "action.paySupplier": "सप्लायर को भुगतान",
   "action.payStaff": "स्टाफ वेतन",

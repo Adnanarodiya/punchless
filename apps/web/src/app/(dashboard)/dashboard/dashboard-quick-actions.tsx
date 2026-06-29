@@ -11,7 +11,6 @@ import {
   Building2,
   FileText,
   Landmark,
-  ArrowLeftRight,
   ShoppingCart,
   Truck,
 } from "lucide-react";
@@ -110,15 +109,6 @@ const moreQuickActions: QuickAction[] = [
     iconClass: "text-primary",
     bgClass: "bg-primary/15 group-hover:bg-primary/25",
     borderClass: "hover:border-primary/40",
-  },
-  {
-    label: "Income & expense",
-    description: "Manual P&L entries",
-    href: "/dashboard/transactions",
-    icon: ArrowLeftRight,
-    iconClass: "text-destructive",
-    bgClass: "bg-destructive/10 group-hover:bg-destructive/20",
-    borderClass: "hover:border-destructive/30",
   },
   {
     label: "Staff salary",

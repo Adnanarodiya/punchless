@@ -257,8 +257,9 @@ async function buildDailyBookForRange(
     summary.bankReceived += bank;
     summary.creditUdhar += credit;
 
+    // Bill rows show full billing in Income (cash + bank + credit), same idea as Purchase for supplier bills.
+    totalIncome += total;
     if (received > 0) {
-      totalIncome += received;
       customerCollected += received;
     }
 
@@ -277,7 +278,7 @@ async function buildDailyBookForRange(
       canDelete: false,
       category: isQuickBill ? "Quick bill" : "Bill created",
       particular: name,
-      income: received,
+      income: total,
       expense: 0,
       transfer: 0,
       purchase: 0,

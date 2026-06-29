@@ -79,7 +79,7 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
       id: "profile",
       label: "Company profile",
       description: "Add address and phone for invoices and statements.",
-      href: role === "owner" ? "/dashboard/settings" : "/dashboard/learn?module=settings",
+      href: "/dashboard/settings",
       done: profileDone,
     },
     // GPS workshop geofence — paused (fingerprint payroll)
@@ -98,17 +98,10 @@ export async function getSetupChecklistStatus(): Promise<SetupChecklistStatus> {
       href: "/dashboard/employees",
       done: employeesDone,
     },
-    {
-      id: "learn",
-      label: "Learn the system",
-      description: "Read how fingerprint salary, customers, and suppliers work.",
-      href: "/dashboard/learn",
-      done: false,
-    },
   ];
 
-  const completedCount = steps.filter((s) => s.id !== "learn" && s.done).length;
-  const setupTotal = steps.length - 1;
+  const completedCount = steps.filter((s) => s.done).length;
+  const setupTotal = steps.length;
 
   return {
     steps,

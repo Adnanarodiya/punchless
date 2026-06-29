@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CreditCard, GraduationCap } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { DashboardPageHeader } from "@/components/dashboard-page-header";
@@ -27,10 +27,7 @@ export default async function BillingPage() {
           description="Stripe subscriptions are planned for a later phase. Everything else — attendance, payroll, customers, and reports — works without billing today."
           action={
             <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard/learn?module=settings">
-                <GraduationCap className="size-4" />
-                Learn what is available now
-              </Link>
+              <Link href="/dashboard/settings">Open settings</Link>
             </Button>
           }
         />

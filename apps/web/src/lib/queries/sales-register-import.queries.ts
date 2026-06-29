@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
+const IMPORT_REMARK = "Imported from Sales Register";
+
 export type SalesRegisterImportSummary = {
   entryDate: string;
   label: string;
@@ -62,26 +64,64 @@ export async function getSalesRegisterImportDays(): Promise<SalesRegisterImportS
   const { supabase, companyId } = await getCompanyId();
   if (!companyId) return [];
 
-  const { data } = await supabase
-    .from("sales_register_imports")
-    .select("entry_date, file_name, uploaded_at, invoice_count, total_amount")
-    .eq("company_id", companyId)
-    .order("entry_date", { ascending: false });
+  const [{ data: invoices }, { data: imports }] = await Promise.all([
+    supabase
+      .from("invoices")
+      .select("invoice_date, total_amount")
+      .eq("company_id", companyId)
+      .eq("is_deleted", false)
+      .eq("remark", IMPORT_REMARK),
+    supabase
+      .from("sales_register_imports")
+      .select("entry_date, file_name, uploaded_at, invoice_count, total_amount")
+      .eq("company_id", companyId)
+      .order("entry_date", { ascending: false }),
+  ]);
 
-  return ((data ?? []) as Array<{
-    entry_date: string;
-    file_name: string;
-    uploaded_at: string;
-    invoice_count: number;
+  const byDate = new Map<string, { count: number; total: number }>();
+  for (const row of (invoices ?? []) as Array<{
+    invoice_date: string;
     total_amount: number;
-  }>).map((row) => ({
-    entryDate: row.entry_date,
-    label: formatEntryLabel(row.entry_date),
-    fileName: row.file_name,
-    uploadedAt: row.uploaded_at,
-    invoiceCount: row.invoice_count,
-    totalAmount: Number(row.total_amount),
-  }));
+  }>) {
+    const bucket = byDate.get(row.invoice_date) ?? { count: 0, total: 0 };
+    bucket.count += 1;
+    bucket.total += Number(row.total_amount);
+    byDate.set(row.invoice_date, bucket);
+  }
+
+  const importDates = new Set(
+    ((imports ?? []) as Array<{ entry_date: string }>).map((row) => row.entry_date)
+  );
+  const orphanDates = [...importDates].filter((date) => !byDate.has(date));
+  if (orphanDates.length > 0) {
+    await supabase
+      .from("sales_register_imports")
+      .delete()
+      .eq("company_id", companyId)
+      .in("entry_date", orphanDates);
+  }
+
+  const metaByDate = new Map(
+    ((imports ?? []) as Array<{
+      entry_date: string;
+      file_name: string;
+      uploaded_at: string;
+    }>).map((row) => [row.entry_date, row])
+  );
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([entryDate, stats]) => {
+      const meta = metaByDate.get(entryDate);
+      return {
+        entryDate,
+        label: formatEntryLabel(entryDate),
+        fileName: meta?.file_name ?? "",
+        uploadedAt: meta?.uploaded_at ?? "",
+        invoiceCount: stats.count,
+        totalAmount: Math.round(stats.total * 100) / 100,
+      };
+    });
 }
 
 export async function getTodaysEntryReport(entryDate: string): Promise<TodaysEntryReport> {
@@ -142,12 +182,20 @@ export async function getTodaysEntryReport(entryDate: string): Promise<TodaysEnt
 
   const totalBilling = lines.reduce((sum, line) => sum + line.totalAmount, 0);
 
+  if (meta && lines.length === 0) {
+    await supabase
+      .from("sales_register_imports")
+      .delete()
+      .eq("company_id", companyId)
+      .eq("entry_date", entryDate);
+  }
+
   return {
     entryDate,
-    fileName: meta?.file_name ?? null,
-    uploadedAt: meta?.uploaded_at ?? null,
+    fileName: lines.length > 0 ? (meta?.file_name ?? null) : null,
+    uploadedAt: lines.length > 0 ? (meta?.uploaded_at ?? null) : null,
     totalBilling: Math.round(totalBilling * 100) / 100,
-    invoiceCount: lines.length || meta?.invoice_count || 0,
+    invoiceCount: lines.length,
     lines,
   };
 }

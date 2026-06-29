@@ -12,7 +12,7 @@ import type { StatementTableLabels } from "@punchless/ui/components/statement-ta
 import { StatementToolbar } from "@punchless/ui/components/statement-toolbar";
 import { Button } from "@punchless/ui/components/button";
 
-import { LearnPageHelp } from "@/components/learn-page-help";
+
 
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { StatementResult } from "@/lib/utils/statement";
@@ -90,7 +90,6 @@ export function StatementScreen({
           )}
           items={breadcrumbs}
         />
-        <LearnPageHelp />
       </div>
 
       <form

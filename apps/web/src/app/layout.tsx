@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "sonner";
+import { AppToaster } from "@/components/app-toaster";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
 });
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Punchless — Workshop Attendance SaaS",
@@ -20,24 +21,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="light" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          forcedTheme="light"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster
-            theme="light"
-            position="top-right"
-            richColors
-            closeButton
-            duration={4000}
-          />
-        </ThemeProvider>
+        {children}
+        <AppToaster />
       </body>
     </html>
   );

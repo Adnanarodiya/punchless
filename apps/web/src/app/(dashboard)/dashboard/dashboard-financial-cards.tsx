@@ -31,7 +31,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
       icon: TrendingUp,
       color: "text-success",
       bg: "bg-success/10",
-      href: "/dashboard/transactions",
+      href: "/dashboard/daily-report",
     },
     {
       label: "Expense",
@@ -40,7 +40,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
       icon: ArrowUpRight,
       color: "text-destructive",
       bg: "bg-destructive/10",
-      href: "/dashboard/transactions",
+      href: "/dashboard/daily-report",
     },
     {
       label: "Cash (net)",
@@ -49,7 +49,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
       icon: Banknote,
       color: "text-primary",
       bg: "bg-primary/10",
-      href: "/dashboard/transactions",
+      href: "/dashboard/cash-book",
     },
     {
       label: "Bank balance",

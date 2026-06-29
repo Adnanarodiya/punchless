@@ -1,7 +1,25 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import type { NextConfig } from "next";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@punchless/ui", "@punchless/types", "@punchless/config"],
+  webpack: (config) => {
+    const reactRoot = path.join(monorepoRoot, "node_modules/react");
+    const reactDomRoot = path.join(monorepoRoot, "node_modules/react-dom");
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      react: reactRoot,
+      "react-dom": reactDomRoot,
+      "react/jsx-runtime": path.join(reactRoot, "jsx-runtime.js"),
+      "react/jsx-dev-runtime": path.join(reactRoot, "jsx-dev-runtime.js"),
+    };
+    return config;
+  },
   async redirects() {
     return [
       {

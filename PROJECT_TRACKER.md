@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-28 (Fix FormData after async submit in bill/payment modals)
+> **Last updated:** 2026-06-29 (Fix Next.js build — dedupe React, remove ThemeProvider, force-dynamic layouts)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -55,8 +55,8 @@
 | `CR ATTENDENCE(1)(1).xlsx` | UX/ref | Owner manual attendance workbook (JAN–MAY 2026) — optional v2 import |
 | `scripts/seed-shahin-employees.mjs` | **Phase 0** | One-time seed — 19 Shahin Motors employees + posts + fingerprint aliases (`pnpm db:seed-shahin-employees`) |
 | `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
-| `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner (`pnpm db:reset-company-data`) |
-| `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login only (`pnpm db:wipe-keep-user:confirm`, default `aiarodiya07@gmail.com`) |
+| `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner; includes `sales_register_imports` (`pnpm db:reset-company-data`) |
+| `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login only; includes `sales_register_imports` (`pnpm db:wipe-keep-user:confirm`, default `aiarodiya07@gmail.com`) |
 | `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
 | `apps/web/vercel.json` | **Deploy** | Vercel monorepo install/build commands (root dir = `apps/web`) |
@@ -170,7 +170,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `tsconfig.json` | 1 | TypeScript config with path aliases (`@/`, `@punchless/*`) |
 | `.env.local` | 2 | Web env vars (Supabase URL, anon key, service role key) — NOT committed |
 | `.env.example` | 2 | Template for `.env.local` |
-| `next.config.ts` | 1/**UX** | Next.js config; permanent redirects `/dashboard/clients` → `/dashboard/customers` (+ statement paths) |
+| `next.config.ts` | 1/**UX** | Next.js config; webpack React aliases (monorepo dedupe); redirects `/dashboard/clients` → `/dashboard/customers` |
 | `postcss.config.mjs` | 1 | PostCSS config for Tailwind |
 | `eslint.config.mjs` | 1 | ESLint config |
 
@@ -178,7 +178,9 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `src/app/layout.tsx` | 1 | Root layout: Inter font, metadata, global CSS |
+| `src/app/layout.tsx` | 1 | Root layout: Inter font, `force-dynamic`, light theme (no next-themes), `AppToaster` |
+| `src/app/not-found.tsx` | 1 | 404 page — link back to dashboard |
+| `src/components/app-toaster.tsx` | 1 | Client Sonner toaster (`ssr: false`) |
 | `src/app/globals.css` | 1 | **Master theme file**: CSS variables for light/dark mode, attendance states, status colors, purchase column, sidebar, charts |
 | `src/app/page.tsx` | 1 | Landing page (redirects to `/dashboard`) |
 
@@ -194,7 +196,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `layout.tsx` | 2/**P0-1** | Dashboard shell: fetches user + `getDashboardShellPrefs()` (data lock + experience) |
+| `layout.tsx` | 2/**P0-1** | Dashboard shell: `force-dynamic`, fetches user + `getDashboardShellPrefs()` (data lock + experience) |
 | `dashboard/page.tsx` | 15/**P0-5** | **Simpler home** — 3 money hero cards, 4 primary actions, pending dues; chart/FY/ops under Show more |
 | `dashboard/dashboard-money-hero.tsx` | **P0-5** | Top row — Customers owe you, You owe suppliers, Cash + Bank (large clickable cards) |
 | `dashboard/dashboard-primary-actions.tsx` | **P0-5**/**P0-2** | 4 action buttons — Pay staff → `/dashboard/salary` (unified hub) |
@@ -218,7 +220,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
 | `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense / income → New bill → Collect → Pay supplier → Pay employee |
 | `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
-| `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; typed rows + 5-card summary vs prior period |
+| `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; bill rows show full billing in Income (incl. credit/udhar); 5-card summary vs prior period |
 | `components/daily-report-summary-cards.tsx` | **Daily report** | Billing, cash, bank, udhar, expenses KPI cards with yesterday % change |
 | `dashboard/dashboard-revenue-chart.tsx` | 15 | 7-day income vs expense bar chart (CSS) |
 | `dashboard/dashboard-live-clock.tsx` | 15 | Live date/time in page header |
@@ -515,7 +517,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `settings.queries.ts` | 7/13.5/**P0-1** | Company settings (+ `dashboard_experience`), `getDashboardShellPrefs()`, profile |
 | `salary.queries.ts` | 6 | Unified payroll: `getSalaryReport()` + `getEmployeeSalaryPayable()` — hourly or fixed mode, grace half-days, joining-date pro-rata, advance deductions |
 | `attendance-import.queries.ts` | **Phase 0** | Fingerprint salary report + `getAttendanceImportMonths()` saved upload list |
-| `sales-register-import.queries.ts` | **Today's entry** | `getSalesRegisterImportDays()`, `getTodaysEntryReport()` — saved days + imported invoice lines |
+| `sales-register-import.queries.ts` | **Today's entry** | `getSalesRegisterImportDays()`, `getTodaysEntryReport()` — saved days from live invoices; auto-prunes orphan `sales_register_imports` metadata |
 | `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |

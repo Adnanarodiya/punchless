@@ -35,6 +35,7 @@ const TABLES_BY_COMPANY = [
   "correction_requests",
   "attendance_sessions",
   "jobs",
+  "sales_register_imports",
   "invoices",
   "purchase_invoices",
   "clients",

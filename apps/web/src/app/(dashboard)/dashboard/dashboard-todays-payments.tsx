@@ -26,10 +26,10 @@ export function DashboardTodaysPayments({ payments, hasDataLockPin }: Props) {
           Today&apos;s money movement
         </h2>
         <Link
-          href="/dashboard/transactions"
+          href="/dashboard/daily-report"
           className="text-sm text-primary hover:underline"
         >
-          All transactions
+          Daily report
         </Link>
       </div>
 

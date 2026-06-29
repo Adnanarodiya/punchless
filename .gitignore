@@ -50,3 +50,4 @@ apps/mobile/ios/
 *.tsbuildinfo
 .vercel
 .env*
+terminals/

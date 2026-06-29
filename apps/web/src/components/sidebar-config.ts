@@ -11,13 +11,11 @@ import {
   Building2,
   FileText,
   ShoppingCart,
-  ArrowLeftRight,
   Landmark,
   Banknote,
   PiggyBank,
   BarChart3,
   Shield,
-  GraduationCap,
   ScrollText,
   ClipboardList,
 } from "lucide-react";
@@ -89,13 +87,6 @@ export const navGroups: NavGroup[] = [
         roles: ["owner", "admin"],
         simpleTier: "advanced",
       },
-      {
-        label: "Learn",
-        href: "/dashboard/learn",
-        icon: GraduationCap,
-        roles: ["owner", "admin"],
-        simpleTier: "advanced",
-      },
     ],
   },
   {
@@ -151,13 +142,6 @@ export const navGroups: NavGroup[] = [
   {
     label: "Finance",
     items: [
-      {
-        label: "Income & expense",
-        href: "/dashboard/transactions",
-        icon: ArrowLeftRight,
-        roles: ["owner", "admin"],
-        simpleTier: "advanced",
-      },
       {
         label: "Banks",
         href: "/dashboard/banks",

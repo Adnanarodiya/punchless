@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/queries/auth.queries";
 import { getDashboardShellPrefs } from "@/lib/queries/settings.queries";
 import { DashboardShell } from "@/components/dashboard-shell";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

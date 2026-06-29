@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { FileText, Landmark, Wallet } from "lucide-react";
 
-import { MaskedAmount } from "@/components/masked-amount";
 import type { getTodaysBookSummary } from "@/lib/queries/cash-book.queries";
-import { formatDate } from "@/lib/utils/formatting";
+import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 
 type BookSummary = Awaited<ReturnType<typeof getTodaysBookSummary>>;
 
@@ -40,19 +39,19 @@ export function DashboardTodaysBook({ book }: Props) {
             <div>
               <p className="text-muted-foreground">Receipts</p>
               <p className="font-semibold text-success">
-                <MaskedAmount amount={book.cash.totalReceipts} />
+                {formatCurrency(book.cash.totalReceipts)}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Payments</p>
               <p className="font-semibold text-destructive">
-                <MaskedAmount amount={book.cash.totalPayments} />
+                {formatCurrency(book.cash.totalPayments)}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Net</p>
               <p className="font-semibold">
-                <MaskedAmount amount={book.cash.netChange} />
+                {formatCurrency(book.cash.netChange)}
               </p>
             </div>
           </div>
@@ -72,19 +71,19 @@ export function DashboardTodaysBook({ book }: Props) {
             <div>
               <p className="text-muted-foreground">Receipts</p>
               <p className="font-semibold text-success">
-                <MaskedAmount amount={book.bank.totalReceipts} />
+                {formatCurrency(book.bank.totalReceipts)}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Payments</p>
               <p className="font-semibold text-destructive">
-                <MaskedAmount amount={book.bank.totalPayments} />
+                {formatCurrency(book.bank.totalPayments)}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">Net</p>
               <p className="font-semibold">
-                <MaskedAmount amount={book.bank.netChange} />
+                {formatCurrency(book.bank.netChange)}
               </p>
             </div>
           </div>
@@ -112,17 +111,13 @@ export function DashboardTodaysBook({ book }: Props) {
                 </div>
                 <div className="text-right">
                   {line.income > 0 ? (
-                    <MaskedAmount
-                      className="font-medium text-success"
-                      amount={line.income}
-                      sign="plus"
-                    />
+                    <span className="font-medium text-success">
+                      +{formatCurrency(line.income)}
+                    </span>
                   ) : line.expense > 0 || line.purchase > 0 ? (
-                    <MaskedAmount
-                      className="font-medium text-destructive"
-                      amount={line.expense || line.purchase}
-                      sign="minus"
-                    />
+                    <span className="font-medium text-destructive">
+                      -{formatCurrency(line.expense || line.purchase)}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}

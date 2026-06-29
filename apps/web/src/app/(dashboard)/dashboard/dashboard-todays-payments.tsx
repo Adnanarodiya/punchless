@@ -5,17 +5,13 @@ import Link from "next/link";
 import { DataTable } from "@punchless/ui/components/data-table";
 
 import type { TodayPaymentRow } from "@/lib/queries/dashboard.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 interface Props {
   payments: TodayPaymentRow[];
-  hasDataLockPin: boolean;
 }
 
-export function DashboardTodaysPayments({ payments, hasDataLockPin }: Props) {
-  const locked = useFinancialLocked(hasDataLockPin);
+export function DashboardTodaysPayments({ payments }: Props) {
   return (
     <section
       aria-labelledby="todays-payments-heading"
@@ -74,15 +70,7 @@ export function DashboardTodaysPayments({ payments, hasDataLockPin }: Props) {
             key: "amount",
             header: "Amount",
             cell: (row) => (
-              <span
-                className={
-                  locked
-                    ? "font-medium tracking-widest text-muted-foreground"
-                    : "font-medium"
-                }
-              >
-                {maskAmount(locked, formatCurrency(row.amount))}
-              </span>
+              <span className="font-medium">{formatCurrency(row.amount)}</span>
             ),
           },
         ]}

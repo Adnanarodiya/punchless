@@ -2,8 +2,7 @@
 
 import * as React from "react";
 
-import { Sidebar } from "@/components/sidebar";
-import { DashboardHeader } from "@/components/dashboard-header";
+import { DashboardNavHeader } from "@/components/dashboard-nav-header";
 import {
   GlobalSearch,
   useGlobalSearchShortcut,
@@ -62,7 +61,6 @@ export function DashboardShell({
     setLanguage(uiLanguage);
   }, [uiLanguage, setLanguage]);
 
-  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
 
   const openSearch = React.useCallback(() => setSearchOpen(true), []);
@@ -71,38 +69,30 @@ export function DashboardShell({
 
   return (
     <TooltipProvider>
-    <div className="flex h-screen overflow-hidden bg-background">
-      <PageNavigationLoader />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-      >
-        Skip to content
-      </a>
+      <div className="min-h-screen bg-background">
+        <PageNavigationLoader />
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+        >
+          Skip to content
+        </a>
 
-      <Sidebar
-        role={role}
-        userName={userName}
-        companyName={companyName}
-        dashboardExperience={dashboardExperience}
-        mobileOpen={mobileNavOpen}
-        onMobileClose={() => setMobileNavOpen(false)}
-      />
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <DashboardHeader
-          userName={userName}
+        <DashboardNavHeader
           role={role}
+          userName={userName}
+          companyName={companyName}
+          dashboardExperience={dashboardExperience}
           hasDataLockPin={hasDataLockPin}
-          onMenuClick={() => setMobileNavOpen(true)}
           onSearchClick={openSearch}
         />
+
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-        <main id="main-content" className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+
+        <main id="main-content" className="p-4 sm:p-6">
           {children}
         </main>
       </div>
-    </div>
     </TooltipProvider>
   );
 }

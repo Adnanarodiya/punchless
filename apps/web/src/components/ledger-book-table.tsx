@@ -13,9 +13,7 @@ import { deleteStaffPayment } from "@/lib/actions/staff-payment.actions";
 import { deleteTransaction } from "@/lib/actions/transaction.actions";
 import { useAction } from "@/hooks/use-action";
 import type { DailyBookLine } from "@/lib/queries/daily-book.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 export type LedgerBookTotals = {
   totalIncome: number;
@@ -28,7 +26,6 @@ export type LedgerBookTotals = {
 type Props = {
   lines: DailyBookLine[];
   totals: LedgerBookTotals;
-  hasDataLockPin: boolean;
   emptyMessage: string;
   resetKey: string;
   showDateColumn?: boolean;
@@ -44,11 +41,9 @@ function formatMode(mode: string | null) {
 
 function AmountCell({
   value,
-  locked,
   className,
 }: {
   value: number;
-  locked: boolean;
   className?: string;
 }) {
   if (value <= 0) {
@@ -56,7 +51,7 @@ function AmountCell({
   }
   return (
     <span className={cn("tabular-nums font-medium", className)}>
-      {maskAmount(locked, formatCurrency(value))}
+      {formatCurrency(value)}
     </span>
   );
 }
@@ -67,13 +62,11 @@ const thClass =
 export function LedgerBookTable({
   lines,
   totals,
-  hasDataLockPin,
   emptyMessage,
   resetKey,
   showDateColumn = false,
 }: Props) {
   const router = useRouter();
-  const locked = useFinancialLocked(hasDataLockPin);
   const [deleteTarget, setDeleteTarget] = useState<DailyBookLine | null>(null);
 
   const { execute: execDeleteTx, loading: deletingTx } = useAction(deleteTransaction, {
@@ -157,16 +150,16 @@ export function LedgerBookTable({
                     {row.particular}
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.income} locked={locked} className="text-success" />
+                    <AmountCell value={row.income}  className="text-success" />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.expense} locked={locked} className="text-destructive" />
+                    <AmountCell value={row.expense}  className="text-destructive" />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.transfer} locked={locked} />
+                    <AmountCell value={row.transfer}  />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.purchase} locked={locked} className="text-purchase" />
+                    <AmountCell value={row.purchase}  className="text-purchase" />
                   </td>
                   <td className="border border-border px-2 py-2">{formatMode(row.mode)}</td>
                   {showDateColumn ? (
@@ -210,24 +203,24 @@ export function LedgerBookTable({
                 <td className="border border-border px-2 py-2 text-right text-success">
                   <AmountCell
                     value={totals.totalIncome}
-                    locked={locked}
+                    
                     className="text-success"
                   />
                 </td>
                 <td className="border border-border px-2 py-2 text-right text-destructive">
                   <AmountCell
                     value={totals.totalExpense}
-                    locked={locked}
+                    
                     className="text-destructive"
                   />
                 </td>
                 <td className="border border-border px-2 py-2 text-right">
-                  <AmountCell value={totals.totalTransfer} locked={locked} />
+                  <AmountCell value={totals.totalTransfer}  />
                 </td>
                 <td className="border border-border px-2 py-2 text-right text-purchase">
                   <AmountCell
                     value={totals.totalPurchase}
-                    locked={locked}
+                    
                     className="text-purchase"
                   />
                 </td>
@@ -258,16 +251,16 @@ export function LedgerBookTable({
             totals.balance >= 0 ? "text-success" : "text-destructive"
           )}
         >
-          {maskAmount(locked, formatCurrency(totals.balance))}
+          {formatCurrency(totals.balance)}
         </span>
         {totals.totalTransfer > 0 ? (
           <span className="ml-4 text-muted-foreground">
-            · Transfers {maskAmount(locked, formatCurrency(totals.totalTransfer))}
+            · Transfers {formatCurrency(totals.totalTransfer)}
           </span>
         ) : null}
         {totals.totalPurchase > 0 ? (
           <span className="ml-2 text-muted-foreground">
-            · Purchases {maskAmount(locked, formatCurrency(totals.totalPurchase))}
+            · Purchases {formatCurrency(totals.totalPurchase)}
           </span>
         ) : null}
       </div>

@@ -18,7 +18,6 @@ type Props = {
   breadcrumbLabel: string;
   basePath: "/dashboard/cash-book" | "/dashboard/bank-book";
   report: BookReport;
-  hasDataLockPin: boolean;
 };
 
 function todayIso() {
@@ -47,7 +46,6 @@ export function BookReportManager({
   breadcrumbLabel,
   basePath,
   report,
-  hasDataLockPin,
 }: Props) {
   const router = useRouter();
   const isRange = report.periodStart !== report.periodEnd;
@@ -152,7 +150,6 @@ export function BookReportManager({
           totalPurchase: report.totalPurchase,
           balance: report.balance,
         }}
-        hasDataLockPin={hasDataLockPin}
         emptyMessage={
           isRange
             ? "No entries in this date range."

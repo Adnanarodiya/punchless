@@ -369,8 +369,8 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `sidebar.tsx` | 11A/**P0-1** | Grouped collapsible sidebar; filters by `dashboard_experience`; Simple mode badge |
-| `sidebar-config.ts` | **V3-A** | Commerce nav — Invoices (GST) link removed; Today's entry in More tools |
+| `sidebar.tsx` | 11A/**P0-1** | Legacy grouped sidebar (replaced by header nav; kept for reference) |
+| `sidebar-config.ts` | **V3-A/P0-1** | Shared nav config — `filterNavGroups`, `isNavItemActive`, `findActiveGroupLabel`; Commerce GST link removed; Today's entry in More tools |
 | `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
@@ -389,8 +389,12 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/reports/expenses/page.tsx` | 17 | Expense-only report |
 | `dashboard/reports/rojmel/page.tsx` | 17 | Full ledger (Rojmel) with running balance |
 | `dashboard/reports/balance-sheet/page.tsx` | 17 | Balance sheet — assets vs liabilities with opening/closing snapshot |
-| `dashboard-shell.tsx` | 11A/4/**P0-1** | Shell: skip-to-content, mobile nav, hydrates dashboard experience store, data-lock idle |
-| `dashboard-header.tsx` | 11A/9 | Top header: Learn button, search, mobile menu, user name + role + logout |
+| `dashboard/page.tsx` | **P0-1** | Home dashboard — hero cards blur when data locked; all other sections stay visible |
+| `dashboard-money-hero.tsx` | **P0-1** | Top 4 summary cards — per-card `blur-md` when locked (not dot-masked) |
+| `dashboard-todays-book.tsx` | **P0-1** | Today's cash/bank book — always shows amounts on home (not data-lock masked) |
+| `dashboard-shell.tsx` | 11A/4/**P0-1** | Shell: sticky header nav (no sidebar), skip-to-content, global search, data-lock idle |
+| `dashboard-nav-header.tsx` | **P0-1** | Sticky top header — company name as brand, nav groups as dropdowns, search, lock, user, logout; mobile slide-over aside drawer with backdrop |
+| `dashboard-header.tsx` | 11A/9 | Legacy top bar (replaced by `dashboard-nav-header.tsx`; unused) |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
 | `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |
 | `statement-print-document.tsx` | 13.5 | Server-friendly printable statement document (letterhead + table) |
@@ -408,7 +412,9 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
 | `audit-display.ts` | 18/19 | Action/entity pill labels, tones; includes `approve_correction` / `reject_correction` |
 | `pin-hash.ts` | Extras | Scrypt hash/verify for data lock PIN (server-only) |
-| `mask-financial.ts` | Extras | `maskAmount()` — `••••••` when dashboard locked |
+| `mask-financial.ts` | **P0-1** | `lockedBlurClass()` — home page hero cards only when data locked |
+| `masked-amount.tsx` | **P0-1** | `MaskedAmount` — always shows formatted amounts (no lock) |
+| `use-action.ts` | **P0-1** | `"use client"` directive — fixes invalid hook call in client managers |
 | `fingerprint-attendance-parser.ts` | **Phase 0** | Parse fingerprint xlsx (`rptMonthlyWorkDurationSummary` + `rptMonthlyWorkDuration` details) — auto label col, multi-row day headers, SUMMERY or derived summary |
 | `fingerprint-salary-report.ts` | **Phase 0** | Shahin salary line calc (÷ eligible days, OT × multiplier) + export rows |
 | `sales-register-parser.ts` | **Today's entry** | Parse `Sales Register` CSV/xlsx; `resolveSalesRegisterEntryDate()` — fallback to latest bill day ≤ selected date |

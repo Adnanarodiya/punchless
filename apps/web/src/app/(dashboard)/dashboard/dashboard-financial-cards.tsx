@@ -10,23 +10,18 @@ import {
 } from "lucide-react";
 
 import type { FinancialSummary } from "@/lib/queries/dashboard.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 interface Props {
   summary: FinancialSummary;
-  hasDataLockPin: boolean;
 }
 
-export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
-  const locked = useFinancialLocked(hasDataLockPin);
-
+export function DashboardFinancialCards({ summary }: Props) {
   const cards = [
     {
       label: "Income",
       sublabel: summary.periodLabel,
-      value: maskAmount(locked, formatCurrency(summary.income)),
+      value: formatCurrency(summary.income),
       icon: TrendingUp,
       color: "text-success",
       bg: "bg-success/10",
@@ -35,7 +30,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
     {
       label: "Expense",
       sublabel: summary.periodLabel,
-      value: maskAmount(locked, formatCurrency(summary.expense)),
+      value: formatCurrency(summary.expense),
       icon: ArrowUpRight,
       color: "text-destructive",
       bg: "bg-destructive/10",
@@ -44,7 +39,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
     {
       label: "Cash (net)",
       sublabel: "Income − expense via cash",
-      value: maskAmount(locked, formatSigned(summary.cashNet)),
+      value: formatSigned(summary.cashNet),
       icon: Banknote,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -53,7 +48,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
     {
       label: "Bank balance",
       sublabel: "All active accounts",
-      value: maskAmount(locked, formatCurrency(summary.bankBalance)),
+      value: formatCurrency(summary.bankBalance),
       icon: Landmark,
       color: "text-state-travel",
       bg: "bg-state-travel/10",
@@ -62,7 +57,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
     {
       label: "Customer credit",
       sublabel: "Total due from customers",
-      value: maskAmount(locked, formatCurrency(summary.clientCredit)),
+      value: formatCurrency(summary.clientCredit),
       icon: ArrowDownLeft,
       color: "text-success",
       bg: "bg-success/10",
@@ -71,7 +66,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
     {
       label: "Supplier payable",
       sublabel: "Total owed to vendors",
-      value: maskAmount(locked, formatCurrency(summary.supplierPayable)),
+      value: formatCurrency(summary.supplierPayable),
       icon: ArrowUpRight,
       color: "text-destructive",
       bg: "bg-destructive/10",
@@ -102,15 +97,7 @@ export function DashboardFinancialCards({ summary, hasDataLockPin }: Props) {
                   <Icon className="size-4" />
                 </div>
               </div>
-              <p
-                className={
-                  locked
-                    ? "text-xl font-bold tracking-widest text-muted-foreground"
-                    : "text-xl font-bold"
-                }
-              >
-                {card.value}
-              </p>
+              <p className="text-xl font-bold">{card.value}</p>
             </Link>
           );
         })}

@@ -1,12 +1,6 @@
-"use client";
-
 import type { ReactNode } from "react";
 
-import { cn } from "@punchless/ui/lib/utils";
-
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 interface MaskedAmountProps {
   amount: number;
@@ -15,7 +9,7 @@ interface MaskedAmountProps {
   sign?: "plus" | "minus";
   /** Custom formatter (client components only — do not pass from RSC). */
   format?: (amount: number) => string;
-  children?: (formatted: string, locked: boolean) => ReactNode;
+  children?: (formatted: string) => ReactNode;
 }
 
 function applySign(value: string, sign?: "plus" | "minus") {
@@ -24,6 +18,7 @@ function applySign(value: string, sign?: "plus" | "minus") {
   return value;
 }
 
+/** Displays a formatted amount. Data lock blur applies on home page summary cards only. */
 export function MaskedAmount({
   amount,
   className,
@@ -31,30 +26,23 @@ export function MaskedAmount({
   format = formatCurrency,
   children,
 }: MaskedAmountProps) {
-  const locked = useFinancialLocked();
   const formatted = applySign(format(amount), sign);
-  const display = maskAmount(locked, formatted);
 
   if (children) {
-    return <>{children(display, locked)}</>;
+    return <>{children(formatted)}</>;
   }
 
-  return (
-    <span
-      className={cn(locked && "tracking-widest text-muted-foreground", className)}
-    >
-      {display}
-    </span>
-  );
+  return <span className={className}>{formatted}</span>;
 }
 
 export function MaskedAmountText({
   amount,
+  className,
   format = formatCurrency,
 }: {
   amount: number;
+  className?: string;
   format?: (amount: number) => string;
 }) {
-  const locked = useFinancialLocked();
-  return maskAmount(locked, format(amount));
+  return <span className={className}>{format(amount)}</span>;
 }

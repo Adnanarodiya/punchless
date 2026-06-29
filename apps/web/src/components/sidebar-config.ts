@@ -3,13 +3,11 @@ import type { DashboardExperience } from "@punchless/types";
 import {
   LayoutDashboard,
   Users,
-  DollarSign,
   Wallet,
   Settings,
   CreditCard,
   UserCircle,
   Building2,
-  FileText,
   ShoppingCart,
   Landmark,
   Banknote,
@@ -323,4 +321,25 @@ export function getNavItemLabel(
   experience: DashboardExperience
 ): string {
   return displayLabel(item, experience);
+}
+
+export function isNavItemActive(pathname: string, href: string) {
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(href))
+  );
+}
+
+export function findActiveGroupLabel(
+  groups: NavGroup[],
+  pathname: string
+): string | null {
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (item.href && isNavItemActive(pathname, item.href)) {
+        return group.label;
+      }
+    }
+  }
+  return null;
 }

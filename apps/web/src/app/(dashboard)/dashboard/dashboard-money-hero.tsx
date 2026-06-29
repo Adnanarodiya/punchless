@@ -6,7 +6,6 @@ import { ArrowDownLeft, ArrowUpRight, Landmark, Wallet } from "lucide-react";
 import type { FinancialSummary } from "@/lib/queries/dashboard.queries";
 import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 import { cn } from "@punchless/ui/lib/utils";
 import { ownerLabel } from "@/lib/i18n/owner-labels";
 import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
@@ -23,7 +22,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
   const cards = [
     {
       label: ownerLabel(language, "hero.customersOwe"),
-      value: maskAmount(locked, formatCurrency(summary.clientCredit)),
+      value: formatCurrency(summary.clientCredit),
       href: "/dashboard/customers",
       icon: ArrowDownLeft,
       accent: "text-success",
@@ -32,7 +31,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
     },
     {
       label: ownerLabel(language, "hero.youOweSuppliers"),
-      value: maskAmount(locked, formatCurrency(summary.supplierPayable)),
+      value: formatCurrency(summary.supplierPayable),
       href: "/dashboard/suppliers",
       icon: ArrowUpRight,
       accent: "text-destructive",
@@ -41,7 +40,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
     },
     {
       label: ownerLabel(language, "hero.cash"),
-      value: maskAmount(locked, formatSigned(summary.cashNet)),
+      value: formatSigned(summary.cashNet),
       href: "/dashboard/cash-book",
       icon: Wallet,
       accent: "text-success",
@@ -50,7 +49,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
     },
     {
       label: ownerLabel(language, "hero.bank"),
-      value: maskAmount(locked, formatSigned(summary.bankBalance)),
+      value: formatSigned(summary.bankBalance),
       href: "/dashboard/banks",
       icon: Landmark,
       accent: "text-primary",
@@ -71,25 +70,27 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
             <Link
               key={card.label}
               href={card.href}
-              className="rounded-2xl border border-border bg-card p-6 transition hover:border-primary/30 hover:bg-accent/20"
+              className={cn(
+                "rounded-2xl border border-border bg-card p-6 transition hover:border-primary/30 hover:bg-accent/20",
+                locked && "pointer-events-none"
+              )}
+              tabIndex={locked ? -1 : undefined}
+              aria-hidden={locked}
             >
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <p className="text-base font-medium text-muted-foreground">
-                  {card.label}
-                </p>
-                <div className={cn("rounded-xl p-2.5", card.accentBg, card.accent)}>
-                  <Icon className="size-5" />
+              <div className={cn(locked && "select-none blur-md")}>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <p className="text-base font-medium text-muted-foreground">
+                    {card.label}
+                  </p>
+                  <div className={cn("rounded-xl p-2.5", card.accentBg, card.accent)}>
+                    <Icon className="size-5" />
+                  </div>
                 </div>
+                <p className="text-3xl font-bold tracking-tight sm:text-4xl">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">{card.hint}</p>
               </div>
-              <p
-                className={cn(
-                  "text-3xl font-bold tracking-tight sm:text-4xl",
-                  locked && "tracking-widest text-muted-foreground"
-                )}
-              >
-                {card.value}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">{card.hint}</p>
             </Link>
           );
         })}

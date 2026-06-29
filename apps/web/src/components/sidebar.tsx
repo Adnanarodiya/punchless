@@ -11,9 +11,10 @@ import { cn } from "@punchless/ui/lib/utils";
 
 import {
   filterNavGroups,
+  findActiveGroupLabel,
   getNavItemLabel,
+  isNavItemActive,
   MORE_TOOLS_GROUP_LABEL,
-  type NavGroup,
   type NavItem,
 } from "./sidebar-config";
 import { translateNavLabel } from "@/lib/i18n/owner-labels";
@@ -74,24 +75,6 @@ function NavLink({
       {label}
     </Link>
   );
-}
-
-function isNavItemActive(pathname: string, href: string) {
-  return (
-    pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(href))
-  );
-}
-
-function findActiveGroupLabel(groups: NavGroup[], pathname: string): string | null {
-  for (const group of groups) {
-    for (const item of group.items) {
-      if (item.href && isNavItemActive(pathname, item.href)) {
-        return group.label;
-      }
-    }
-  }
-  return groups[0]?.label ?? null;
 }
 
 export function Sidebar({

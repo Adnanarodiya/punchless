@@ -1,5 +1,4 @@
 import { getBankBookReportForRange } from "@/lib/queries/cash-book.queries";
-import { getDataLockStatus } from "@/lib/queries/settings.queries";
 import { BookReportManager } from "@/components/book-report-manager";
 
 function todayIso() {
@@ -20,11 +19,7 @@ export default async function BankBookPage({
 }) {
   const params = await searchParams;
   const { start, end } = resolveBookRange(params);
-
-  const [report, dataLock] = await Promise.all([
-    getBankBookReportForRange(start, end),
-    getDataLockStatus(),
-  ]);
+  const report = await getBankBookReportForRange(start, end);
 
   return (
     <BookReportManager
@@ -33,7 +28,6 @@ export default async function BankBookPage({
       breadcrumbLabel="Bank book"
       basePath="/dashboard/bank-book"
       report={report}
-      hasDataLockPin={dataLock.hasPin}
     />
   );
 }

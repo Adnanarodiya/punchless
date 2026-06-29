@@ -87,8 +87,8 @@ export function DashboardExperienceToggle({ initialExperience }: Props) {
 
       <p className="text-xs text-muted-foreground">
         {selected === "simple"
-          ? "Sidebar shows Home, Customers, Suppliers, Staff, and Settings. Extra tools live under More tools."
-          : "Sidebar shows all modules — customers, suppliers, banks, reports, and more."}
+          ? "Header shows Home, Customers, Suppliers, Staff, and Settings. Extra tools live under More tools."
+          : "Header shows all modules — customers, suppliers, banks, reports, and more."}
       </p>
     </div>
   );

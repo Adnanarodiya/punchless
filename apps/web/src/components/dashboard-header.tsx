@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { LogOut, Menu, Search } from "lucide-react";
 import { Button } from "@punchless/ui/components/button";
 import { logout } from "@/lib/actions/auth.actions";

@@ -12,14 +12,11 @@ import {
 
 import { cn } from "@punchless/ui/lib/utils";
 import type { DailyBookDaySummary } from "@/lib/queries/daily-book.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 type Props = {
   summary: DailyBookDaySummary;
   comparisonSummary: DailyBookDaySummary;
-  hasDataLockPin: boolean;
   periodLabel?: string;
   comparisonLabel?: string;
 };
@@ -136,12 +133,9 @@ function TrendBadge({
 export function DailyReportSummaryCards({
   summary,
   comparisonSummary,
-  hasDataLockPin,
   periodLabel = "Today",
   comparisonLabel = "Yesterday",
 }: Props) {
-  const locked = useFinancialLocked(hasDataLockPin);
-
   return (
     <section aria-labelledby="book-summary-heading">
       <h2 id="book-summary-heading" className="sr-only">
@@ -169,22 +163,15 @@ export function DailyReportSummaryCards({
                   <Icon className="size-4" />
                 </div>
               </div>
-              <p
-                className={cn(
-                  "text-2xl font-bold tabular-nums",
-                  locked && "tracking-widest text-muted-foreground"
-                )}
-              >
-                {maskAmount(locked, formatCurrency(value))}
+              <p className="text-2xl font-bold tabular-nums">
+                {formatCurrency(value)}
               </p>
-              {!locked ? (
-                <TrendBadge
-                  current={value}
-                  previous={comparisonValue}
-                  previousLabel={comparisonLabel}
-                  invert={card.invertTrend}
-                />
-              ) : null}
+              <TrendBadge
+                current={value}
+                previous={comparisonValue}
+                previousLabel={comparisonLabel}
+                invert={card.invertTrend}
+              />
             </div>
           );
         })}

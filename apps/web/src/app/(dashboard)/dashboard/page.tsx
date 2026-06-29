@@ -2,8 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Users, DollarSign, Wallet } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
-
 import {
   getDashboardStats,
   getFinancialSummary,
@@ -20,11 +18,8 @@ import {
   getCurrentFinancialYearStartYear,
   resolveDashboardFinancialYear,
 } from "@/lib/utils/financial-year";
-import { DashboardDataLockControls } from "@/components/dashboard-data-lock-controls";
-
 import { DashboardFinancialCards } from "./dashboard-financial-cards";
 import { DashboardFySelector } from "./dashboard-fy-selector";
-import { DashboardLiveClock } from "./dashboard-live-clock";
 import { DashboardMoneyHero } from "./dashboard-money-hero";
 import { DashboardPendingDues } from "./dashboard-pending-dues";
 import { DashboardPrimaryActions } from "./dashboard-primary-actions";
@@ -141,23 +136,13 @@ export default async function DashboardPage({
         invoicePrefix={settings?.sales_invoice_prefix ?? "ISHABA"}
       >
         <div className="space-y-8">
-      <PageHeader
-        title="Home"
-        description="How much customers owe, what you owe, and what to do next."
-      >
-        <div className="flex flex-col items-end gap-2">
-          <DashboardLiveClock />
-          <DashboardDataLockControls hasDataLockPin={hasDataLockPin} />
-        </div>
-      </PageHeader>
-
       <DashboardMoneyHero summary={financial} hasDataLockPin={hasDataLockPin} />
 
       <DashboardPrimaryActions />
 
       <DashboardTodaysBook book={todaysBook} />
 
-      <DashboardPendingDues dues={pendingDues} hasDataLockPin={hasDataLockPin} />
+      <DashboardPendingDues dues={pendingDues} />
 
       <DashboardShowMore>
         <SetupChecklist status={setupChecklist} />
@@ -173,25 +158,18 @@ export default async function DashboardPage({
 
         <FyCalendarHint />
 
-        <DashboardFinancialCards
-          summary={financial}
-          hasDataLockPin={hasDataLockPin}
-        />
+        <DashboardFinancialCards summary={financial} />
 
         <DashboardQuickActions />
 
         <div className="grid grid-cols-1 gap-6">
-          <DashboardTodaysPayments
-            payments={todaysPayments}
-            hasDataLockPin={hasDataLockPin}
-          />
+          <DashboardTodaysPayments payments={todaysPayments} />
         </div>
 
         <Suspense fallback={null}>
           <DashboardRevenueChart
             points={revenueChart}
             chartRange={chartRange}
-            hasDataLockPin={hasDataLockPin}
           />
         </Suspense>
 

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@punchless/ui/lib/utils";
 
 import type { RevenueChartPoint } from "@/lib/queries/dashboard.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export type ChartRange = "7d" | "6m";
@@ -13,17 +12,11 @@ export type ChartRange = "7d" | "6m";
 interface Props {
   points: RevenueChartPoint[];
   chartRange: ChartRange;
-  hasDataLockPin: boolean;
 }
 
-export function DashboardRevenueChart({
-  points,
-  chartRange,
-  hasDataLockPin,
-}: Props) {
+export function DashboardRevenueChart({ points, chartRange }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const locked = useFinancialLocked(hasDataLockPin);
 
   const maxValue = Math.max(
     1,
@@ -44,7 +37,7 @@ export function DashboardRevenueChart({
   return (
     <section
       aria-labelledby="revenue-chart-heading"
-      className="relative rounded-xl border border-border bg-card p-5"
+      className="rounded-xl border border-border bg-card p-5"
     >
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -79,13 +72,7 @@ export function DashboardRevenueChart({
         </div>
       </div>
 
-      <div
-        className={
-          locked
-            ? "pointer-events-none flex items-end justify-between gap-2 blur-sm select-none sm:gap-4"
-            : "flex items-end justify-between gap-2 sm:gap-4"
-        }
-      >
+      <div className="flex items-end justify-between gap-2 sm:gap-4">
         {points.map((point) => (
           <div
             key={point.date}
@@ -97,16 +84,14 @@ export function DashboardRevenueChart({
                 style={{
                   height: `${Math.max(4, (point.income / maxValue) * 100)}%`,
                 }}
-                title={locked ? undefined : `Income ${formatCurrency(point.income)}`}
+                title={`Income ${formatCurrency(point.income)}`}
               />
               <div
                 className="w-3 rounded-t bg-destructive/70 sm:w-4"
                 style={{
                   height: `${Math.max(4, (point.expense / maxValue) * 100)}%`,
                 }}
-                title={
-                  locked ? undefined : `Expense ${formatCurrency(point.expense)}`
-                }
+                title={`Expense ${formatCurrency(point.expense)}`}
               />
             </div>
             <span className="text-center text-[10px] text-muted-foreground sm:text-xs">
@@ -115,14 +100,6 @@ export function DashboardRevenueChart({
           </div>
         ))}
       </div>
-
-      {locked ? (
-        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/40">
-          <p className="text-sm font-medium text-muted-foreground">
-            Unlock to view chart values
-          </p>
-        </div>
-      ) : null}
     </section>
   );
 }

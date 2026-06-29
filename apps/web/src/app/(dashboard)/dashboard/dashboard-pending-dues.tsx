@@ -8,17 +8,13 @@ import { useDashboardHomeModalsOptional } from "@/components/dashboard-home-moda
 import { ownerLabel } from "@/lib/i18n/owner-labels";
 import type { PendingDueRow } from "@/lib/queries/dashboard.queries";
 import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 interface Props {
   dues: PendingDueRow[];
-  hasDataLockPin: boolean;
 }
 
-export function DashboardPendingDues({ dues, hasDataLockPin }: Props) {
-  const locked = useFinancialLocked(hasDataLockPin);
+export function DashboardPendingDues({ dues }: Props) {
   const homeModals = useDashboardHomeModalsOptional();
   const language = useUiLanguageStore((s) => s.language);
 
@@ -65,14 +61,8 @@ export function DashboardPendingDues({ dues, hasDataLockPin }: Props) {
               </Link>
 
               <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <span
-                  className={
-                    locked
-                      ? "font-semibold tracking-widest text-muted-foreground"
-                      : "font-semibold text-warning"
-                  }
-                >
-                  {maskAmount(locked, formatCurrency(due.amount))}
+                <span className="font-semibold text-warning">
+                  {formatCurrency(due.amount)}
                 </span>
                 {due.type === "client" && homeModals ? (
                   <Button

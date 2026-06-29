@@ -18,16 +18,13 @@ import { deleteStaffPayment } from "@/lib/actions/staff-payment.actions";
 import { deleteTransaction } from "@/lib/actions/transaction.actions";
 import { useAction } from "@/hooks/use-action";
 import type { DailyBookLine, DailyBookReport } from "@/lib/queries/daily-book.queries";
-import { useFinancialLocked } from "@/lib/stores/data-lock.store";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
-import { maskAmount } from "@/lib/utils/mask-financial";
 
 export type BookReportMode = "day" | "month";
 
 type Props = {
   mode: BookReportMode;
   report: DailyBookReport;
-  hasDataLockPin: boolean;
   showFullReportLink?: boolean;
 };
 
@@ -80,11 +77,9 @@ function formatMode(mode: string | null) {
 
 function AmountCell({
   value,
-  locked,
   className,
 }: {
   value: number;
-  locked: boolean;
   className?: string;
 }) {
   if (value <= 0) {
@@ -92,7 +87,7 @@ function AmountCell({
   }
   return (
     <span className={cn("tabular-nums font-medium", className)}>
-      {maskAmount(locked, formatCurrency(value))}
+      {formatCurrency(value)}
     </span>
   );
 }
@@ -100,11 +95,9 @@ function AmountCell({
 export function DailyReportManager({
   mode,
   report,
-  hasDataLockPin,
   showFullReportLink = false,
 }: Props) {
   const router = useRouter();
-  const locked = useFinancialLocked(hasDataLockPin);
   const [deleteTarget, setDeleteTarget] = useState<DailyBookLine | null>(null);
 
   const isDay = mode === "day";
@@ -281,7 +274,7 @@ export function DailyReportManager({
       <DailyReportSummaryCards
         summary={report.summary}
         comparisonSummary={report.comparisonSummary}
-        hasDataLockPin={hasDataLockPin}
+
         periodLabel={isDay ? "Today" : "This month"}
         comparisonLabel={isDay ? "Yesterday" : "Previous month"}
       />
@@ -330,16 +323,16 @@ export function DailyReportManager({
                     {row.particular}
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.income} locked={locked} className="text-success" />
+                    <AmountCell value={row.income}  className="text-success" />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.expense} locked={locked} className="text-destructive" />
+                    <AmountCell value={row.expense}  className="text-destructive" />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.transfer} locked={locked} />
+                    <AmountCell value={row.transfer}  />
                   </td>
                   <td className="border border-border px-2 py-2 text-right">
-                    <AmountCell value={row.purchase} locked={locked} className="text-purchase" />
+                    <AmountCell value={row.purchase}  className="text-purchase" />
                   </td>
                   <td className="border border-border px-2 py-2">{formatMode(row.mode)}</td>
                   <td className="border border-border px-2 py-2 whitespace-nowrap">
@@ -379,22 +372,22 @@ export function DailyReportManager({
                   Total
                 </td>
                 <td className="border border-border px-2 py-2 text-right text-success">
-                  <AmountCell value={report.totalIncome} locked={locked} className="text-success" />
+                  <AmountCell value={report.totalIncome}  className="text-success" />
                 </td>
                 <td className="border border-border px-2 py-2 text-right text-destructive">
                   <AmountCell
                     value={report.totalExpense}
-                    locked={locked}
+                    
                     className="text-destructive"
                   />
                 </td>
                 <td className="border border-border px-2 py-2 text-right">
-                  <AmountCell value={report.totalTransfer} locked={locked} />
+                  <AmountCell value={report.totalTransfer}  />
                 </td>
                 <td className="border border-border px-2 py-2 text-right text-purchase">
                   <AmountCell
                     value={report.totalPurchase}
-                    locked={locked}
+                    
                     className="text-purchase"
                   />
                 </td>
@@ -426,16 +419,16 @@ export function DailyReportManager({
             report.balance >= 0 ? "text-success" : "text-destructive"
           )}
         >
-          {maskAmount(locked, formatCurrency(report.balance))}
+          {formatCurrency(report.balance)}
         </span>
         {report.totalTransfer > 0 ? (
           <span className="ml-4 text-muted-foreground">
-            · Transfers {maskAmount(locked, formatCurrency(report.totalTransfer))}
+            · Transfers {formatCurrency(report.totalTransfer)}
           </span>
         ) : null}
         {report.totalPurchase > 0 ? (
           <span className="ml-2 text-muted-foreground">
-            · Purchases {maskAmount(locked, formatCurrency(report.totalPurchase))}
+            · Purchases {formatCurrency(report.totalPurchase)}
           </span>
         ) : null}
       </div>

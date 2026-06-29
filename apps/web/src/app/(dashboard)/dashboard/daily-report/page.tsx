@@ -1,5 +1,5 @@
 import { getDailyBookReport } from "@/lib/queries/daily-book.queries";
-import { getCompanySettings, getDataLockStatus } from "@/lib/queries/settings.queries";
+import { getCompanySettings } from "@/lib/queries/settings.queries";
 
 import { DailyReportManager } from "./daily-report-manager";
 
@@ -12,10 +12,9 @@ export default async function DailyReportPage({
   const bookDate =
     params.date?.trim() || new Date().toISOString().slice(0, 10);
 
-  const [report, settings, dataLock] = await Promise.all([
+  const [report, settings] = await Promise.all([
     getDailyBookReport(bookDate),
     getCompanySettings(),
-    getDataLockStatus(),
   ]);
 
   const isFullExperience = settings?.dashboard_experience === "full";
@@ -24,7 +23,6 @@ export default async function DailyReportPage({
     <DailyReportManager
       mode="day"
       report={report}
-      hasDataLockPin={dataLock.hasPin}
       showFullReportLink={isFullExperience}
     />
   );

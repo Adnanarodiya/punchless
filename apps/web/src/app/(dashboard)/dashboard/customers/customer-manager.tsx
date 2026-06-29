@@ -21,8 +21,9 @@ import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
-import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { cn } from "@punchless/ui/lib/utils";
+import { BankPaymentFields } from "@/components/bank-payment-fields";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 
 import {
   createClient,
@@ -41,6 +42,7 @@ import { IconTooltip } from "@/components/icon-tooltip";
 
 interface Props {
   customers: ClientWithDue[];
+  banks: BankWithBalance[];
   summary: { totalClients: number; totalDue: number };
   initialCustomerId?: string;
   initialOpen?: "pay" | "invoice";
@@ -52,6 +54,7 @@ const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
 
 export function CustomerManager({
   customers,
+  banks,
   summary,
   initialCustomerId,
   initialOpen,
@@ -424,14 +427,11 @@ export function CustomerManager({
               step="0.01"
               required
             />
-            <div>
-              <label className="mb-1 block text-sm font-medium">Payment Mode</label>
-              <PaymentModeSelect
-                name="paymentMode"
-                defaultValue="cash"
-                includeCredit={false}
-              />
-            </div>
+            <BankPaymentFields
+              banks={banks}
+              paymentModeSelectId="customerManagerPaymentMode"
+              bankSelectId="customerManagerBankId"
+            />
             <Field
               label="Payment Date"
               name="paymentDate"

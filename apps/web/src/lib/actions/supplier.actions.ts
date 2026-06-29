@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import {
+  bankModeLabel,
+  deleteBankLedgerByReference,
+  insertBankLedgerEntry,
+  normalizeBankSubMode,
+} from "@/lib/utils/bank-ledger";
+import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
+import {
   createSupplierSchema,
   deleteSupplierPaymentSchema,
   paySupplierSchema,
@@ -12,10 +19,17 @@ import {
   updateSupplierSchema,
 } from "@/lib/validations/supplier.schema";
 
-function revalidateSupplierPages(supplierId?: string) {
+function revalidateSupplierPages(supplierId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/suppliers");
   revalidatePath("/dashboard/purchases");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/cash-book");
+  revalidatePath("/dashboard/bank-book");
+  revalidatePath("/dashboard/daily-report");
+  revalidatePath("/dashboard/banks");
+  if (bankId) {
+    revalidatePath(`/dashboard/banks/${bankId}/statement`);
+  }
   if (supplierId) {
     revalidatePath(`/dashboard/suppliers/${supplierId}/statement`);
   }
@@ -209,10 +223,19 @@ export const paySupplier = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "pay_supplier", entityType: "supplier" },
 })(async (formData, { supabase, me }) => {
+  const rawPaymentMode = String(formData.get("paymentMode") || "");
+  const resolvedBankId = await resolveBankIdForPayment(
+    supabase,
+    rawPaymentMode,
+    String(formData.get("bankId") || "")
+  );
+
   const parsed = paySupplierSchema.safeParse({
     supplierId: formData.get("supplierId"),
     amount: formData.get("amount"),
-    paymentMode: formData.get("paymentMode"),
+    paymentMode: rawPaymentMode,
+    bankSubMode: formData.get("bankSubMode"),
+    bankId: resolvedBankId ?? formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
   });
@@ -222,7 +245,19 @@ export const paySupplier = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { supplierId, amount, paymentMode, paymentDate, remark } = parsed.data;
+  const {
+    supplierId,
+    amount,
+    paymentMode,
+    paymentDate,
+    remark,
+    bankId: bankIdRaw,
+    bankSubMode,
+  } = parsed.data;
+  const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
+  const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
+  const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
+  const ledgerRemark = remark || `Payment made (${modeLabel})`;
 
   const { data: payment, error: paymentError } = await supabase
     .from("supplier_payments")
@@ -231,8 +266,11 @@ export const paySupplier = protectedAction<FormData>({
       supplier_id: supplierId,
       amount,
       payment_mode: paymentMode,
+      bank_sub_mode: normalizedBankSubMode,
+      bank_id: bankId,
       payment_date: paymentDate,
-      remark: remark || null,
+      remark: ledgerRemark,
+      entry_category: "payment",
       created_by: me.id,
     } as never)
     .select("id")
@@ -252,10 +290,13 @@ export const paySupplier = protectedAction<FormData>({
     entry_type: "debit",
     amount,
     payment_mode: paymentMode,
+    bank_sub_mode: normalizedBankSubMode,
+    bank_id: bankId,
     reference_type: "payment",
     reference_id: payment.id,
-    remark: remark || `Payment made (${paymentMode})`,
+    remark: ledgerRemark,
     entry_date: paymentDate,
+    entry_category: "payment",
     created_by: me.id,
   } as never);
 
@@ -263,7 +304,27 @@ export const paySupplier = protectedAction<FormData>({
     return { success: false, error: ledgerError.message };
   }
 
-  revalidateSupplierPages(supplierId);
+  if (paymentMode === "bank" && bankId) {
+    const { error: bankLedgerError } = await insertBankLedgerEntry(supabase, {
+      companyId: me.company_id,
+      bankId,
+      entryType: "debit",
+      amount,
+      referenceType: "payment",
+      referenceId: payment.id,
+      remark: ledgerRemark,
+      entryDate: paymentDate,
+      entryCategory: "payment",
+      bankSubMode: normalizedBankSubMode,
+      createdBy: me.id,
+    });
+
+    if (bankLedgerError) {
+      return { success: false, error: bankLedgerError.message };
+    }
+  }
+
+  revalidateSupplierPages(supplierId, bankId);
   return { success: true };
 });
 
@@ -271,11 +332,35 @@ export const updateSupplierPayment = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "update_supplier_payment", entityType: "supplier" },
 })(async (formData, { supabase, me }) => {
+  const paymentId = String(formData.get("paymentId") || "");
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("supplier_payments")
+    .select("id, supplier_id, bank_id, bank_sub_mode, payment_mode")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  const paymentMode = String(formData.get("paymentMode") || existing.payment_mode);
+  const bankIdInput = String(formData.get("bankId") || "").trim();
+  const bankSubModeInput = String(formData.get("bankSubMode") || "");
+
   const parsed = updateSupplierPaymentSchema.safeParse({
-    paymentId: formData.get("paymentId"),
+    paymentId,
     supplierId: formData.get("supplierId"),
     amount: formData.get("amount"),
-    paymentMode: formData.get("paymentMode"),
+    paymentMode,
+    bankSubMode:
+      bankSubModeInput ||
+      (existing.bank_sub_mode as string | null) ||
+      undefined,
+    bankId:
+      bankIdInput ||
+      (paymentMode === "bank" ? (existing.bank_id as string | null) : null) ||
+      undefined,
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
   });
@@ -285,30 +370,34 @@ export const updateSupplierPayment = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { paymentId, supplierId, amount, paymentMode, paymentDate, remark } =
-    parsed.data;
-
-  const { data: existing, error: fetchError } = await supabase
-    .from("supplier_payments")
-    .select("id, supplier_id")
-    .eq("id", paymentId)
-    .single();
-
-  if (fetchError || !existing) {
-    return { success: false, error: "Payment not found" };
-  }
+  const {
+    supplierId,
+    amount,
+    paymentDate,
+    remark,
+    bankId: bankIdRaw,
+    bankSubMode,
+  } = parsed.data;
+  const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
+  const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
+  const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
+  const ledgerRemark = remark || `Payment made (${modeLabel})`;
 
   if (existing.supplier_id !== supplierId) {
     return { success: false, error: "Payment does not belong to this supplier" };
   }
+
+  const previousBankId = existing.bank_id as string | null;
 
   const { error: updateError } = await supabase
     .from("supplier_payments")
     .update({
       amount,
       payment_mode: paymentMode,
+      bank_sub_mode: normalizedBankSubMode,
+      bank_id: bankId,
       payment_date: paymentDate,
-      remark: remark || null,
+      remark: ledgerRemark,
     } as never)
     .eq("id", paymentId);
 
@@ -328,6 +417,15 @@ export const updateSupplierPayment = protectedAction<FormData>({
     return { success: false, error: deleteLedgerError.message };
   }
 
+  const { error: deleteBankLedgerError } = await deleteBankLedgerByReference(
+    supabase,
+    paymentId
+  );
+
+  if (deleteBankLedgerError) {
+    return { success: false, error: deleteBankLedgerError.message };
+  }
+
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
     company_id: me.company_id,
     entity_type: "supplier",
@@ -335,10 +433,13 @@ export const updateSupplierPayment = protectedAction<FormData>({
     entry_type: "debit",
     amount,
     payment_mode: paymentMode,
+    bank_sub_mode: normalizedBankSubMode,
+    bank_id: bankId,
     reference_type: "payment",
     reference_id: paymentId,
-    remark: remark || `Payment made (${paymentMode})`,
+    remark: ledgerRemark,
     entry_date: paymentDate,
+    entry_category: "payment",
     created_by: me.id,
   } as never);
 
@@ -346,7 +447,27 @@ export const updateSupplierPayment = protectedAction<FormData>({
     return { success: false, error: ledgerError.message };
   }
 
-  revalidateSupplierPages(supplierId);
+  if (paymentMode === "bank" && bankId) {
+    const { error: bankLedgerError } = await insertBankLedgerEntry(supabase, {
+      companyId: me.company_id,
+      bankId,
+      entryType: "debit",
+      amount,
+      referenceType: "payment",
+      referenceId: paymentId,
+      remark: ledgerRemark,
+      entryDate: paymentDate,
+      entryCategory: "payment",
+      bankSubMode: normalizedBankSubMode,
+      createdBy: me.id,
+    });
+
+    if (bankLedgerError) {
+      return { success: false, error: bankLedgerError.message };
+    }
+  }
+
+  revalidateSupplierPages(supplierId, bankId ?? previousBankId);
   return { success: true };
 });
 
@@ -368,7 +489,7 @@ export const deleteSupplierPayment = protectedAction<FormData>({
 
   const { data: existing, error: fetchError } = await supabase
     .from("supplier_payments")
-    .select("id, supplier_id")
+    .select("id, supplier_id, bank_id")
     .eq("id", paymentId)
     .single();
 
@@ -379,6 +500,8 @@ export const deleteSupplierPayment = protectedAction<FormData>({
   if (existing.supplier_id !== supplierId) {
     return { success: false, error: "Payment does not belong to this supplier" };
   }
+
+  const previousBankId = existing.bank_id as string | null;
 
   const { error: deleteLedgerError } = await supabase
     .from("ledger_entries")
@@ -392,6 +515,15 @@ export const deleteSupplierPayment = protectedAction<FormData>({
     return { success: false, error: deleteLedgerError.message };
   }
 
+  const { error: deleteBankLedgerError } = await deleteBankLedgerByReference(
+    supabase,
+    paymentId
+  );
+
+  if (deleteBankLedgerError) {
+    return { success: false, error: deleteBankLedgerError.message };
+  }
+
   const { error: deletePaymentError } = await supabase
     .from("supplier_payments")
     .delete()
@@ -401,6 +533,6 @@ export const deleteSupplierPayment = protectedAction<FormData>({
     return { success: false, error: deletePaymentError.message };
   }
 
-  revalidateSupplierPages(supplierId);
+  revalidateSupplierPages(supplierId, previousBankId);
   return { success: true };
 });

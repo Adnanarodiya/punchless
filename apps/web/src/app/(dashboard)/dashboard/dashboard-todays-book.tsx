@@ -127,7 +127,7 @@ export function DashboardTodaysBook({ book }: Props) {
                     <span className="text-muted-foreground">—</span>
                   )}
                   {line.mode ? (
-                    <p className="text-xs capitalize text-muted-foreground">{line.mode}</p>
+                    <p className="text-xs text-muted-foreground">{line.mode}</p>
                   ) : null}
                 </div>
               </li>

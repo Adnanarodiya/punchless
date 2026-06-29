@@ -18,6 +18,7 @@ import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { EmployeeWithWorkshop } from "@/lib/queries/employee.queries";
 import type { EmployeeSalaryPayable } from "@/lib/queries/salary.queries";
 import type { StaffPaymentWithDetails } from "@/lib/queries/staff-payment.queries";
+import { BankAccountField } from "@/components/bank-account-field";
 import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency, formatDate, formatMonthYear } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
@@ -89,6 +90,7 @@ export function StaffPaymentManager({
     "advance" | "salary_paid" | "deduction"
   >(initialEmployeeId ? "salary_paid" : "salary_paid");
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
+  const [bankId, setBankId] = useState(banks.length === 1 ? banks[0].id : "");
   const [amount, setAmount] = useState(() => {
     if (initialAmount != null && initialAmount > 0) return String(initialAmount);
     if (initialPayable && initialPayable.suggestedAmount > 0) {
@@ -525,26 +527,13 @@ export function StaffPaymentManager({
               )}
 
               {needsPaymentMode && paymentMode === "bank" ? (
-                <div>
-                  <label htmlFor="bankId" className="mb-1 block text-sm font-medium">
-                    Bank
-                  </label>
-                  <select
-                    id="bankId"
-                    name="bankId"
-                    required
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="" disabled>
-                      Select bank
-                    </option>
-                    {banks.map((bank) => (
-                      <option key={bank.id} value={bank.id}>
-                        {bank.bank_name} — {bank.account_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <BankAccountField
+                  banks={banks}
+                  bankId={bankId}
+                  onBankIdChange={setBankId}
+                  id="staffPaymentBankId"
+                  label="Bank"
+                />
               ) : (
                 <input type="hidden" name="bankId" value="" />
               )}

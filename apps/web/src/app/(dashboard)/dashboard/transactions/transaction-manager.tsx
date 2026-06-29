@@ -8,6 +8,7 @@ import { Button } from "@punchless/ui/components/button";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 
+import { BankAccountField } from "@/components/bank-account-field";
 import { createTransaction, deleteTransaction } from "@/lib/actions/transaction.actions";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { TransactionWithDetails } from "@/lib/queries/transaction.queries";
@@ -36,6 +37,7 @@ export function TransactionManager({
   const searchParams = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
+  const [bankId, setBankId] = useState(banks.length === 1 ? banks[0].id : "");
   const [defaultTransactionType, setDefaultTransactionType] = useState<
     "income" | "expense"
   >("expense");
@@ -191,17 +193,12 @@ export function TransactionManager({
               </select>
             </div>
             {paymentMode === "bank" ? (
-              <div>
-                <label htmlFor="bankId" className="mb-1 block text-sm font-medium">Bank</label>
-                <select id="bankId" name="bankId" required className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                  <option value="" disabled>Select bank</option>
-                  {banks.map((bank) => (
-                    <option key={bank.id} value={bank.id}>
-                      {bank.bank_name} — {bank.account_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <BankAccountField
+                banks={banks}
+                bankId={bankId}
+                onBankIdChange={setBankId}
+                id="transactionBankId"
+              />
             ) : (
               <input type="hidden" name="bankId" value="" />
             )}

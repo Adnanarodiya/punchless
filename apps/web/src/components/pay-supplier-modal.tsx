@@ -7,9 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@punchless/ui/components/button";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import { Modal } from "@punchless/ui/components/modal";
-import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { cn } from "@punchless/ui/lib/utils";
+import { BankPaymentFields } from "@/components/bank-payment-fields";
 import { createQuickSupplier, paySupplier } from "@/lib/actions/supplier.actions";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import { useAction } from "@/hooks/use-action";
@@ -25,6 +26,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   suppliers: SupplierWithPayable[];
+  banks: BankWithBalance[];
   initialSupplierId?: string;
   onSuccess?: () => void;
 };
@@ -37,6 +39,7 @@ export function PaySupplierModal({
   open,
   onOpenChange,
   suppliers,
+  banks,
   initialSupplierId = "",
   onSuccess,
 }: Props) {
@@ -278,10 +281,11 @@ export function PaySupplierModal({
             />
           </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium">Payment mode</label>
-            <PaymentModeSelect name="paymentMode" defaultValue="cash" includeCredit={false} />
-          </div>
+          <BankPaymentFields
+            banks={banks}
+            paymentModeSelectId="paySupplierPaymentMode"
+            bankSelectId="paySupplierBankId"
+          />
 
           <div>
             <label htmlFor="paySupplierDate" className="mb-1 block text-sm font-medium">

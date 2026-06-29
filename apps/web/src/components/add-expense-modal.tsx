@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
+import { BankAccountField } from "@/components/bank-account-field";
 import { createTransaction } from "@/lib/actions/transaction.actions";
 import { useAction } from "@/hooks/use-action";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
@@ -28,12 +29,14 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
   const router = useRouter();
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense");
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank">("cash");
+  const [bankId, setBankId] = useState(banks.length === 1 ? banks[0].id : "");
   const [formKey, setFormKey] = useState(0);
 
   useEffect(() => {
     if (!open) {
       setTransactionType("expense");
       setPaymentMode("cash");
+      setBankId(banks.length === 1 ? banks[0].id : "");
       return;
     }
     setFormKey((k) => k + 1);
@@ -138,21 +141,12 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
         </div>
 
         {paymentMode === "bank" ? (
-          <div>
-            <label htmlFor="addExpenseBankId" className="mb-1 block text-sm font-medium">
-              Bank account
-            </label>
-            <select id="addExpenseBankId" name="bankId" required className={fieldClass}>
-              <option value="" disabled>
-                Select bank
-              </option>
-              {banks.map((bank) => (
-                <option key={bank.id} value={bank.id}>
-                  {bank.bank_name} — {bank.account_name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <BankAccountField
+            banks={banks}
+            bankId={bankId}
+            onBankIdChange={setBankId}
+            id="addExpenseBankId"
+          />
         ) : (
           <input type="hidden" name="bankId" value="" />
         )}

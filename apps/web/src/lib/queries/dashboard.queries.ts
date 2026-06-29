@@ -5,6 +5,7 @@ import {
 } from "@/lib/utils/financial-year";
 import type { AttendanceWithDetails } from "./attendance.queries";
 import type { JobWithDetails } from "./job.queries";
+import { getBanksSummary } from "./bank.queries";
 import { getClientsSummary, getActiveClients } from "./client.queries";
 import { getSuppliers, getSuppliersSummary } from "./supplier.queries";
 
@@ -193,20 +194,24 @@ export async function getFinancialSummary(
     { data: allTransactions },
     { data: clientPayments },
     { data: supplierPayments },
-    { data: bankTransactions },
-    { data: invoices },
     { data: staffPayments },
+    banksSummary,
     clientsSummary,
     suppliersSummary,
   ] = await Promise.all([
     supabase
       .from("transactions")
       .select("amount, transaction_type, payment_mode, transaction_date"),
-    supabase.from("client_payments").select("amount, payment_mode"),
-    supabase.from("supplier_payments").select("amount, payment_mode"),
-    supabase.from("bank_transactions").select("amount, transaction_type"),
-    supabase.from("invoices").select("bank_amount").eq("is_deleted", false),
-    supabase.from("staff_payments").select("amount, payment_mode"),
+    supabase
+      .from("client_payments")
+      .select("amount, payment_mode, payment_date"),
+    supabase
+      .from("supplier_payments")
+      .select("amount, payment_mode, payment_date"),
+    supabase
+      .from("staff_payments")
+      .select("amount, payment_mode, payment_date"),
+    getBanksSummary(),
     getClientsSummary(),
     getSuppliersSummary(),
   ]);
@@ -215,7 +220,6 @@ export async function getFinancialSummary(
   let expense = 0;
   let cashIncome = 0;
   let cashExpense = 0;
-  let bankBalance = 0;
 
   for (const row of allTransactions ?? []) {
     const amount = parseAmount(row.amount);
@@ -226,32 +230,36 @@ export async function getFinancialSummary(
         income += amount;
         if (row.payment_mode === "cash") cashIncome += amount;
       }
-      if (row.payment_mode === "bank") bankBalance += amount;
     } else {
       if (inPeriod) {
         expense += amount;
         if (row.payment_mode === "cash") cashExpense += amount;
       }
-      if (row.payment_mode === "bank") bankBalance -= amount;
     }
   }
 
   for (const row of clientPayments ?? []) {
-    if (row.payment_mode === "bank") bankBalance += parseAmount(row.amount);
-  }
-  for (const row of supplierPayments ?? []) {
-    if (row.payment_mode === "bank") bankBalance -= parseAmount(row.amount);
-  }
-  for (const row of invoices ?? []) {
-    bankBalance += parseAmount(row.bank_amount);
-  }
-  for (const row of bankTransactions ?? []) {
     const amount = parseAmount(row.amount);
-    if (row.transaction_type === "deposit") bankBalance += amount;
-    else bankBalance -= amount;
+    const inPeriod =
+      row.payment_date >= start && row.payment_date <= end;
+    if (!inPeriod || row.payment_mode !== "cash") continue;
+    cashIncome += amount;
   }
+
+  for (const row of supplierPayments ?? []) {
+    const amount = parseAmount(row.amount);
+    const inPeriod =
+      row.payment_date >= start && row.payment_date <= end;
+    if (!inPeriod || row.payment_mode !== "cash") continue;
+    cashExpense += amount;
+  }
+
   for (const row of staffPayments ?? []) {
-    if (row.payment_mode === "bank") bankBalance -= parseAmount(row.amount);
+    const amount = parseAmount(row.amount);
+    const inPeriod =
+      row.payment_date >= start && row.payment_date <= end;
+    if (!inPeriod || row.payment_mode !== "cash") continue;
+    cashExpense += amount;
   }
 
   return {
@@ -259,7 +267,7 @@ export async function getFinancialSummary(
     income: Math.round(income * 100) / 100,
     expense: Math.round(expense * 100) / 100,
     cashNet: Math.round((cashIncome - cashExpense) * 100) / 100,
-    bankBalance: Math.round(bankBalance * 100) / 100,
+    bankBalance: Math.round(banksSummary.totalBalance * 100) / 100,
     clientCredit: clientsSummary.totalDue,
     supplierPayable: suppliersSummary.totalPayable,
   };

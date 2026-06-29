@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { protectedAction } from "@/lib/server/protected-action";
 import {
+  bankModeLabel,
+  deleteBankLedgerByReference,
+  insertBankLedgerEntry,
+  normalizeBankSubMode,
+} from "@/lib/utils/bank-ledger";
+import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
+import {
   createClientSchema,
   deleteClientPaymentSchema,
   quickCustomerSchema,
@@ -12,9 +19,16 @@ import {
   updateClientSchema,
 } from "@/lib/validations/client.schema";
 
-function revalidateClientPages(clientId?: string) {
+function revalidateClientPages(clientId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/customers");
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/cash-book");
+  revalidatePath("/dashboard/bank-book");
+  revalidatePath("/dashboard/daily-report");
+  revalidatePath("/dashboard/banks");
+  if (bankId) {
+    revalidatePath(`/dashboard/banks/${bankId}/statement`);
+  }
   if (clientId) {
     revalidatePath(`/dashboard/customers/${clientId}/statement`);
   }
@@ -210,10 +224,19 @@ export const receiveClientPayment = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "receive_client_payment", entityType: "client" },
 })(async (formData, { supabase, me }) => {
+  const rawPaymentMode = String(formData.get("paymentMode") || "");
+  const resolvedBankId = await resolveBankIdForPayment(
+    supabase,
+    rawPaymentMode,
+    String(formData.get("bankId") || "")
+  );
+
   const parsed = receiveClientPaymentSchema.safeParse({
     clientId: formData.get("clientId"),
     amount: formData.get("amount"),
-    paymentMode: formData.get("paymentMode"),
+    paymentMode: rawPaymentMode,
+    bankSubMode: formData.get("bankSubMode"),
+    bankId: resolvedBankId ?? formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
   });
@@ -223,7 +246,19 @@ export const receiveClientPayment = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { clientId, amount, paymentMode, paymentDate, remark } = parsed.data;
+  const {
+    clientId,
+    amount,
+    paymentMode,
+    paymentDate,
+    remark,
+    bankId: bankIdRaw,
+    bankSubMode,
+  } = parsed.data;
+  const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
+  const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
+  const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
+  const ledgerRemark = remark || `Payment received (${modeLabel})`;
 
   const { data: payment, error: paymentError } = await supabase
     .from("client_payments")
@@ -232,8 +267,11 @@ export const receiveClientPayment = protectedAction<FormData>({
       client_id: clientId,
       amount,
       payment_mode: paymentMode,
+      bank_sub_mode: normalizedBankSubMode,
+      bank_id: bankId,
       payment_date: paymentDate,
-      remark: remark || null,
+      remark: ledgerRemark,
+      entry_category: "receipt",
       created_by: me.id,
     } as never)
     .select("id")
@@ -253,10 +291,13 @@ export const receiveClientPayment = protectedAction<FormData>({
     entry_type: "credit",
     amount,
     payment_mode: paymentMode,
+    bank_sub_mode: normalizedBankSubMode,
+    bank_id: bankId,
     reference_type: "payment",
     reference_id: payment.id,
-    remark: remark || `Payment received (${paymentMode})`,
+    remark: ledgerRemark,
     entry_date: paymentDate,
+    entry_category: "receipt",
     created_by: me.id,
   } as never);
 
@@ -264,7 +305,27 @@ export const receiveClientPayment = protectedAction<FormData>({
     return { success: false, error: ledgerError.message };
   }
 
-  revalidateClientPages(clientId);
+  if (paymentMode === "bank" && bankId) {
+    const { error: bankLedgerError } = await insertBankLedgerEntry(supabase, {
+      companyId: me.company_id,
+      bankId,
+      entryType: "credit",
+      amount,
+      referenceType: "payment",
+      referenceId: payment.id,
+      remark: ledgerRemark,
+      entryDate: paymentDate,
+      entryCategory: "receipt",
+      bankSubMode: normalizedBankSubMode,
+      createdBy: me.id,
+    });
+
+    if (bankLedgerError) {
+      return { success: false, error: bankLedgerError.message };
+    }
+  }
+
+  revalidateClientPages(clientId, bankId);
   return { success: true };
 });
 
@@ -272,11 +333,35 @@ export const updateClientPayment = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "update_client_payment", entityType: "client" },
 })(async (formData, { supabase, me }) => {
+  const paymentId = String(formData.get("paymentId") || "");
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("client_payments")
+    .select("id, client_id, bank_id, bank_sub_mode, payment_mode")
+    .eq("id", paymentId)
+    .single();
+
+  if (fetchError || !existing) {
+    return { success: false, error: "Payment not found" };
+  }
+
+  const paymentMode = String(formData.get("paymentMode") || existing.payment_mode);
+  const bankIdInput = String(formData.get("bankId") || "").trim();
+  const bankSubModeInput = String(formData.get("bankSubMode") || "");
+
   const parsed = updateClientPaymentSchema.safeParse({
-    paymentId: formData.get("paymentId"),
+    paymentId,
     clientId: formData.get("clientId"),
     amount: formData.get("amount"),
-    paymentMode: formData.get("paymentMode"),
+    paymentMode,
+    bankSubMode:
+      bankSubModeInput ||
+      (existing.bank_sub_mode as string | null) ||
+      undefined,
+    bankId:
+      bankIdInput ||
+      (paymentMode === "bank" ? (existing.bank_id as string | null) : null) ||
+      undefined,
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
   });
@@ -286,30 +371,34 @@ export const updateClientPayment = protectedAction<FormData>({
     return { success: false, error: firstError?.message || "Validation failed" };
   }
 
-  const { paymentId, clientId, amount, paymentMode, paymentDate, remark } =
-    parsed.data;
-
-  const { data: existing, error: fetchError } = await supabase
-    .from("client_payments")
-    .select("id, client_id")
-    .eq("id", paymentId)
-    .single();
-
-  if (fetchError || !existing) {
-    return { success: false, error: "Payment not found" };
-  }
+  const {
+    clientId,
+    amount,
+    paymentDate,
+    remark,
+    bankId: bankIdRaw,
+    bankSubMode,
+  } = parsed.data;
+  const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
+  const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
+  const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
+  const ledgerRemark = remark || `Payment received (${modeLabel})`;
 
   if (existing.client_id !== clientId) {
     return { success: false, error: "Payment does not belong to this customer" };
   }
+
+  const previousBankId = existing.bank_id as string | null;
 
   const { error: updateError } = await supabase
     .from("client_payments")
     .update({
       amount,
       payment_mode: paymentMode,
+      bank_sub_mode: normalizedBankSubMode,
+      bank_id: bankId,
       payment_date: paymentDate,
-      remark: remark || null,
+      remark: ledgerRemark,
     } as never)
     .eq("id", paymentId);
 
@@ -329,6 +418,15 @@ export const updateClientPayment = protectedAction<FormData>({
     return { success: false, error: deleteLedgerError.message };
   }
 
+  const { error: deleteBankLedgerError } = await deleteBankLedgerByReference(
+    supabase,
+    paymentId
+  );
+
+  if (deleteBankLedgerError) {
+    return { success: false, error: deleteBankLedgerError.message };
+  }
+
   const { error: ledgerError } = await supabase.from("ledger_entries").insert({
     company_id: me.company_id,
     entity_type: "client",
@@ -336,10 +434,13 @@ export const updateClientPayment = protectedAction<FormData>({
     entry_type: "credit",
     amount,
     payment_mode: paymentMode,
+    bank_sub_mode: normalizedBankSubMode,
+    bank_id: bankId,
     reference_type: "payment",
     reference_id: paymentId,
-    remark: remark || `Payment received (${paymentMode})`,
+    remark: ledgerRemark,
     entry_date: paymentDate,
+    entry_category: "receipt",
     created_by: me.id,
   } as never);
 
@@ -347,7 +448,27 @@ export const updateClientPayment = protectedAction<FormData>({
     return { success: false, error: ledgerError.message };
   }
 
-  revalidateClientPages(clientId);
+  if (paymentMode === "bank" && bankId) {
+    const { error: bankLedgerError } = await insertBankLedgerEntry(supabase, {
+      companyId: me.company_id,
+      bankId,
+      entryType: "credit",
+      amount,
+      referenceType: "payment",
+      referenceId: paymentId,
+      remark: ledgerRemark,
+      entryDate: paymentDate,
+      entryCategory: "receipt",
+      bankSubMode: normalizedBankSubMode,
+      createdBy: me.id,
+    });
+
+    if (bankLedgerError) {
+      return { success: false, error: bankLedgerError.message };
+    }
+  }
+
+  revalidateClientPages(clientId, bankId ?? previousBankId);
   return { success: true };
 });
 
@@ -369,7 +490,7 @@ export const deleteClientPayment = protectedAction<FormData>({
 
   const { data: existing, error: fetchError } = await supabase
     .from("client_payments")
-    .select("id, client_id")
+    .select("id, client_id, bank_id")
     .eq("id", paymentId)
     .single();
 
@@ -380,6 +501,8 @@ export const deleteClientPayment = protectedAction<FormData>({
   if (existing.client_id !== clientId) {
     return { success: false, error: "Payment does not belong to this customer" };
   }
+
+  const previousBankId = existing.bank_id as string | null;
 
   const { error: deleteLedgerError } = await supabase
     .from("ledger_entries")
@@ -393,6 +516,15 @@ export const deleteClientPayment = protectedAction<FormData>({
     return { success: false, error: deleteLedgerError.message };
   }
 
+  const { error: deleteBankLedgerError } = await deleteBankLedgerByReference(
+    supabase,
+    paymentId
+  );
+
+  if (deleteBankLedgerError) {
+    return { success: false, error: deleteBankLedgerError.message };
+  }
+
   const { error: deletePaymentError } = await supabase
     .from("client_payments")
     .delete()
@@ -402,6 +534,6 @@ export const deleteClientPayment = protectedAction<FormData>({
     return { success: false, error: deletePaymentError.message };
   }
 
-  revalidateClientPages(clientId);
+  revalidateClientPages(clientId, previousBankId);
   return { success: true };
 });

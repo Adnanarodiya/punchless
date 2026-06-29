@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
 import { generalEntrySchema } from "@/lib/validations/general-entry.schema";
 
 function revalidateGeneralEntryPages(bankId?: string | null) {
@@ -28,9 +29,16 @@ export const createGeneralEntry = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "create_general_entry", entityType: "transaction" },
 })(async (formData, { supabase, me }) => {
+  const paymentMode = String(formData.get("paymentMode") || "");
+  const resolvedBankId = await resolveBankIdForPayment(
+    supabase,
+    paymentMode,
+    String(formData.get("bankId") || "")
+  );
+
   const parsed = generalEntrySchema.safeParse({
     direction: formData.get("direction"),
-    paymentMode: formData.get("paymentMode"),
+    paymentMode,
     bankSubMode: formData.get("bankSubMode"),
     entryKind: formData.get("entryKind"),
     partySide: formData.get("partySide"),
@@ -39,7 +47,7 @@ export const createGeneralEntry = protectedAction<FormData>({
     entryDate: formData.get("entryDate"),
     remark: formData.get("remark"),
     particular: formData.get("particular"),
-    bankId: formData.get("bankId"),
+    bankId: resolvedBankId ?? formData.get("bankId"),
   });
 
   if (!parsed.success) {

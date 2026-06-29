@@ -36,6 +36,9 @@ type Props = {
 
 function formatMode(mode: string | null) {
   if (!mode) return "—";
+  if (mode.includes("·") || mode === "Cash" || mode === "Credit" || mode === "Split") {
+    return mode;
+  }
   return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 

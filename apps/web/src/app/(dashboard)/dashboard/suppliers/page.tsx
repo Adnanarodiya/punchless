@@ -1,3 +1,4 @@
+import { getBanks } from "@/lib/queries/bank.queries";
 import { getSuppliers, getSuppliersSummary } from "@/lib/queries/supplier.queries";
 import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
 import { SupplierFlowPanel } from "@/components/supplier-flow-panel";
@@ -9,8 +10,9 @@ export default async function SuppliersPage({
   searchParams: Promise<{ supplier?: string; open?: string }>;
 }) {
   const params = await searchParams;
-  const [suppliers, summary] = await Promise.all([
+  const [suppliers, banks, summary] = await Promise.all([
     getSuppliers({ includeDeleted: true }),
+    getBanks(),
     getSuppliersSummary(),
   ]);
 
@@ -20,6 +22,7 @@ export default async function SuppliersPage({
       <SupplierFlowPanel />
       <SupplierManager
         suppliers={suppliers}
+        banks={banks}
         summary={summary}
         initialSupplierId={params.supplier}
         initialOpen={params.open === "pay" ? "pay" : undefined}

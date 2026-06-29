@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
+import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
 import { createTransactionSchema } from "@/lib/validations/transaction.schema";
 
 function revalidateTransactionPages(bankId?: string | null) {
@@ -18,12 +19,19 @@ export const createTransaction = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "create_transaction", entityType: "transaction" },
 })(async (formData, { supabase, me }) => {
+  const paymentMode = String(formData.get("paymentMode") || "");
+  const resolvedBankId = await resolveBankIdForPayment(
+    supabase,
+    paymentMode,
+    String(formData.get("bankId") || "")
+  );
+
   const parsed = createTransactionSchema.safeParse({
     particular: formData.get("particular"),
     amount: formData.get("amount"),
     transactionType: formData.get("transactionType"),
-    paymentMode: formData.get("paymentMode"),
-    bankId: formData.get("bankId"),
+    paymentMode,
+    bankId: resolvedBankId ?? formData.get("bankId"),
     transactionDate: formData.get("transactionDate"),
     remark: formData.get("remark"),
   });

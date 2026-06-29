@@ -94,7 +94,7 @@ async function getBookReportForRange(
       ? await getDailyBookReport(start)
       : await getMonthlyBookReport(start, end);
 
-  const lines = report.lines.filter((line) => line.mode === mode);
+  const lines = report.lines.filter((line) => line.paymentMode === mode);
   const totals = summarizeLines(lines);
 
   return {

@@ -1,6 +1,9 @@
 import { z } from "zod";
-
-const paymentModeSchema = z.enum(["cash", "bank", "credit"]);
+import {
+  bankSubModeSchema,
+  paymentModeSchema,
+  refineBankPaymentFields,
+} from "@/lib/validations/payment-mode.schema";
 
 /** Minimal supplier for quick pay — name only, no opening balance. */
 export const quickSupplierSchema = z.object({
@@ -20,13 +23,17 @@ export const updateSupplierSchema = createSupplierSchema.extend({
   supplierId: z.string().uuid("Invalid supplier ID"),
 });
 
-export const paySupplierSchema = z.object({
-  supplierId: z.string().uuid("Invalid supplier ID"),
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
-  paymentMode: paymentModeSchema,
-  paymentDate: z.string().min(1, "Payment date is required"),
-  remark: z.string().max(500).optional().or(z.literal("")),
-});
+export const paySupplierSchema = z
+  .object({
+    supplierId: z.string().uuid("Invalid supplier ID"),
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    paymentMode: paymentModeSchema,
+    bankSubMode: bankSubModeSchema,
+    bankId: z.string().optional(),
+    paymentDate: z.string().min(1, "Payment date is required"),
+    remark: z.string().max(500).optional().or(z.literal("")),
+  })
+  .superRefine(refineBankPaymentFields);
 
 export const updateSupplierPaymentSchema = paySupplierSchema.extend({
   paymentId: z.string().uuid("Invalid payment ID"),

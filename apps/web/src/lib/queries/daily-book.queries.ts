@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { formatPaymentModeLabel } from "@/lib/utils/payment-mode-display";
 
 function parseAmount(value: unknown): number {
   const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
@@ -11,6 +12,19 @@ function round2(n: number) {
 
 function sortKey(createdAt: string | null | undefined, fallbackDate: string) {
   return createdAt ?? `${fallbackDate}T23:59:59`;
+}
+
+function lineModes(
+  paymentMode: string | null | undefined,
+  bankId: string | null | undefined,
+  bankNames: Record<string, string>
+) {
+  const raw = paymentMode ?? null;
+  const bankName = bankId ? bankNames[bankId] : null;
+  return {
+    paymentMode: raw,
+    mode: formatPaymentModeLabel(raw, bankName),
+  };
 }
 
 function shiftDate(isoDate: string, days: number) {
@@ -41,7 +55,10 @@ export type DailyBookLine = {
   expense: number;
   transfer: number;
   purchase: number;
+  /** Display label, e.g. "Bank" or "Cash" */
   mode: string | null;
+  /** Raw mode for cash/bank book filters: cash | bank | credit | split */
+  paymentMode: string | null;
   date: string;
   remark: string | null;
   userName: string | null;
@@ -127,21 +144,21 @@ async function buildDailyBookForRange(
     supabase
       .from("client_payments")
       .select(
-        "id, amount, payment_mode, remark, payment_date, created_at, clients(name), creator:users!client_payments_created_by_fkey(full_name)"
+        "id, amount, payment_mode, bank_id, remark, payment_date, created_at, clients(name), creator:users!client_payments_created_by_fkey(full_name)"
       )
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
     supabase
       .from("supplier_payments")
       .select(
-        "id, amount, payment_mode, remark, payment_date, created_at, suppliers(name), creator:users!supplier_payments_created_by_fkey(full_name)"
+        "id, amount, payment_mode, bank_id, remark, payment_date, created_at, suppliers(name), creator:users!supplier_payments_created_by_fkey(full_name)"
       )
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
     supabase
       .from("staff_payments")
       .select(
-        "id, amount, payment_mode, payment_type, remark, payment_date, created_at, users!staff_payments_employee_id_fkey(full_name), creator:users!staff_payments_created_by_fkey(full_name)"
+        "id, amount, payment_mode, bank_id, payment_type, remark, payment_date, created_at, users!staff_payments_employee_id_fkey(full_name), creator:users!staff_payments_created_by_fkey(full_name)"
       )
       .gte("payment_date", startDate)
       .lte("payment_date", endDate),
@@ -156,7 +173,7 @@ async function buildDailyBookForRange(
     supabase
       .from("transactions")
       .select(
-        "id, amount, transaction_type, payment_mode, particular, remark, transaction_date, created_at, creator:users!transactions_created_by_fkey(full_name)"
+        "id, amount, transaction_type, payment_mode, bank_id, particular, remark, transaction_date, created_at, creator:users!transactions_created_by_fkey(full_name)"
       )
       .gte("transaction_date", startDate)
       .lte("transaction_date", endDate),
@@ -251,6 +268,8 @@ async function buildDailyBookForRange(
       r.remark,
     ].filter(Boolean);
 
+    const invoiceModes = lineModes(r.payment_mode, null, bankNames);
+
     lines.push({
       id: `inv-${r.id}`,
       sourceType: "invoice",
@@ -262,7 +281,7 @@ async function buildDailyBookForRange(
       expense: 0,
       transfer: 0,
       purchase: 0,
-      mode: r.payment_mode,
+      ...invoiceModes,
       date: r.invoice_date,
       remark: remarkParts.length > 0 ? remarkParts.join(" · ") : null,
       userName: r.creator?.full_name ?? null,
@@ -275,6 +294,7 @@ async function buildDailyBookForRange(
       id: string;
       amount: number;
       payment_mode: string;
+      bank_id: string | null;
       remark: string | null;
       payment_date: string;
       created_at: string | null;
@@ -283,6 +303,7 @@ async function buildDailyBookForRange(
     };
     const amount = parseAmount(r.amount);
     const name = r.clients?.name ?? "Customer";
+    const clientModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     totalIncome += amount;
     customerCollected += amount;
@@ -300,7 +321,7 @@ async function buildDailyBookForRange(
       expense: 0,
       transfer: 0,
       purchase: 0,
-      mode: r.payment_mode,
+      ...clientModes,
       date: r.payment_date,
       remark: r.remark,
       userName: r.creator?.full_name ?? null,
@@ -313,6 +334,7 @@ async function buildDailyBookForRange(
       id: string;
       amount: number;
       payment_mode: string;
+      bank_id: string | null;
       remark: string | null;
       payment_date: string;
       created_at: string | null;
@@ -321,6 +343,7 @@ async function buildDailyBookForRange(
     };
     const amount = parseAmount(r.amount);
     const name = r.suppliers?.name ?? "Supplier";
+    const supplierModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     totalExpense += amount;
     supplierPaid += amount;
@@ -337,7 +360,7 @@ async function buildDailyBookForRange(
       expense: amount,
       transfer: 0,
       purchase: 0,
-      mode: r.payment_mode,
+      ...supplierModes,
       date: r.payment_date,
       remark: r.remark,
       userName: r.creator?.full_name ?? null,
@@ -362,6 +385,8 @@ async function buildDailyBookForRange(
     advanceGiven += amount;
     summary.totalExpenses += amount;
 
+    const advanceModes = lineModes("cash", null, bankNames);
+
     lines.push({
       id: `adv-${r.id}`,
       sourceType: "salary_advance",
@@ -373,7 +398,7 @@ async function buildDailyBookForRange(
       expense: amount,
       transfer: 0,
       purchase: 0,
-      mode: "cash",
+      ...advanceModes,
       date: approvedDate,
       remark: r.reason,
       userName: r.approver?.full_name ?? null,
@@ -386,6 +411,7 @@ async function buildDailyBookForRange(
       id: string;
       amount: number;
       payment_mode: string | null;
+      bank_id: string | null;
       payment_type: string;
       remark: string | null;
       payment_date: string;
@@ -399,6 +425,7 @@ async function buildDailyBookForRange(
 
     const name = r.users?.full_name ?? "Staff";
     const category = STAFF_TYPE_CATEGORY[type] ?? "Staff payment";
+    const staffModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     totalExpense += amount;
     summary.totalExpenses += amount;
@@ -416,7 +443,7 @@ async function buildDailyBookForRange(
       expense: amount,
       transfer: 0,
       purchase: 0,
-      mode: r.payment_mode,
+      ...staffModes,
       date: r.payment_date,
       remark: r.remark,
       userName: r.creator?.full_name ?? null,
@@ -430,6 +457,7 @@ async function buildDailyBookForRange(
       amount: number;
       transaction_type: string;
       payment_mode: string;
+      bank_id: string | null;
       particular: string;
       remark: string | null;
       transaction_date: string;
@@ -437,6 +465,7 @@ async function buildDailyBookForRange(
       creator: { full_name: string } | null;
     };
     const amount = parseAmount(r.amount);
+    const txModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     if (r.transaction_type === "income") {
       totalIncome += amount;
@@ -455,7 +484,7 @@ async function buildDailyBookForRange(
         expense: 0,
         transfer: 0,
         purchase: 0,
-        mode: r.payment_mode,
+        ...txModes,
         date: r.transaction_date,
         remark: r.remark,
         userName: r.creator?.full_name ?? null,
@@ -477,7 +506,7 @@ async function buildDailyBookForRange(
         expense: amount,
         transfer: 0,
         purchase: 0,
-        mode: r.payment_mode,
+        ...txModes,
         date: r.transaction_date,
         remark: r.remark,
         userName: r.creator?.full_name ?? null,
@@ -503,6 +532,8 @@ async function buildDailyBookForRange(
     totalPurchase += amount;
     purchasesBilled += amount;
 
+    const purchaseModes = lineModes("credit", null, bankNames);
+
     lines.push({
       id: `pur-${r.id}`,
       sourceType: "purchase_invoice",
@@ -514,7 +545,7 @@ async function buildDailyBookForRange(
       expense: 0,
       transfer: 0,
       purchase: amount,
-      mode: "credit",
+      ...purchaseModes,
       date: r.invoice_date,
       remark: r.remark ?? (r.invoice_number ? `#${r.invoice_number}` : null),
       userName: r.creator?.full_name ?? null,
@@ -539,6 +570,8 @@ async function buildDailyBookForRange(
 
     totalTransfer += amount;
 
+    const transferModes = lineModes("bank", null, bankNames);
+
     lines.push({
       id: `bt-${r.id}`,
       sourceType: "bank_transfer",
@@ -550,7 +583,7 @@ async function buildDailyBookForRange(
       expense: 0,
       transfer: amount,
       purchase: 0,
-      mode: "bank",
+      ...transferModes,
       date: r.transfer_date,
       remark: r.remark,
       userName: r.creator?.full_name ?? null,
@@ -573,6 +606,12 @@ async function buildDailyBookForRange(
     const bankName = r.bank_accounts?.bank_name ?? "Bank";
     const isDeposit = r.transaction_type === "deposit";
 
+    const bankTxModes = lineModes("bank", null, bankNames);
+    const bankTxDisplay = {
+      ...bankTxModes,
+      mode: formatPaymentModeLabel("bank", bankName),
+    };
+
     if (isDeposit) {
       totalIncome += amount;
       summary.bankReceived += amount;
@@ -587,7 +626,7 @@ async function buildDailyBookForRange(
         expense: 0,
         transfer: 0,
         purchase: 0,
-        mode: "bank",
+        ...bankTxDisplay,
         date: r.transaction_date,
         remark: r.remark,
         userName: r.creator?.full_name ?? null,
@@ -607,7 +646,7 @@ async function buildDailyBookForRange(
         expense: amount,
         transfer: 0,
         purchase: 0,
-        mode: "bank",
+        ...bankTxDisplay,
         date: r.transaction_date,
         remark: r.remark,
         userName: r.creator?.full_name ?? null,

@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries/salary.queries";
 import type { StaffPaymentSlipSnapshot } from "@/lib/types/staff-payment-slip";
 import { buildSlipSnapshotFromFingerprintLine } from "@/lib/utils/staff-payment-slip";
+import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
 import {
   createSalaryDepositSchema,
   createStaffPaymentSchema,
@@ -136,12 +137,19 @@ export const createStaffPayment = protectedAction<FormData>({
   roles: ["owner", "admin"],
   audit: { action: "create_staff_payment", entityType: "staff-payment" },
 })(async (formData, { supabase, me }) => {
+  const rawPaymentMode = String(formData.get("paymentMode") || "");
+  const resolvedBankId = await resolveBankIdForPayment(
+    supabase,
+    rawPaymentMode,
+    String(formData.get("bankId") || "")
+  );
+
   const parsed = createStaffPaymentSchema.safeParse({
     employeeId: formData.get("employeeId"),
     paymentType: formData.get("paymentType"),
     amount: formData.get("amount"),
-    paymentMode: formData.get("paymentMode") || undefined,
-    bankId: formData.get("bankId"),
+    paymentMode: rawPaymentMode || undefined,
+    bankId: resolvedBankId ?? formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
     salaryMonth: formData.get("salaryMonth") || undefined,
     remark: formData.get("remark"),

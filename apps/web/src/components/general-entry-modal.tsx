@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
+import { BankAccountField } from "@/components/bank-account-field";
 import { createGeneralEntry } from "@/lib/actions/general-entry.actions";
 import { createQuickCustomer } from "@/lib/actions/client.actions";
 import { createQuickSupplier } from "@/lib/actions/supplier.actions";
@@ -59,7 +60,7 @@ export function GeneralEntryModal({
   const [clientOptions, setClientOptions] = useState(clients);
   const [supplierOptions, setSupplierOptions] = useState(suppliers);
   const [creatingParty, setCreatingParty] = useState(false);
-  const [bankId, setBankId] = useState("");
+  const [bankId, setBankId] = useState(banks.length === 1 ? banks[0].id : "");
   const partyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -351,34 +352,12 @@ export function GeneralEntryModal({
         ) : null}
 
         {paymentMode === "bank" ? (
-          <div>
-            <label htmlFor="generalBankId" className="mb-1 block text-sm font-medium">
-              Bank account
-            </label>
-            {banks.length === 0 ? (
-              <p className="text-sm text-destructive">
-                Add a bank account under Banks before recording a bank entry.
-              </p>
-            ) : (
-              <select
-                id="generalBankId"
-                name="bankId"
-                required
-                value={bankId}
-                onChange={(e) => setBankId(e.target.value)}
-                className={fieldClass}
-              >
-                <option value="" disabled>
-                  Select bank
-                </option>
-                {banks.map((bank) => (
-                  <option key={bank.id} value={bank.id}>
-                    {bank.bank_name} — {bank.account_name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+          <BankAccountField
+            banks={banks}
+            bankId={bankId}
+            onBankIdChange={setBankId}
+            id="generalBankId"
+          />
         ) : (
           <input type="hidden" name="bankId" value="" />
         )}

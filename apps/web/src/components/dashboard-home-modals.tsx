@@ -176,6 +176,7 @@ export function DashboardHomeModals({
         open={collectPaymentOpen}
         onOpenChange={setCollectPaymentOpen}
         clients={clients}
+        banks={banks}
         initialClientId={initialCollectClientId}
         onSuccess={refresh}
       />
@@ -184,6 +185,7 @@ export function DashboardHomeModals({
         open={paySupplierOpen}
         onOpenChange={setPaySupplierOpen}
         suppliers={suppliers}
+        banks={banks}
         initialSupplierId={initialPaySupplierId}
         onSuccess={refresh}
       />

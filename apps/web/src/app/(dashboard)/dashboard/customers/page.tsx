@@ -1,3 +1,4 @@
+import { getBanks } from "@/lib/queries/bank.queries";
 import { getClients, getClientsSummary, getActiveClients } from "@/lib/queries/client.queries";
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
@@ -25,8 +26,9 @@ export default async function CustomersPage({
     tabParam && VALID_TABS.has(tabParam) ? tabParam : "customers";
 
   if (isSimple) {
-    const [customers, summary, billClients] = await Promise.all([
+    const [customers, banks, summary, billClients] = await Promise.all([
       getClients({ includeDeleted: true }),
+      getBanks(),
       getClientsSummary(),
       getActiveClients(),
     ]);
@@ -34,6 +36,7 @@ export default async function CustomersPage({
     return (
       <CustomerCommerceHub
         customers={customers}
+        banks={banks}
         summary={summary}
         billClients={billClients}
         initialCustomerId={customerId}
@@ -45,8 +48,9 @@ export default async function CustomersPage({
     );
   }
 
-  const [customers, summary] = await Promise.all([
+  const [customers, banks, summary] = await Promise.all([
     getClients({ includeDeleted: true }),
+    getBanks(),
     getClientsSummary(),
   ]);
 
@@ -55,6 +59,7 @@ export default async function CustomersPage({
       <CommerceFlowPanel />
       <CustomerManager
         customers={customers}
+        banks={banks}
         summary={summary}
         initialCustomerId={customerId}
         initialOpen={

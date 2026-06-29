@@ -249,8 +249,10 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `general-entry-modal.tsx` | **V3-B** | General receipt/payment — cash indirect asks “what for?” → saved as `particular` in reports |
 | `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + indirect transactions; bank ledger writes for bank mode |
 | `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode + bank account required when payment mode is bank |
-| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, auto-create new supplier on blur/submit, cash/bank payment |
-| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, auto-create new customer on blur/submit, cash/bank receipt |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, auto-create new supplier on blur/submit, cash/bank payment with bank account + UPI/net-banking selection |
+| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, auto-create new customer on blur/submit, cash/bank receipt with bank account + UPI/net-banking selection |
+| `bank-payment-fields.tsx` | **UX** | Shared payment mode + bank channel + bank account picker for customer/supplier payment forms |
+| `bank-account-field.tsx` | **UX** | Bank account picker — auto-uses sole bank (name only, no dropdown); dropdown when 2+ banks |
 | `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
 | `fy-calendar-hint.tsx` | **P2-4** | InfoHint — Indian FY (Apr–Mar) vs calendar year on Home Show more |
 | `lib/content/fy-calendar-copy.ts` | **P2-4** | Shared FY vs calendar copy for dashboard + reports |
@@ -396,6 +398,9 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | File | Phase | Description |
 |------|-------|-------------|
 | `entity-picker.ts` | **UX** | Shared customer/supplier search helpers — filter, exact match, auto-create name detection |
+| `bank-ledger.ts` | **V3-B** | `insertBankLedgerEntry()`, `deleteBankLedgerByReference()`, `normalizeBankSubMode()` — shared bank ledger writes |
+| `payment-mode-display.ts` | **V3-B** | `formatPaymentModeLabel()` — ledger shows `Bank` / `Cash` / `Credit` labels |
+| `resolve-bank-id.ts` | **V3-B** | Auto-picks sole active bank when payment mode is bank and no account selected |
 | `formatting.ts` | 4/13.5 | Date/time/currency formatters + `formatMonthYear()` + `formatStatementDate()` (DD-MMM-YYYY) |
 | `statement.ts` | 13.5 | `StatementResult`, `BalanceMeta`, `getBalanceMeta()`, `formatStatementAmount()`, `displayStatementLinesNewestFirst()` — newest entry #1 |
 | `audit-log.ts` | 18 | `logAudit()`, `extractEntityIdFromInput()` — writes to `audit_logs` on successful protected actions |
@@ -427,8 +432,9 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `job.schema.ts` | 7 | Zod schema: `jobSchema` |
 | `advance.schema.ts` | 7 | Zod schema: `createAdvanceSchema` |
 | `settings.schema.ts` | 7 | Zod schema: `companySettingsSchema` |
-| `client.schema.ts` | 11B | Zod schemas: `createClientSchema`, `updateClientSchema`, `receiveClientPaymentSchema` |
-| `supplier.schema.ts` | 12 | Zod schemas: `createSupplierSchema`, `updateSupplierSchema`, `paySupplierSchema` |
+| `payment-mode.schema.ts` | **V3-B** | Shared `paymentModeSchema`, `refineBankPaymentFields()` — bank account + UPI/net-banking required for bank payments |
+| `client.schema.ts` | 11B | Zod schemas: `createClientSchema`, `updateClientSchema`, `receiveClientPaymentSchema` (+ bank fields) |
+| `supplier.schema.ts` | 12 | Zod schemas: `createSupplierSchema`, `updateSupplierSchema`, `paySupplierSchema` (+ bank fields) |
 | `purchase.schema.ts` | 12 | Zod schemas + GST calc helpers for purchase invoices |
 | `invoice.schema.ts` | 13 | Zod schemas + payment breakdown resolver for tax invoices |
 | `bank.schema.ts` | 14 | Zod schemas: bank CRUD, deposit/withdraw, bank transfer |
@@ -486,8 +492,8 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `settings.actions.ts` | 7/13.5/**Phase 0**/**P0-1** | `updateDashboardExperience`, work schedule (+ OT multiplier), profile, data lock PIN |
 | `sticky-note.actions.ts` | Extras | `createStickyNote`, `updateStickyNote`, `deleteStickyNote` |
 | `correction.actions.ts` | 8.5/19 | `approveCorrectionRequest()` / `rejectCorrectionRequest()` — `protectedAction` + audit log entries |
-| `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `receiveClientPayment()`, `updateClientPayment()`, `deleteClientPayment()` |
-| `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()`, `updateSupplierPayment()`, `deleteSupplierPayment()` |
+| `client.actions.ts` | 11B | `createClient()`, `updateClient()`, `receiveClientPayment()`, `updateClientPayment()`, `deleteClientPayment()` — bank payments write bank ledger credits |
+| `supplier.actions.ts` | 12 | `createSupplier()`, `updateSupplier()`, `softDeleteSupplier()`, `recoverSupplier()`, `paySupplier()`, `updateSupplierPayment()`, `deleteSupplierPayment()` — bank payments write bank ledger debits |
 | `purchase.actions.ts` | 12 | `createPurchaseInvoice()`, `updatePurchaseInvoice()`, `softDeletePurchaseInvoice()` + ledger sync on update/delete |
 | `invoice.actions.ts` | 13 | `createInvoice()`, `updateInvoice()`, `softDeleteInvoice()` + ledger sync |
 | `bank.actions.ts` | 14 | Bank CRUD, `recordBankTransaction()`, `recordBankTransfer()` + ledger writes |
@@ -513,7 +519,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `salary-calculation.ts` | 6 | Shared gross salary engine: day credits, adjusted hours, fixed cap at `monthly_salary` |
 | `history.queries.ts` | 8.5 | `getHistorySessions()` — all sessions with employee/workshop/job joins; `getEmployeeSummaries()` — grouped by employee with live duration; `getEmployeeHistory()` — single employee sessions |
 | `correction.queries.ts` | 8.5 | `getCorrectionRequests()` — all requests with employee details; `getPendingRequestCount()` — for dashboard badge |
-| `dashboard.queries.ts` | 15/19 | Stats, `getFinancialYearsWithData()`, FY-scoped financial summary, revenue charts |
+| `dashboard.queries.ts` | 15/19 | Stats, `getFinancialYearsWithData()`, FY-scoped financial summary (bank from ledger totals, cash includes party payments), revenue charts |
 | `client.queries.ts` | 11B/13.5 | `getClientStatement()` → enriched `StatementResult` with invoice/vehicle/user metadata |
 | `supplier.queries.ts` | 12/13.5 | Supplier CRUD + enriched `getSupplierStatement()` — editable metadata, newest-first display |
 | `purchase.queries.ts` | 12 | `getPurchaseInvoices()` with supplier join |

@@ -18,8 +18,9 @@ import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
 import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
-import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { cn } from "@punchless/ui/lib/utils";
+import { BankPaymentFields } from "@/components/bank-payment-fields";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 
 import {
   createSupplier,
@@ -39,6 +40,7 @@ import { IconTooltip } from "@/components/icon-tooltip";
 
 interface Props {
   suppliers: SupplierWithPayable[];
+  banks: BankWithBalance[];
   summary: { totalSuppliers: number; totalPayable: number };
   initialSupplierId?: string;
   initialOpen?: "pay";
@@ -50,6 +52,7 @@ const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
 
 export function SupplierManager({
   suppliers,
+  banks,
   summary,
   initialSupplierId,
   initialOpen,
@@ -328,10 +331,11 @@ export function SupplierManager({
               <span className="font-medium text-foreground">{formatCurrency(paymentSupplier.payable_amount)}</span>
             </p>
             <Field label="Amount (₹)" name="amount" type="number" min="0.01" step="0.01" required />
-            <div>
-              <label className="mb-1 block text-sm font-medium">Payment Mode</label>
-              <PaymentModeSelect name="paymentMode" defaultValue="cash" includeCredit={false} />
-            </div>
+            <BankPaymentFields
+              banks={banks}
+              paymentModeSelectId="supplierManagerPaymentMode"
+              bankSelectId="supplierManagerBankId"
+            />
             <Field label="Payment Date" name="paymentDate" type="date" required defaultValue={defaultPaymentDate()} />
             <Field label="Remark" name="remark" />
             <div className="flex justify-end">

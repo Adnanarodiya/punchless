@@ -7,6 +7,7 @@ import { Building2, Receipt } from "lucide-react";
 import { cn } from "@punchless/ui/lib/utils";
 import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
 import { QuickBillModal } from "@/components/quick-bill-modal";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
 import { CustomerManager } from "./customer-manager";
@@ -17,6 +18,7 @@ type ClientSummary = { totalClients: number; totalDue: number };
 
 type Props = {
   customers: ClientWithDue[];
+  banks: BankWithBalance[];
   summary: ClientSummary;
   billClients: ClientWithDue[];
   initialCustomerId?: string;
@@ -31,6 +33,7 @@ const TABS: { id: CustomerCommerceTab; label: string; icon: typeof Building2 }[]
 
 export function CustomerCommerceHub({
   customers,
+  banks,
   summary,
   billClients,
   initialCustomerId,
@@ -105,6 +108,7 @@ export function CustomerCommerceHub({
           <CommerceFlowPanel />
           <CustomerManager
             customers={customers}
+            banks={banks}
             summary={summary}
             initialCustomerId={initialCustomerId}
             initialOpen={initialOpen}

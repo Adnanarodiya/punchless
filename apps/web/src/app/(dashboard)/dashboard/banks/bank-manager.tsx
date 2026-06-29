@@ -28,7 +28,7 @@ import { MaskedAmount } from "@/components/masked-amount";
 import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
-import { InfoHint } from "@/components/info-hint";
+
 
 interface Props {
   banks: BankWithBalance[];
@@ -87,12 +87,6 @@ export function BankManager({ banks, summary }: Props) {
           </Button>
         </div>
       </PageHeader>
-
-      <InfoHint title="Banks vs Income & Expense">
-        This page shows <strong>where money sits</strong> (HDFC, Kotak, cash in bank).{" "}
-        <strong>Finance → Income &amp; Expense</strong> tracks business profit &amp; loss — a different view.
-        Salary and invoice payouts update both when paid via bank.
-      </InfoHint>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Link

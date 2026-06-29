@@ -8,7 +8,7 @@ interface DashboardPageHeaderProps {
   children?: ReactNode;
 }
 
-/** Standard dashboard page title + description + contextual ? help. */
+/** Standard dashboard page title + description. */
 export function DashboardPageHeader({
   title,
   description,

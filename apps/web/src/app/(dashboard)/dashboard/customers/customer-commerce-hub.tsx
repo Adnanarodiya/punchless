@@ -5,11 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, Receipt } from "lucide-react";
 
 import { cn } from "@punchless/ui/lib/utils";
-import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
 import { QuickBillModal } from "@/components/quick-bill-modal";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
-import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
 import { CustomerManager } from "./customer-manager";
 
 export type CustomerCommerceTab = "customers" | "new-bill";
@@ -75,7 +73,6 @@ export function CustomerCommerceHub({
 
   return (
     <div className="space-y-6">
-      <PageFirstVisitTip pageId="customers" />
       <nav
         aria-label="Customer commerce"
         className="flex flex-wrap gap-2 border-b border-border pb-3"
@@ -105,7 +102,6 @@ export function CustomerCommerceHub({
 
       {tab === "customers" ? (
         <>
-          <CommerceFlowPanel />
           <CustomerManager
             customers={customers}
             banks={banks}

@@ -27,8 +27,6 @@ interface Props {
   periodMode?: PeriodMode;
   exportRows?: string[][];
   exportFilename?: string;
-  /** Optional notice banner (e.g. calendar year vs Indian FY). */
-  periodNotice?: string;
   children: React.ReactNode;
 }
 
@@ -47,7 +45,6 @@ export function ReportLayout({
   periodMode = "range",
   exportRows,
   exportFilename,
-  periodNotice,
   children,
 }: Props) {
   const router = useRouter();
@@ -135,15 +132,6 @@ export function ReportLayout({
           ) : null}
         </div>
       </PageHeader>
-
-      {periodNotice ? (
-        <div
-          className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-muted-foreground print:hidden"
-          role="note"
-        >
-          {periodNotice}
-        </div>
-      ) : null}
 
       <div className="rounded-xl border border-border bg-card p-4 print:hidden">
         <p className="mb-3 text-sm text-muted-foreground">

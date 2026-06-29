@@ -1,7 +1,6 @@
 import { getBanks } from "@/lib/queries/bank.queries";
 import { getClients, getClientsSummary, getActiveClients } from "@/lib/queries/client.queries";
 import { getCompanySettings } from "@/lib/queries/settings.queries";
-import { CommerceFlowPanel } from "@/components/commerce-flow-panel";
 import { CustomerManager } from "./customer-manager";
 import { CustomerCommerceHub, type CustomerCommerceTab } from "./customer-commerce-hub";
 
@@ -56,7 +55,6 @@ export default async function CustomersPage({
 
   return (
     <div className="space-y-6">
-      <CommerceFlowPanel />
       <CustomerManager
         customers={customers}
         banks={banks}

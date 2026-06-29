@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
-import { Fira_Code, Merriweather, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import { AppToaster } from "@/components/app-toaster";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-plus-jakarta",
-});
-
-const merriweather = Merriweather({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-merriweather",
-});
-
-const firaCode = Fira_Code({
-  subsets: ["latin"],
-  variable: "--font-fira-code",
 });
 
 export const dynamic = "force-dynamic";
@@ -34,10 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="light" suppressHydrationWarning>
-      <body
-        className={`${plusJakartaSans.variable} ${merriweather.variable} ${firaCode.variable} ${plusJakartaSans.className} antialiased`}
-        suppressHydrationWarning
-      >
+      <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         {children}
         <AppToaster />
       </body>

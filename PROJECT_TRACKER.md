@@ -183,7 +183,12 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `src/app/layout.tsx` | 1 | Root layout: Inter font, `force-dynamic`, light theme (no next-themes), `AppToaster` |
 | `src/app/not-found.tsx` | 1 | 404 page — link back to dashboard |
 | `src/components/app-toaster.tsx` | 1 | Client Sonner toaster (`ssr: false`) |
-| `src/app/globals.css` | 1 | **Master theme file**: CSS variables for light/dark mode, attendance states, status colors, purchase column, sidebar, charts |
+| `src/app/globals.css` | 1/**P0-1** | **Master theme**: oklch palette (warm amber brand), `@theme inline`, shadows, sidebar tokens; Punchless success/warning/purchase/statement colors |
+| `src/app/layout.tsx` | 1/**P0-1** | Root layout — Plus Jakarta Sans, Merriweather, Fira Code via `next/font` |
+| `tailwind.config.ts` | 1/**P0-1** | Tailwind extend — `var(--token)` colors (oklch-compatible), sidebar + purchase tokens |
+| `theme-backup/pre-oklch-amber/` | **Theme** | Old zinc HSL + Inter snapshot — `restore-theme.ps1` to revert if client dislikes amber |
+| `theme-backup/new-oklch-amber/` | **Theme** | Current oklch amber snapshot — `restore-theme.ps1` to re-apply after a revert |
+| `theme-backup/pre-oklch-amber/REVERT.md` | **Theme** | Instructions for swapping between old and new theme backups |
 | `src/app/page.tsx` | 1 | Landing page (redirects to `/dashboard`) |
 
 #### Auth Pages (`src/app/(auth)/`)
@@ -229,7 +234,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/dashboard-quick-actions.tsx` | 15/**P1-5** | 6 primary shortcuts + collapsible “More shortcuts” (under Show more) |
 | `dashboard/dashboard-primary-actions.tsx` | **P0-5**/**UX** | Home 4 buttons — New bill, Collect payment & Pay supplier open modals (no redirect) |
 | `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables (stacked full-width) |
-| `dashboard/customers/page.tsx` | 11B/3/**UX** | Server component: customers + summary; `CommerceFlowPanel`; `?customer=` (legacy `?client=`) deep links |
+| `dashboard/customers/page.tsx` | 11B/3/**UX** | Server component: customers + summary; Simple → `CustomerCommerceHub`; `?customer=` (legacy `?client=`) deep links |
 | `dashboard/customers/customer-manager.tsx` | 11B/3/**UX** | Customer CRUD, receive payment (₹5k+ confirm), invoice row action, soft delete/recover — all UI says “customer” |
 | `dashboard/customers/[id]/statement/page.tsx` | 11B | Server component: customer statement with date range |
 | `dashboard/customers/[id]/statement/statement-manager.tsx` | 13.5 | Customer statement — edit/delete rows (payments + quick bills) with confirm + correction modal |
@@ -237,7 +242,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `components/edit-client-statement-entry-modal.tsx` | **UX** | Correct payment or quick bill amount/date/mode from customer statement |
 | `dashboard/customers/[id]/statement/print/page.tsx` | 13.5 | Dedicated printable customer statement (minimal chrome) |
 | `dashboard/customers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for customer statement print route |
-| `dashboard/suppliers/page.tsx` | 12/3/**P0-3** | Suppliers page + `SupplierFlowPanel`; `?supplier=&open=pay` deep links |
+| `dashboard/suppliers/page.tsx` | 12/3/**P0-3** | Suppliers page + `SupplierManager`; `?supplier=&open=pay` deep links |
 | `dashboard/suppliers/supplier-manager.tsx` | 12/3 | CRUD, Pay Now modal (₹5k+ confirm), statement link, `?supplier=` deep link, soft delete/recover |
 | `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
 | `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Supplier statement — edit/delete rows (payments + bills) with confirm + correction modal |
@@ -258,14 +263,12 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `bank-payment-fields.tsx` | **UX** | Shared payment mode + bank channel + bank account picker for customer/supplier payment forms |
 | `bank-account-field.tsx` | **UX** | Bank account picker — auto-uses sole bank (name only, no dropdown); dropdown when 2+ banks |
 | `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
-| `fy-calendar-hint.tsx` | **P2-4** | InfoHint — Indian FY (Apr–Mar) vs calendar year on Home Show more |
-| `lib/content/fy-calendar-copy.ts` | **P2-4** | Shared FY vs calendar copy for dashboard + reports |
+
 | `customers/customer-commerce-hub.tsx` | **V3-A** | Simple mode tabs — Customers \| New bill only; GST bills tab removed |
 | `ui-language-toggle.tsx` | **P2-2** | Settings — English / Gujarati / Hindi for nav + home labels |
 | `lib/i18n/owner-labels.ts` | **P2-2** | Translated owner-facing label keys (nav, home actions, hero) |
 | `lib/stores/ui-language.store.ts` | **P2-2** | Zustand — `ui_language` hydrated from shell |
-| `page-first-visit-tip.tsx` | **P2-1** | Dismissible ~30s tips on Customers, Suppliers, Pay Staff (localStorage) |
-| `lib/content/page-first-visit-tips.ts` | **P2-1** | Tip copy for customers / suppliers / salary pages |
+
 | `lib/utils/dashboard-experience-guard.ts` | **P3-1** | `redirectUnlessFullDashboard()` — block Simple mode on full-only routes |
 | `lib/content/reports-nav.ts` | **V3-A** | Report list — GST report removed; sales bills report renamed |
 | `lib/actions/client.actions.ts` | 11B/**P1-2** | `createQuickCustomer` — name-only customer from quick bill (returns id) |
@@ -297,7 +300,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/attendance/attendance-manager.tsx` | 4/16 | Live/Today/Bulk tabs; bulk present marking for a date (closed workshop sessions) |
 | `dashboard/jobs/page.tsx` | 5 | Server component: fetches jobs + employees, renders `JobManager` |
 | `dashboard/jobs/job-manager.tsx` | 5 | **Client component**: Job CRUD (add/edit/delete), assign employees, update status (pending/in-progress/completed), map picker for job location |
-| `dashboard/salary/page.tsx` | 6/**Phase 0**/**P1-4** | Simple → `PayStaffHub`; Full → fingerprint salary; month-end payroll checklist (25th–5th) |
+| `dashboard/salary/page.tsx` | 6/**Phase 0** | Simple → `PayStaffHub`; Full → fingerprint salary |
 | `pay-staff-hub.tsx` | **P0-2/Pay UX** | Pay Staff hub — Pay opens modal; History with employee filter + slip re-print |
 | `pay-staff-modal.tsx` | **Pay UX** | Wide pay modal — prefilled salary, advance deducted, cash/bank |
 | `salary-slip-detail-card.tsx` | **Pay UX** | Salary proof card — days, advance, earned, “Why this amount?” |
@@ -307,8 +310,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `employees/[id]/statement/print/page.tsx` | **Pay UX** | Staff statement print/PDF with company letterhead |
 | `staff-statement-print-document.tsx` | **Pay UX** | Print statement — multi-month summary table or single-month proof card + ledger |
 | `lib/utils/salary-paid-map.ts` | **Pay UX** | Count salary paid by `salary_month` (pay in June still closes May row) |
-| `payroll-month-checklist.tsx` | **P1-4** | Month-end checklist component (not shown in UI — removed per owner request) |
-| `lib/queries/payroll-checklist.queries.ts` | **P1-4** | Payroll checklist status from DB (imports, advances, salary, payments) |
+
 | `dashboard/salary/salary-manager.tsx` | 6/9 | GPS-based salary report + Export CSV/Excel (full month via API); summary/table amounts respect data lock |
 | `fingerprint-salary-section.tsx` | **Phase 0**/**P0-2** | Fingerprint upload + report; **Pay this month** column; unified pay links in Simple mode |
 | `fingerprint-name-map-modal.tsx` | **Phase 0** | Map unmatched fingerprint name → Punchless employee (saves alias) |
@@ -331,10 +333,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard-sticky-notes.tsx` | Extras | Dashboard sticky notes CRUD widget |
 | `dashboard-data-lock-controls.tsx` | Extras | Lock/unlock financials + PIN modal |
 | `global-search.tsx` | Extras/3 | Cmd+K palette — 2 results per client/supplier (manage + statement); unique `item.id` keys |
-| `setup-checklist.tsx` | 3 | Dismissible onboarding checklist on dashboard home (sessionStorage) |
-| `flow-step-panel.tsx` | **P0-3/4** | Shared 4-step flow cards — stacked label + hint (`flex-col`), equal card heights |
-| `commerce-flow-panel.tsx` | 3/**P0-4** | Client money flow wrapper around `FlowStepPanel` |
-| `supplier-flow-panel.tsx` | **P0-3** | Supplier money flow wrapper around `FlowStepPanel` |
+
 | `delete-confirm-button.tsx` | UX | Reusable delete trigger + ConfirmModal ("Are you sure?") |
 | `page-navigation-loader.tsx` | UX | Full-screen loader overlay on internal navigation |
 | `navigation.store.ts` | UX | Zustand — navigation loading state |
@@ -352,18 +351,15 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/content/learn-modules.ts` | 9 | Content data — 23 dashboard modules with page sections, workflows, manual test steps + expected outputs |
 | `lib/content/learn-icons.tsx` | 9 | Maps `LearnIconName` → Lucide icons for learn UI |
 | `lib/content/learn-route-map.ts` | 9 | Maps dashboard URL paths → learn module IDs for contextual help links |
-| `info-hint.tsx` | 9/2 | Inline help box for jargon and page explanations |
-| `payroll-flow-panel.tsx` | 2/**Phase 0**/**P0-2** | 3-step payroll panel; `unifiedHub` keeps all steps on `/dashboard/salary` |
+
 | `lib/constants/payment-confirm.ts` | 3 | `CLIENT_PAYMENT_CONFIRM_THRESHOLD` (₹5000) for client/supplier/staff payment confirms |
 | `lib/constants/data-lock.ts` | 4 | `DATA_LOCK_IDLE_MS` (5 min) — auto-lock financials after idle |
 | `lib/constants/table-styles.ts` | 4 | Sticky first-column Tailwind classes for wide scroll tables |
 | `hooks/use-data-lock-idle.ts` | 4 | Auto-lock hook — listens for activity, locks + toast after idle |
 | `table-empty-state.tsx` | 4 | Friendly empty table/card state with icon, description, optional action |
 | `icon-tooltip.tsx` | 4 | Wraps icon-only buttons with Radix tooltip labels |
-| `dashboard-page-header.tsx` | 2 | Standard title + description + ? help for plain dashboard pages |
-| `learn-page-help.tsx` | 9 | `CircleHelp` ? icon — auto-detects route, links to `/dashboard/learn?module=…` |
-| `page-header.tsx` | 9 | App `PageHeader` wrapper — injects `LearnPageHelp` as `titleAddon` next to every page title |
-| `dashboard-page-header.tsx` | 2 | Title + description + `LearnPageHelp` for Attendance, Salary, History, etc. |
+| `dashboard-page-header.tsx` | 2 | Standard title + description for plain dashboard pages |
+| `page-header.tsx` | 9 | App `PageHeader` wrapper around `@punchless/ui` page header |
 
 #### Shared Components (`src/components/`)
 
@@ -371,7 +367,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 |------|-------|-------------|
 | `sidebar.tsx` | 11A/**P0-1** | Legacy grouped sidebar (replaced by header nav; kept for reference) |
 | `sidebar-config.ts` | **V3-A/P0-1** | Shared nav config — `filterNavGroups`, `isNavItemActive`, `findActiveGroupLabel`; Commerce GST link removed; Today's entry in More tools |
-| `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export |
+| `report-layout.tsx` | 17/19 | Shared report shell — period presets, custom range, print, CSV + Excel export (no instructional banners) |
 | `attendance-print-sheet.tsx` | 19 | Print-friendly attendance table (Attendance → Sheet tab) |
 | `financial-year.ts` | 19 | Indian FY helpers — label, range, date→FY mapping, data-driven select options |
 | `export-xlsx.ts` | 19 | `downloadXlsx()` via SheetJS; CSV fallback on failure |
@@ -538,7 +534,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `admin-user.queries.ts` | 18 | `getDashboardUsers()` — owner/admin accounts for company |
 | `sticky-note.queries.ts` | Extras | `getStickyNotes()` |
 | `search.queries.ts` | Extras/3 | `globalSearch()` — dual client/supplier hits (manage + statement), employees, jobs, invoices, purchases |
-| `setup-checklist.queries.ts` | 3 | `getSetupChecklistStatus()` — profile, workshop, posts, employees completion for dashboard checklist |
+
 
 #### Supabase Clients (`src/lib/supabase/`)
 

@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
-import { InfoHint } from "@/components/info-hint";
 import { filterReportsForExperience } from "@/lib/content/reports-nav";
 import { getCompanySettings } from "@/lib/queries/settings.queries";
 
@@ -16,20 +15,6 @@ export default async function ReportsIndexPage() {
         title="Reports"
         description="Financial reports — pick a period, print, or export CSV and Excel."
       />
-
-      {experience === "simple" ? (
-        <InfoHint title="Simple mode">
-          Daily and monthly reports cover most day-to-day checks. Switch to <strong>Full dashboard</strong> in
-          Settings for GST, yearly, Rojmel, and other advanced reports.
-        </InfoHint>
-      ) : (
-        <InfoHint title="Quick glossary">
-          <strong>Rojmel</strong> = traditional daily cash book (every debit/credit with running balance).{" "}
-          <strong>Income &amp; Expense</strong> (Transactions page) = manual business P&amp;L entries — different from{" "}
-          <strong>Bank balance</strong> (Banks page). <strong>Yearly report</strong> uses calendar year (Jan–Dec); the
-          dashboard overview uses Indian FY (Apr–Mar).
-        </InfoHint>
-      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => {

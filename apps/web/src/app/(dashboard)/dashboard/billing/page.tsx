@@ -3,7 +3,6 @@ import { CreditCard } from "lucide-react";
 
 import { Button } from "@punchless/ui/components/button";
 import { DashboardPageHeader } from "@/components/dashboard-page-header";
-import { InfoHint } from "@/components/info-hint";
 import { TableEmptyState } from "@/components/table-empty-state";
 import { redirectUnlessFullDashboard } from "@/lib/utils/dashboard-experience-guard";
 
@@ -16,10 +15,6 @@ export default async function BillingPage() {
         title="Billing"
         description="Subscription and plan management — coming in a future release."
       />
-      <InfoHint title="Not available yet">
-        Billing is not connected yet. Your workshop can use the full dashboard without a
-        subscription payment flow for now.
-      </InfoHint>
       <div className="rounded-xl border border-border bg-card">
         <TableEmptyState
           icon={CreditCard}

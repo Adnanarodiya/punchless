@@ -50,7 +50,6 @@ export default async function BalanceSheetReportPage({
     <ReportLayout
       title="Balance Sheet"
       description="Assets and liabilities snapshot — opening balance (before the period) vs closing balance (end of period)."
-      periodNotice="Opening balances are calculated from all entries before the start date. Closing balances include every entry through the end date."
       basePath="/dashboard/reports/balance-sheet"
       period={period}
       exportRows={exportRows}

@@ -7,7 +7,7 @@ import { CalendarCheck, History } from "lucide-react";
 import { Button } from "@punchless/ui/components/button";
 import { cn } from "@punchless/ui/lib/utils";
 import { FingerprintSalarySection } from "@/components/fingerprint-salary-section";
-import { PayrollFlowPanel } from "@/components/payroll-flow-panel";
+
 import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { PayStaffModal } from "@/components/pay-staff-modal";
 import { StaffPaymentManager } from "@/app/(dashboard)/dashboard/salary/payments/staff-payment-manager";
@@ -17,7 +17,7 @@ import type { EmployeeSalaryPayable } from "@/lib/queries/salary.queries";
 import type { StaffPaymentWithDetails } from "@/lib/queries/staff-payment.queries";
 import type { AttendanceImportSummary } from "@/lib/queries/attendance-import.queries";
 import type { FingerprintSalaryReport } from "@/lib/utils/fingerprint-salary-report";
-import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
+
 import { fetchEmployeeSalaryPayable } from "@/lib/actions/staff-payment.actions";
 
 type Tab = "this-month" | "history";
@@ -125,8 +125,6 @@ export function PayStaffHub({
         description="Upload attendance, see what each employee earned, and pay — all in one place."
       />
 
-      <PageFirstVisitTip pageId="salary" />
-
       <div className="inline-flex w-full max-w-md rounded-lg border border-input bg-muted/40 p-1 sm:w-auto">
         <Button
           type="button"
@@ -160,7 +158,6 @@ export function PayStaffHub({
 
       {tab === "this-month" ? (
         <>
-          <PayrollFlowPanel unifiedHub />
           <FingerprintSalarySection
             currentMonth={currentMonth}
             report={fingerprintReport}
@@ -171,10 +168,6 @@ export function PayStaffHub({
               void openPayModal(employeeId, amount);
             }}
           />
-          <p className="text-xs text-muted-foreground">
-            Tap <strong>Pay</strong> on any row to open the payment form. After you confirm, a
-            printable salary slip opens automatically.
-          </p>
         </>
       ) : (
         <StaffPaymentManager

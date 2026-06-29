@@ -29,13 +29,10 @@ import {
   DashboardRevenueChart,
   type ChartRange,
 } from "./dashboard-revenue-chart";
-import { SetupChecklist } from "@/components/setup-checklist";
-import { getSetupChecklistStatus } from "@/lib/queries/setup-checklist.queries";
 import { getBanks } from "@/lib/queries/bank.queries";
 import { getActiveClients } from "@/lib/queries/client.queries";
 import { getActiveSuppliers } from "@/lib/queries/supplier.queries";
 import { DashboardHomeModals } from "@/components/dashboard-home-modals";
-import { FyCalendarHint } from "@/components/fy-calendar-hint";
 import { getTodaysBookSummary } from "@/lib/queries/cash-book.queries";
 import { DashboardTodaysBook } from "./dashboard-todays-book";
 
@@ -63,7 +60,6 @@ export default async function DashboardPage({
     revenueChart6m,
     dataLock,
     stickyNotes,
-    setupChecklist,
     clients,
     suppliers,
     banks,
@@ -77,7 +73,6 @@ export default async function DashboardPage({
     getRevenueChartByMonth(6),
     getDataLockStatus(),
     isFullExperience ? getStickyNotes() : Promise.resolve([]),
-    getSetupChecklistStatus(),
     getActiveClients(),
     getActiveSuppliers(),
     getBanks(),
@@ -145,8 +140,6 @@ export default async function DashboardPage({
       <DashboardPendingDues dues={pendingDues} />
 
       <DashboardShowMore>
-        <SetupChecklist status={setupChecklist} />
-
         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted-foreground">
             Detailed financial overview for {financial.periodLabel}
@@ -155,8 +148,6 @@ export default async function DashboardPage({
             <DashboardFySelector options={fyOptions} selectedFy={fyStartYear} />
           </Suspense>
         </div>
-
-        <FyCalendarHint />
 
         <DashboardFinancialCards summary={financial} />
 

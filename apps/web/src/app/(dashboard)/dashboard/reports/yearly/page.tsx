@@ -3,7 +3,6 @@ import { ReportLayout, ReportSummaryGrid } from "@/components/report-layout";
 import { ReportTable } from "@/components/report-table";
 import { getYearlyReport } from "@/lib/queries/report.queries";
 import { resolveReportPeriod } from "@/lib/utils/report-period";
-import { CALENDAR_YEARLY_REPORT_NOTICE } from "@/lib/content/fy-calendar-copy";
 import { formatCurrency } from "@/lib/utils/formatting";
 
 export default async function YearlyReportPage({
@@ -40,7 +39,6 @@ export default async function YearlyReportPage({
       periodMode="year"
       exportRows={exportRows}
       exportFilename={`yearly-report-${year}`}
-      periodNotice={CALENDAR_YEARLY_REPORT_NOTICE}
     >
       <ReportSummaryGrid
         items={[

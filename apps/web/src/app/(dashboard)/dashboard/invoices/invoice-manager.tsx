@@ -27,7 +27,7 @@ import type { JobWithDetails } from "@/lib/queries/job.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
 import { useAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
-import { InfoHint } from "@/components/info-hint";
+
 import { QuickBillModal } from "@/components/quick-bill-modal";
 
 const GST_SLABS = [0, 5, 12, 18, 28] as const;
@@ -257,13 +257,6 @@ export function InvoiceManager({
             </Button>
           </div>
 
-          {convertingQuickBill ? (
-            <InfoHint title="Converting quick bill to GST invoice" className="mb-4">
-              Add an invoice number and GST slab. The total will change — update payment amounts
-              if the customer paid a different figure.
-            </InfoHint>
-          ) : null}
-
           <form
             action={editingInvoice
               ? async (fd) => { fd.set("invoiceId", editingInvoice.id); await execUpdate(fd); }
@@ -352,14 +345,6 @@ export function InvoiceManager({
             )}
 
             <Field label="Remark" name="remark" defaultValue={editingInvoice?.remark ?? ""} className="md:col-span-2" />
-
-            <div className="md:col-span-2">
-              <InfoHint title="Payment modes">
-                <strong>Cash / Bank</strong> — customer paid now; counts as income today.{" "}
-                <strong>Credit</strong> — customer pays later; adds to their due on Customers.{" "}
-                <strong>Split</strong> — part cash, part bank; extra amount can clear older customer dues.
-              </InfoHint>
-            </div>
 
             <div className="rounded-lg border border-border bg-muted/30 p-4 md:col-span-2">
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">

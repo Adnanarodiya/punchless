@@ -12,8 +12,7 @@ import { getStaffPayments } from "@/lib/queries/staff-payment.queries";
 import { DashboardPageHeader } from "@/components/dashboard-page-header";
 import { FingerprintSalarySection } from "@/components/fingerprint-salary-section";
 import { PayStaffHub } from "@/components/pay-staff-hub";
-import { PayrollFlowPanel } from "@/components/payroll-flow-panel";
-import { PageFirstVisitTip } from "@/components/page-first-visit-tip";
+
 
 // GPS / mobile attendance salary report — paused (fingerprint upload is the only payroll path for now)
 // import { getSalaryReport } from "@/lib/queries/salary.queries";
@@ -99,8 +98,6 @@ export default async function SalaryPage({ searchParams }: Props) {
         title="Staff salary"
         description="Upload your monthly fingerprint sheet, review working days and OT, then pay staff — same columns as your Shahin salary report."
       />
-      <PageFirstVisitTip pageId="salary" />
-      <PayrollFlowPanel />
       <FingerprintSalarySection
         currentMonth={monthStr}
         report={fingerprintReport}

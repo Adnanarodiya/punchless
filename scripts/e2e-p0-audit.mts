@@ -179,16 +179,17 @@ async function testSourceChecks() {
     "simpler home layout missing"
   );
 
-  const commerce = readFileSync(
-    resolve(root, "apps/web/src/components/commerce-flow-panel.tsx"),
+  const customers = readFileSync(
+    resolve(root, "apps/web/src/app/(dashboard)/dashboard/customers/page.tsx"),
     "utf8"
   );
   assert(
-    "P0-4-statement",
-    !commerce.includes("/dashboard/reports/rojmel") &&
-      commerce.includes("Icon on each client row"),
-    "client step 4 fixed (no Rojmel link)",
-    "commerce flow still links to Rojmel"
+    "P0-4-customers-hub",
+    customers.includes("CustomerCommerceHub") &&
+      !customers.includes("CommerceFlowPanel") &&
+      !customers.includes("PageFirstVisitTip"),
+    "customers page uses hub without instructional panels",
+    "customers page still has flow/tip panels"
   );
 
   const suppliers = readFileSync(
@@ -196,10 +197,12 @@ async function testSourceChecks() {
     "utf8"
   );
   assert(
-    "P0-3-supplier-flow",
-    suppliers.includes("SupplierFlowPanel"),
-    "suppliers page has flow panel",
-    "SupplierFlowPanel not on suppliers page"
+    "P0-3-suppliers-clean",
+    suppliers.includes("SupplierManager") &&
+      !suppliers.includes("SupplierFlowPanel") &&
+      !suppliers.includes("PageFirstVisitTip"),
+    "suppliers page has manager without instructional panels",
+    "suppliers page still has flow/tip panels"
   );
 
   const payHub = readFileSync(

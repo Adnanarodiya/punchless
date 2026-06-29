@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDownLeft, Building2, Landmark } from "lucide-react";
+import { ArrowDownLeft, Building2, Landmark, Wallet } from "lucide-react";
 
 import type { FinancialSummary } from "@/lib/queries/dashboard.queries";
 import { useFinancialLocked } from "@/lib/stores/data-lock.store";
@@ -19,7 +19,6 @@ interface Props {
 export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
   const locked = useFinancialLocked(hasDataLockPin);
   const language = useUiLanguageStore((s) => s.language);
-  const cashPlusBank = summary.bankBalance + summary.cashNet;
 
   const cards = [
     {
@@ -41,13 +40,22 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
       hint: "Total payable to vendors",
     },
     {
-      label: ownerLabel(language, "hero.cashBank"),
-      value: maskAmount(locked, formatSigned(cashPlusBank)),
+      label: ownerLabel(language, "hero.cash"),
+      value: maskAmount(locked, formatSigned(summary.cashNet)),
+      href: "/dashboard/cash-book",
+      icon: Wallet,
+      accent: "text-success",
+      accentBg: "bg-success/10",
+      hint: "Cash in hand (this month)",
+    },
+    {
+      label: ownerLabel(language, "hero.bank"),
+      value: maskAmount(locked, formatSigned(summary.bankBalance)),
       href: "/dashboard/banks",
       icon: Landmark,
       accent: "text-primary",
       accentBg: "bg-primary/10",
-      hint: `Bank ${maskAmount(locked, formatCurrency(summary.bankBalance))} · Cash (month) ${maskAmount(locked, formatSigned(summary.cashNet))}`,
+      hint: "Bank balance",
     },
   ];
 
@@ -56,7 +64,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
       <h2 id="money-hero-heading" className="sr-only">
         Money at a glance
       </h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

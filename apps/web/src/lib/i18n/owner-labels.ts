@@ -26,6 +26,8 @@ export type OwnerLabelKey =
   | "hero.customersOwe"
   | "hero.youOweSuppliers"
   | "hero.cashBank"
+  | "hero.cash"
+  | "hero.bank"
   | "pending.whoOwesWhat"
   | "settings.uiLanguage"
   | "settings.uiLanguageHint"
@@ -57,6 +59,8 @@ const EN: Record<OwnerLabelKey, string> = {
   "hero.customersOwe": "Customers owe you",
   "hero.youOweSuppliers": "You owe suppliers",
   "hero.cashBank": "Cash + Bank",
+  "hero.cash": "Cash",
+  "hero.bank": "Bank",
   "pending.whoOwesWhat": "Who owes what",
   "settings.uiLanguage": "Dashboard language",
   "settings.uiLanguageHint":
@@ -87,6 +91,8 @@ const GU: Partial<Record<OwnerLabelKey, string>> = {
   "hero.customersOwe": "ગ્રાહકોના બાકી",
   "hero.youOweSuppliers": "સપ્લાયરને બાકી",
   "hero.cashBank": "કેશ + બેંક",
+  "hero.cash": "કેશ",
+  "hero.bank": "બેંક",
   "pending.whoOwesWhat": "કોના બાકી",
   "settings.uiLanguage": "ડેશબોર્ડ ભાષા",
   "settings.uiLanguageHint":
@@ -117,6 +123,8 @@ const HI: Partial<Record<OwnerLabelKey, string>> = {
   "hero.customersOwe": "ग्राहकों का बाकी",
   "hero.youOweSuppliers": "सप्लायर को बाकी",
   "hero.cashBank": "कैश + बैंक",
+  "hero.cash": "कैश",
+  "hero.bank": "बैंक",
   "pending.whoOwesWhat": "किसका बाकी",
   "settings.uiLanguage": "डैशबोर्ड भाषा",
   "settings.uiLanguageHint":

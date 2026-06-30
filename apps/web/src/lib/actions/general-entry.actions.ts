@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { protectedAction } from "@/lib/server/protected-action";
 import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
+import {
+  applyClientBillSettlement,
+  resolveSettlementRemark,
+} from "@/lib/utils/settlement";
 import { generalEntrySchema } from "@/lib/validations/general-entry.schema";
+import { parseBillIdsFromForm } from "@/lib/validations/settlement.schema";
 
 function revalidateGeneralEntryPages(bankId?: string | null) {
   revalidatePath("/dashboard");
@@ -48,6 +53,8 @@ export const createGeneralEntry = protectedAction<FormData>({
     remark: formData.get("remark"),
     particular: formData.get("particular"),
     bankId: resolvedBankId ?? formData.get("bankId"),
+    settlementType: formData.get("settlementType") || "direct",
+    billIds: parseBillIdsFromForm(formData),
   });
 
   if (!parsed.success) {
@@ -64,8 +71,14 @@ export const createGeneralEntry = protectedAction<FormData>({
   if (data.entryKind === "party" && data.partyId && data.partySide === "client") {
     const entryCategory = "receipt";
     const modeLabel = data.paymentMode === "cash" ? "cash" : bankModeLabel(bankSubMode);
+    const settlement = await resolveSettlementRemark({
+      settlementType: data.settlementType ?? "direct",
+      billIds: data.billIds,
+      partySide: "client",
+      remark: data.remark,
+    });
     const ledgerRemark =
-      data.remark?.trim() ||
+      settlement.remark ||
       `Receipt received (${modeLabel})`;
 
     const { data: payment, error: paymentError } = await supabase
@@ -108,6 +121,13 @@ export const createGeneralEntry = protectedAction<FormData>({
 
     if (ledgerError) return { success: false, error: ledgerError.message };
 
+    if (settlement.billIds.length > 0) {
+      await applyClientBillSettlement(supabase, {
+        billIds: settlement.billIds,
+        amount: data.amount,
+      });
+    }
+
     if (data.paymentMode === "bank" && bankId) {
       const { error: bankLedgerError } = await supabase.from("ledger_entries").insert({
         company_id: me.company_id,
@@ -138,8 +158,14 @@ export const createGeneralEntry = protectedAction<FormData>({
   if (data.entryKind === "party" && data.partyId && data.partySide === "supplier") {
     const entryCategory = "payment";
     const modeLabel = data.paymentMode === "cash" ? "cash" : bankModeLabel(bankSubMode);
+    const settlement = await resolveSettlementRemark({
+      settlementType: data.settlementType ?? "direct",
+      billIds: data.billIds,
+      partySide: "supplier",
+      remark: data.remark,
+    });
     const ledgerRemark =
-      data.remark?.trim() ||
+      settlement.remark ||
       `Payment made (${modeLabel})`;
 
     const { data: payment, error: paymentError } = await supabase

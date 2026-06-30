@@ -4,6 +4,10 @@ import {
   paymentModeSchema,
   refineBankPaymentFields,
 } from "@/lib/validations/payment-mode.schema";
+import {
+  refineSettlementFields,
+  settlementTypeSchema,
+} from "@/lib/validations/settlement.schema";
 
 /** Minimal customer for quick bill — name only, no opening balance. */
 export const quickCustomerSchema = z.object({
@@ -32,8 +36,13 @@ export const receiveClientPaymentSchema = z
     bankId: z.string().optional(),
     paymentDate: z.string().min(1, "Payment date is required"),
     remark: z.string().max(500).optional().or(z.literal("")),
+    settlementType: settlementTypeSchema.optional().default("direct"),
+    billIds: z.array(z.string()).optional().default([]),
   })
-  .superRefine(refineBankPaymentFields);
+  .superRefine((data, ctx) => {
+    refineBankPaymentFields(data, ctx);
+    refineSettlementFields(data, ctx);
+  });
 
 export const updateClientPaymentSchema = receiveClientPaymentSchema.extend({
   paymentId: z.string().uuid("Invalid payment ID"),

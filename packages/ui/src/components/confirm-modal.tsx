@@ -41,6 +41,22 @@ function ConfirmModal({
   loading = false,
   className,
 }: ConfirmModalProps) {
+  const onConfirmRef = React.useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+
+  React.useEffect(() => {
+    if (!open || loading) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      void onConfirmRef.current();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, loading]);
+
   return (
     <AlertDialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
       <AlertDialogContent className={cn("", className)}>

@@ -11,6 +11,10 @@ import {
 } from "@/lib/utils/bank-ledger";
 import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
 import {
+  applyClientBillSettlement,
+  resolveSettlementRemark,
+} from "@/lib/utils/settlement";
+import {
   createClientSchema,
   deleteClientPaymentSchema,
   quickCustomerSchema,
@@ -18,6 +22,7 @@ import {
   updateClientPaymentSchema,
   updateClientSchema,
 } from "@/lib/validations/client.schema";
+import { parseBillIdsFromForm } from "@/lib/validations/settlement.schema";
 
 function revalidateClientPages(clientId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/customers");
@@ -239,6 +244,8 @@ export const receiveClientPayment = protectedAction<FormData>({
     bankId: resolvedBankId ?? formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
+    settlementType: formData.get("settlementType") || "direct",
+    billIds: parseBillIdsFromForm(formData),
   });
 
   if (!parsed.success) {
@@ -254,11 +261,19 @@ export const receiveClientPayment = protectedAction<FormData>({
     remark,
     bankId: bankIdRaw,
     bankSubMode,
+    settlementType,
+    billIds,
   } = parsed.data;
   const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
   const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
   const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
-  const ledgerRemark = remark || `Payment received (${modeLabel})`;
+  const settlement = await resolveSettlementRemark({
+    settlementType: settlementType ?? "direct",
+    billIds,
+    partySide: "client",
+    remark,
+  });
+  const ledgerRemark = settlement.remark || `Payment received (${modeLabel})`;
 
   const { data: payment, error: paymentError } = await supabase
     .from("client_payments")
@@ -303,6 +318,13 @@ export const receiveClientPayment = protectedAction<FormData>({
 
   if (ledgerError) {
     return { success: false, error: ledgerError.message };
+  }
+
+  if (settlement.billIds.length > 0) {
+    await applyClientBillSettlement(supabase, {
+      billIds: settlement.billIds,
+      amount,
+    });
   }
 
   if (paymentMode === "bank" && bankId) {

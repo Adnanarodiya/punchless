@@ -1,29 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
 import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
+import { AgainstBillPicker } from "@/components/against-bill-picker";
 import { BankPaymentFields } from "@/components/bank-payment-fields";
+import { PartySearchField } from "@/components/party-search-field";
+import { SettlementTypeField } from "@/components/settlement-type-field";
 import {
   createQuickCustomer,
   receiveClientPayment,
 } from "@/lib/actions/client.actions";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
-import { CLIENT_PAYMENT_CONFIRM_THRESHOLD } from "@/lib/constants/payment-confirm";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import { useAction } from "@/hooks/use-action";
-import { formatCurrency } from "@/lib/utils/formatting";
 import {
   entityDisplayLabel,
-  filterEntitiesByQuery,
   findEntityByQuery,
   isNewEntityName,
 } from "@/lib/utils/entity-picker";
+import { focusField, handleEnterToNextField } from "@/lib/utils/form-keyboard";
+import { formatCurrency } from "@/lib/utils/formatting";
+import type { SettlementType } from "@/lib/validations/settlement.schema";
 
 type Props = {
   open: boolean;
@@ -49,7 +51,11 @@ export function CollectPaymentModal({
   const [clientOptions, setClientOptions] = useState(clients);
   const [clientId, setClientId] = useState(initialClientId);
   const [customerQuery, setCustomerQuery] = useState("");
-  const [showCustomerList, setShowCustomerList] = useState(false);
+  const [settlementType, setSettlementType] = useState<SettlementType>("direct");
+  const [billIds, setBillIds] = useState<string[]>([]);
+  const [selectedBillsTotal, setSelectedBillsTotal] = useState(0);
+  const [selectedInvoiceNumber, setSelectedInvoiceNumber] = useState("");
+  const [amount, setAmount] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [confirmPayOpen, setConfirmPayOpen] = useState(false);
   const [pendingPayment, setPendingPayment] = useState<FormData | null>(null);
@@ -63,7 +69,11 @@ export function CollectPaymentModal({
   useEffect(() => {
     if (!open) {
       setCustomerQuery("");
-      setShowCustomerList(false);
+      setSettlementType("direct");
+      setBillIds([]);
+      setSelectedBillsTotal(0);
+      setSelectedInvoiceNumber("");
+      setAmount("");
       setConfirmPayOpen(false);
       setPendingPayment(null);
       if (!initialClientId) setClientId("");
@@ -78,12 +88,6 @@ export function CollectPaymentModal({
   }, [open, initialClientId, clientOptions]);
 
   const trimmedQuery = customerQuery.trim();
-
-  const filteredCustomers = useMemo(
-    () => filterEntitiesByQuery(clientOptions, customerQuery),
-    [clientOptions, customerQuery]
-  );
-
   const isNewCustomer = isNewEntityName(clientOptions, customerQuery);
   const selectedClient = clientOptions.find((c) => c.id === clientId);
 
@@ -95,10 +99,22 @@ export function CollectPaymentModal({
     },
   });
 
-  function selectCustomer(client: ClientWithDue) {
+  function selectCustomer(client: ClientWithDue, invoiceNumber?: string, linkedBillId?: string) {
     setClientId(client.id);
-    setCustomerQuery(entityDisplayLabel(client));
-    setShowCustomerList(false);
+    setCustomerQuery(
+      invoiceNumber
+        ? `${entityDisplayLabel(client)} · #${invoiceNumber}`
+        : entityDisplayLabel(client)
+    );
+    setSelectedInvoiceNumber(invoiceNumber ?? "");
+    setBillIds(linkedBillId ? [linkedBillId] : []);
+  }
+
+  function clearCustomerSelection() {
+    setClientId("");
+    setBillIds([]);
+    setSelectedBillsTotal(0);
+    setSelectedInvoiceNumber("");
   }
 
   async function ensureCustomerSelected(): Promise<string | null> {
@@ -137,34 +153,59 @@ export function CollectPaymentModal({
 
   async function submitPayment(formData: FormData, resolvedClientId: string) {
     formData.set("clientId", resolvedClientId);
+    formData.set("settlementType", settlementType);
     await execPayment(formData);
+  }
+
+  async function openPaymentConfirm(form: HTMLFormElement): Promise<boolean> {
+    const resolvedClientId = await ensureCustomerSelected();
+    if (!resolvedClientId) {
+      toast.error("Enter a customer name");
+      customerInputRef.current?.focus();
+      return false;
+    }
+
+    if (settlementType === "against_bill" && billIds.length === 0) {
+      toast.error("Select at least one bill to settle against");
+      return false;
+    }
+
+    const formData = new FormData(form);
+    const payAmount = Number(formData.get("amount") || 0);
+    setPendingPayment(formData);
+    setConfirmPayAmount(payAmount);
+    setConfirmPayOpen(true);
+    return true;
   }
 
   async function handlePaymentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (paying || creatingCustomer) return;
-
-    const form = event.currentTarget;
-
-    const resolvedClientId = await ensureCustomerSelected();
-    if (!resolvedClientId) {
-      toast.error("Enter a customer name");
-      customerInputRef.current?.focus();
-      return;
-    }
-
-    const formData = new FormData(form);
-    const amount = Number(formData.get("amount") || 0);
-
-    if (amount >= CLIENT_PAYMENT_CONFIRM_THRESHOLD) {
-      setPendingPayment(formData);
-      setConfirmPayAmount(amount);
-      setConfirmPayOpen(true);
-      return;
-    }
-
-    await submitPayment(formData, resolvedClientId);
+    await openPaymentConfirm(event.currentTarget);
   }
+
+  async function handleRemarkEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (paying || creatingCustomer) return;
+    const form = event.currentTarget.form;
+    if (!form) return;
+    await openPaymentConfirm(form);
+  }
+
+  function focusSettlementField() {
+    focusField("collectPaymentSettlementDirect");
+  }
+
+  function focusAfterSettlement() {
+    if (settlementType === "against_bill" && clientId) {
+      if (focusField("collectPaymentBillSearch")) return;
+      if (focusField("collectPaymentFirstBill")) return;
+    }
+    focusField("collectPaymentDate");
+  }
+
+  const showBillPanel = settlementType === "against_bill" && Boolean(clientId);
 
   async function confirmPayment() {
     if (!pendingPayment) return;
@@ -179,7 +220,6 @@ export function CollectPaymentModal({
 
   function handleCustomerBlur() {
     window.setTimeout(() => {
-      setShowCustomerList(false);
       if (!clientId && trimmedQuery) {
         void ensureCustomerSelected();
       }
@@ -188,85 +228,56 @@ export function CollectPaymentModal({
 
   return (
     <>
-      <Modal open={open} onOpenChange={onOpenChange} title="Collect payment">
-        <p className="mb-4 text-sm text-muted-foreground">
-          Record cash or bank received from a customer. Search or type a new name — new customers
-          are saved automatically.
-        </p>
-
-        <form onSubmit={handlePaymentSubmit} className="space-y-4">
-          <div className="relative">
-            <label htmlFor="collectPaymentSearch" className="mb-1 block text-sm font-medium">
-              Customer
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                ref={customerInputRef}
-                id="collectPaymentSearch"
-                type="text"
-                autoComplete="off"
-                placeholder="Search or type new customer name"
-                value={customerQuery}
-                onChange={(e) => {
-                  setCustomerQuery(e.target.value);
-                  setClientId("");
-                  setShowCustomerList(true);
-                }}
-                onFocus={() => setShowCustomerList(true)}
-                onBlur={handleCustomerBlur}
-                className="h-10 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              />
-            </div>
-
-            {selectedClient ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Selected:{" "}
-                <span className="font-medium text-foreground">{selectedClient.name}</span>
-                {" · "}
-                Due:{" "}
-                <span className="font-medium text-foreground">
-                  {formatCurrency(selectedClient.due_amount)}
-                </span>
-              </p>
-            ) : isNewCustomer ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                New customer — will be added when you record payment
-              </p>
-            ) : null}
-
-            {showCustomerList && (filteredCustomers.length > 0 || isNewCustomer) ? (
-              <ul
-                className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md"
-                role="listbox"
-              >
-                {filteredCustomers.map((client) => (
-                  <li key={client.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={clientId === client.id}
-                      className={cn(
-                        "flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent",
-                        clientId === client.id && "bg-accent/60"
-                      )}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => selectCustomer(client)}
-                    >
-                      <span>{entityDisplayLabel(client)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Due {formatCurrency(client.due_amount)}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-                {isNewCustomer && filteredCustomers.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-muted-foreground">
-                    Press Tab or save — &quot;{trimmedQuery}&quot; will be added as a new customer
-                  </li>
-                ) : null}
-              </ul>
-            ) : null}
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Collect payment"
+        className={cn(showBillPanel && "sm:max-w-4xl")}
+      >
+        <form
+          onSubmit={handlePaymentSubmit}
+          className={cn(
+            showBillPanel
+              ? "grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] md:items-start"
+              : "space-y-4"
+          )}
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Record cash or bank received from a customer. Search by party name or bill
+              number.
+            </p>
+          <div onBlur={handleCustomerBlur}>
+            <PartySearchField
+              id="collectPaymentSearch"
+              label="Customer"
+              side="client"
+              entities={clientOptions}
+              partyId={clientId}
+              query={customerQuery}
+              selectedInvoiceNumber={selectedInvoiceNumber}
+              onQueryChange={setCustomerQuery}
+              onSelect={(selection) => {
+                const client = clientOptions.find((c) => c.id === selection.partyId);
+                if (client) {
+                  selectCustomer(
+                    client,
+                    selection.invoiceNumber,
+                    selection.billId
+                  );
+                } else {
+                  setClientId(selection.partyId);
+                  setCustomerQuery(selection.displayQuery);
+                  setBillIds(selection.billId ? [selection.billId] : []);
+                  setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
+                }
+              }}
+              onClearSelection={clearCustomerSelection}
+              nextFieldId="collectPaymentAmount"
+              outstandingAmount={selectedClient?.due_amount}
+              outstandingLabel="Due"
+              newPartyHint="New customer — will be added when you record payment"
+            />
           </div>
 
           <div>
@@ -280,14 +291,49 @@ export function CollectPaymentModal({
               min="0.01"
               step="0.01"
               required
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              onKeyDown={(e) => handleEnterToNextField(e, "collectPaymentMode")}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
+            {settlementType === "against_bill" && selectedBillsTotal > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Selected bills total due:{" "}
+                <span className="font-medium text-foreground">
+                  {formatCurrency(selectedBillsTotal)}
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <BankPaymentFields
             banks={banks}
             paymentModeSelectId="collectPaymentMode"
             bankSelectId="collectPaymentBankId"
+            bankChannelUpiId="collectPaymentBankUpi"
+            bankChannelNbId="collectPaymentBankNb"
+            onPaymentModeEnter={(mode) => {
+              if (mode === "bank") {
+                focusField("collectPaymentBankUpi");
+              } else {
+                focusSettlementField();
+              }
+            }}
+            onBankChannelEnter={() => focusField("collectPaymentBankId")}
+            onBankAccountEnter={focusSettlementField}
+          />
+
+          <SettlementTypeField
+            idPrefix="collectPayment"
+            value={settlementType}
+            onChange={(value) => {
+              setSettlementType(value);
+              if (value === "direct") {
+                setBillIds([]);
+                setSelectedBillsTotal(0);
+              }
+            }}
+            onEnterAdvance={focusAfterSettlement}
           />
 
           <div>
@@ -300,6 +346,7 @@ export function CollectPaymentModal({
               type="date"
               required
               defaultValue={todayDate()}
+              onKeyDown={(e) => handleEnterToNextField(e, "collectPaymentRemark")}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
@@ -313,18 +360,37 @@ export function CollectPaymentModal({
               name="remark"
               type="text"
               maxLength={500}
+              onKeyDown={(e) => void handleRemarkEnter(e)}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
           </div>
 
-          <Button
-            type="submit"
-            loading={paying || creatingCustomer}
-            disabled={paying || creatingCustomer}
-            className="w-full sm:w-auto"
-          >
-            Record payment
-          </Button>
+            <Button
+              type="submit"
+              loading={paying || creatingCustomer}
+              disabled={paying || creatingCustomer}
+              className="w-full sm:w-auto"
+            >
+              Record payment
+            </Button>
+          </div>
+
+          {showBillPanel ? (
+            <aside className="rounded-lg border border-border bg-muted/20 p-4 md:sticky md:top-0">
+              <AgainstBillPicker
+                partyId={clientId}
+                side="client"
+                variant="panel"
+                selectedBillIds={billIds}
+                onBillsChange={setBillIds}
+                onSelectedTotalChange={setSelectedBillsTotal}
+                searchInputId="collectPaymentBillSearch"
+                firstBillFocusId="collectPaymentFirstBill"
+                onSearchEnter={() => focusField("collectPaymentDate")}
+                onEnterAdvance={() => focusField("collectPaymentDate")}
+              />
+            </aside>
+          ) : null}
         </form>
       </Modal>
 

@@ -10,6 +10,7 @@ import {
   normalizeBankSubMode,
 } from "@/lib/utils/bank-ledger";
 import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
+import { resolveSettlementRemark } from "@/lib/utils/settlement";
 import {
   createSupplierSchema,
   deleteSupplierPaymentSchema,
@@ -18,6 +19,7 @@ import {
   updateSupplierPaymentSchema,
   updateSupplierSchema,
 } from "@/lib/validations/supplier.schema";
+import { parseBillIdsFromForm } from "@/lib/validations/settlement.schema";
 
 function revalidateSupplierPages(supplierId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/suppliers");
@@ -238,6 +240,8 @@ export const paySupplier = protectedAction<FormData>({
     bankId: resolvedBankId ?? formData.get("bankId"),
     paymentDate: formData.get("paymentDate"),
     remark: formData.get("remark"),
+    settlementType: formData.get("settlementType") || "direct",
+    billIds: parseBillIdsFromForm(formData),
   });
 
   if (!parsed.success) {
@@ -253,11 +257,19 @@ export const paySupplier = protectedAction<FormData>({
     remark,
     bankId: bankIdRaw,
     bankSubMode,
+    settlementType,
+    billIds,
   } = parsed.data;
   const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
   const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
   const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
-  const ledgerRemark = remark || `Payment made (${modeLabel})`;
+  const settlement = await resolveSettlementRemark({
+    settlementType: settlementType ?? "direct",
+    billIds,
+    partySide: "supplier",
+    remark,
+  });
+  const ledgerRemark = settlement.remark || `Payment made (${modeLabel})`;
 
   const { data: payment, error: paymentError } = await supabase
     .from("supplier_payments")

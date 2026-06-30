@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 
 import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { cn } from "@punchless/ui/lib/utils";
 import { BankAccountField } from "@/components/bank-account-field";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
+import { focusField } from "@/lib/utils/form-keyboard";
 
 const fieldClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -21,14 +22,24 @@ type Props = {
   includeCredit?: boolean;
   paymentModeSelectId?: string;
   bankSelectId?: string;
+  bankChannelUpiId?: string;
+  bankChannelNbId?: string;
+  onPaymentModeEnter?: (mode: "cash" | "bank" | "credit") => void;
+  onBankChannelEnter?: () => void;
+  onBankAccountEnter?: () => void;
 };
 
 export function BankPaymentFields({
   banks,
   defaultPaymentMode = "cash",
   includeCredit = false,
-  paymentModeSelectId,
+  paymentModeSelectId = "paymentMode",
   bankSelectId = "bankPaymentBankId",
+  bankChannelUpiId = "bankChannelUpi",
+  bankChannelNbId = "bankChannelNb",
+  onPaymentModeEnter,
+  onBankChannelEnter,
+  onBankAccountEnter,
 }: Props) {
   const soleBankId = banks.length === 1 ? banks[0].id : "";
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank" | "credit">(
@@ -42,6 +53,28 @@ export function BankPaymentFields({
       setBankId(banks[0].id);
     }
   }, [paymentMode, banks]);
+
+  function handlePaymentModeKeyDown(event: KeyboardEvent<HTMLSelectElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (onPaymentModeEnter) {
+      onPaymentModeEnter(paymentMode);
+      return;
+    }
+    if (paymentMode === "bank") {
+      focusField(bankChannelUpiId);
+    }
+  }
+
+  function handleBankChannelEnter(event: KeyboardEvent<HTMLLabelElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (onBankChannelEnter) {
+      onBankChannelEnter();
+      return;
+    }
+    focusField(bankSelectId);
+  }
 
   return (
     <>
@@ -57,6 +90,7 @@ export function BankPaymentFields({
           name="paymentMode"
           includeCredit={includeCredit}
           value={paymentMode}
+          onKeyDown={handlePaymentModeKeyDown}
           onChange={(e) => {
             const mode = e.target.value as "cash" | "bank" | "credit";
             setPaymentMode(mode);
@@ -80,8 +114,11 @@ export function BankPaymentFields({
               {BANK_SUB_MODES.map((option) => (
                 <label
                   key={option.value}
+                  id={option.value === "upi" ? bankChannelUpiId : bankChannelNbId}
+                  tabIndex={0}
+                  onKeyDown={handleBankChannelEnter}
                   className={cn(
-                    "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition",
+                    "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
                     bankSubMode === option.value
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-input text-muted-foreground hover:bg-accent/50"
@@ -107,6 +144,7 @@ export function BankPaymentFields({
             bankId={bankId}
             onBankIdChange={setBankId}
             id={bankSelectId}
+            onEnterAdvance={onBankAccountEnter}
           />
         </>
       ) : (

@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
+import { ConfirmModal } from "@punchless/ui/components/confirm-modal";
 import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
+import { AgainstBillPicker } from "@/components/against-bill-picker";
 import { BankAccountField } from "@/components/bank-account-field";
+import { PartySearchField } from "@/components/party-search-field";
+import { SettlementTypeField } from "@/components/settlement-type-field";
 import { createGeneralEntry } from "@/lib/actions/general-entry.actions";
 import { createQuickCustomer } from "@/lib/actions/client.actions";
 import { createQuickSupplier } from "@/lib/actions/supplier.actions";
@@ -17,11 +20,12 @@ import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import { useAction } from "@/hooks/use-action";
 import {
   entityDisplayLabel,
-  filterEntitiesByQuery,
   findEntityByQuery,
   type NamedEntity,
 } from "@/lib/utils/entity-picker";
+import { handleEnterToNextField } from "@/lib/utils/form-keyboard";
 import { formatCurrency } from "@/lib/utils/formatting";
+import type { SettlementType } from "@/lib/validations/settlement.schema";
 
 const fieldClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -56,11 +60,18 @@ export function GeneralEntryModal({
   const [partySide, setPartySide] = useState<PartySide>("client");
   const [partyId, setPartyId] = useState("");
   const [partyQuery, setPartyQuery] = useState("");
-  const [showPartyList, setShowPartyList] = useState(false);
+  const [settlementType, setSettlementType] = useState<SettlementType>("direct");
+  const [billIds, setBillIds] = useState<string[]>([]);
+  const [selectedBillsTotal, setSelectedBillsTotal] = useState(0);
+  const [selectedInvoiceNumber, setSelectedInvoiceNumber] = useState("");
+  const [amount, setAmount] = useState("");
   const [clientOptions, setClientOptions] = useState(clients);
   const [supplierOptions, setSupplierOptions] = useState(suppliers);
   const [creatingParty, setCreatingParty] = useState(false);
   const [bankId, setBankId] = useState(banks.length === 1 ? banks[0].id : "");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const [confirmAmount, setConfirmAmount] = useState(0);
   const partyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -77,7 +88,14 @@ export function GeneralEntryModal({
       setPartySide("client");
       setPartyId("");
       setPartyQuery("");
+      setSettlementType("direct");
+      setBillIds([]);
+      setSelectedBillsTotal(0);
+      setSelectedInvoiceNumber("");
+      setAmount("");
       setBankId("");
+      setConfirmOpen(false);
+      setPendingFormData(null);
       return;
     }
   }, [open]);
@@ -91,10 +109,9 @@ export function GeneralEntryModal({
     }
   }, [paymentMode, banks, bankId]);
 
-  const filteredParties = useMemo(() => {
-    const list = (partySide === "client" ? clientOptions : supplierOptions) as NamedEntity[];
-    return filterEntitiesByQuery(list, partyQuery);
-  }, [partySide, clientOptions, supplierOptions, partyQuery]);
+  const partyEntities = (
+    partySide === "client" ? clientOptions : supplierOptions
+  ) as NamedEntity[];
 
   const selectedParty =
     partySide === "client"
@@ -116,10 +133,22 @@ export function GeneralEntryModal({
     },
   });
 
-  function selectParty(entity: NamedEntity) {
+  function selectParty(entity: NamedEntity, invoiceNumber?: string, linkedBillId?: string) {
     setPartyId(entity.id);
-    setPartyQuery(entityDisplayLabel(entity));
-    setShowPartyList(false);
+    setPartyQuery(
+      invoiceNumber
+        ? `${entityDisplayLabel(entity)} · #${invoiceNumber}`
+        : entityDisplayLabel(entity)
+    );
+    setSelectedInvoiceNumber(invoiceNumber ?? "");
+    setBillIds(linkedBillId ? [linkedBillId] : []);
+  }
+
+  function clearPartySelection() {
+    setPartyId("");
+    setBillIds([]);
+    setSelectedBillsTotal(0);
+    setSelectedInvoiceNumber("");
   }
 
   async function ensurePartySelected(): Promise<string | null> {
@@ -127,8 +156,7 @@ export function GeneralEntryModal({
     const name = partyQuery.trim();
     if (!name) return null;
 
-    const list = (partySide === "client" ? clientOptions : supplierOptions) as NamedEntity[];
-    const exact = findEntityByQuery(list, name);
+    const exact = findEntityByQuery(partyEntities, name);
     if (exact) {
       selectParty(exact);
       return exact.id;
@@ -155,23 +183,20 @@ export function GeneralEntryModal({
       } else {
         setSupplierOptions((prev) => [...prev, created as SupplierWithPayable]);
       }
-      selectParty(created);
+      selectParty(created as NamedEntity);
       return created.id;
     } finally {
       setCreatingParty(false);
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (loading || creatingParty) return;
-
-    const form = event.currentTarget;
+  async function buildFormData(form: HTMLFormElement): Promise<FormData | null> {
     const formData = new FormData(form);
     const resolvedEntryKind = paymentMode === "bank" ? "party" : entryKind;
     formData.set("direction", direction);
     formData.set("paymentMode", paymentMode);
     formData.set("entryKind", resolvedEntryKind);
+    formData.set("settlementType", settlementType);
 
     if (paymentMode === "bank") {
       formData.set("bankSubMode", bankSubMode);
@@ -184,7 +209,11 @@ export function GeneralEntryModal({
       if (!id) {
         toast.error("Select or enter a party name");
         partyInputRef.current?.focus();
-        return;
+        return null;
+      }
+      if (settlementType === "against_bill" && billIds.length === 0) {
+        toast.error("Select at least one bill to settle against");
+        return null;
       }
       formData.set("partyId", id);
       formData.set("partySide", partySide);
@@ -193,19 +222,68 @@ export function GeneralEntryModal({
       formData.set("partySide", "");
     }
 
-    await execute(formData);
+    return formData;
+  }
+
+  async function openEntryConfirm(form: HTMLFormElement): Promise<boolean> {
+    const formData = await buildFormData(form);
+    if (!formData) return false;
+
+    const payAmount = Number(formData.get("amount") || 0);
+    setPendingFormData(formData);
+    setConfirmAmount(payAmount);
+    setConfirmOpen(true);
+    return true;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (loading || creatingParty) return;
+    await openEntryConfirm(event.currentTarget);
+  }
+
+  async function handleRemarkEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (loading || creatingParty) return;
+    const form = event.currentTarget.form;
+    if (!form) return;
+    await openEntryConfirm(form);
+  }
+
+  async function confirmEntry() {
+    if (!pendingFormData) return;
+    await execute(pendingFormData);
+    setConfirmOpen(false);
+    setPendingFormData(null);
   }
 
   const indirectLabel = direction === "receipt" ? "Indirect Income" : "Indirect Expense";
   const isPartyEntry = paymentMode === "bank" || entryKind === "party";
+  const showBillPanel =
+    isPartyEntry && settlementType === "against_bill" && Boolean(partyId);
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="General entry">
-      <p className="mb-4 text-sm text-muted-foreground">
-        Cash can be party-linked or indirect. Bank entries must link to a customer or supplier.
-      </p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="General entry"
+      className={cn(showBillPanel && "sm:max-w-4xl")}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className={cn(
+          showBillPanel
+            ? "grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] md:items-start"
+            : "space-y-4"
+        )}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Cash can be party-linked or indirect. Bank entries must link to a customer or
+            supplier.
+          </p>
         <div>
           <span className="mb-2 block text-sm font-medium">Receipt or payment?</span>
           <div className="grid grid-cols-2 gap-2">
@@ -363,6 +441,19 @@ export function GeneralEntryModal({
         )}
 
         {isPartyEntry ? (
+          <SettlementTypeField
+            value={settlementType}
+            onChange={(value) => {
+              setSettlementType(value);
+              if (value === "direct") {
+                setBillIds([]);
+                setSelectedBillsTotal(0);
+              }
+            }}
+          />
+        ) : null}
+
+        {isPartyEntry ? (
           <>
             <div>
               <span className="mb-2 block text-sm font-medium">Party type</span>
@@ -386,6 +477,10 @@ export function GeneralEntryModal({
                         setPartySide(value);
                         setPartyId("");
                         setPartyQuery("");
+                        setBillIds([]);
+                        setSelectedBillsTotal(0);
+                        setSelectedInvoiceNumber("");
+                        setSettlementType("direct");
                       }}
                       className="sr-only"
                     />
@@ -395,56 +490,34 @@ export function GeneralEntryModal({
               </div>
             </div>
 
-            <div className="relative">
-              <label htmlFor="generalParty" className="mb-1 block text-sm font-medium">
-                Party name
-              </label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  ref={partyInputRef}
-                  id="generalParty"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Search party"
-                  value={partyQuery}
-                  onChange={(e) => {
-                    setPartyQuery(e.target.value);
-                    setPartyId("");
-                    setShowPartyList(true);
-                  }}
-                  onFocus={() => setShowPartyList(true)}
-                  onBlur={() => window.setTimeout(() => setShowPartyList(false), 150)}
-                  className="h-10 w-full rounded-lg border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-                />
-              </div>
+            <PartySearchField
+              id="generalParty"
+              label="Party name"
+              side={partySide}
+              entities={partyEntities}
+              partyId={partyId}
+              query={partyQuery}
+              selectedInvoiceNumber={selectedInvoiceNumber}
+              onQueryChange={setPartyQuery}
+              onSelect={(selection) => {
+                setPartyId(selection.partyId);
+                setPartyQuery(selection.displayQuery);
+                setBillIds(selection.billId ? [selection.billId] : []);
+                setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
+              }}
+              onClearSelection={clearPartySelection}
+              nextFieldId={
+                settlementType === "against_bill" && partyId
+                  ? undefined
+                  : paymentMode === "cash" && entryKind === "indirect"
+                    ? "generalParticular"
+                    : "generalAmount"
+              }
+              outstandingAmount={outstanding}
+              outstandingLabel="Outstanding"
+              newPartyHint="New party — will be added when you save"
+            />
 
-              {outstanding != null && outstanding > 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Outstanding:{" "}
-                  <span className="font-medium text-foreground">
-                    {formatCurrency(outstanding)}
-                  </span>
-                </p>
-              ) : null}
-
-              {showPartyList && filteredParties.length > 0 ? (
-                <ul className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md">
-                  {filteredParties.map((party) => (
-                    <li key={party.id}>
-                      <button
-                        type="button"
-                        className="flex w-full px-3 py-2 text-left text-sm hover:bg-accent"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectParty(party)}
-                      >
-                        {entityDisplayLabel(party)}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
           </>
         ) : null}
 
@@ -482,8 +555,19 @@ export function GeneralEntryModal({
             min="0.01"
             step="0.01"
             required
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => handleEnterToNextField(e, "generalDate")}
             className={fieldClass}
           />
+          {settlementType === "against_bill" && selectedBillsTotal > 0 ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Selected bills total due:{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(selectedBillsTotal)}
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -496,6 +580,7 @@ export function GeneralEntryModal({
             type="date"
             required
             defaultValue={todayDate()}
+            onKeyDown={(e) => handleEnterToNextField(e, "generalRemark")}
             className={fieldClass}
           />
         </div>
@@ -510,19 +595,50 @@ export function GeneralEntryModal({
             type="text"
             maxLength={500}
             placeholder="Optional note"
+            onKeyDown={(e) => void handleRemarkEnter(e)}
             className={fieldClass}
           />
         </div>
 
-        <Button
-          type="submit"
-          loading={loading || creatingParty}
-          disabled={loading || creatingParty}
-          className="w-full sm:w-auto sm:min-w-28"
-        >
-          Save
-        </Button>
+          <Button
+            type="submit"
+            loading={loading || creatingParty}
+            disabled={loading || creatingParty}
+            className="w-full sm:w-auto sm:min-w-28"
+          >
+            Save
+          </Button>
+        </div>
+
+        {showBillPanel ? (
+          <aside className="rounded-lg border border-border bg-muted/20 p-4 md:sticky md:top-0">
+            <AgainstBillPicker
+              partyId={partyId}
+              side={partySide}
+              variant="panel"
+              selectedBillIds={billIds}
+              onBillsChange={setBillIds}
+              onSelectedTotalChange={setSelectedBillsTotal}
+              searchInputId="generalBillSearch"
+            />
+          </aside>
+        ) : null}
       </form>
     </Modal>
+
+    <ConfirmModal
+      open={confirmOpen}
+      onOpenChange={setConfirmOpen}
+      title={direction === "receipt" ? "Confirm receipt" : "Confirm payment"}
+      description={
+        selectedParty
+          ? `Save ${direction} of ${formatCurrency(confirmAmount)} for ${selectedParty.name}?`
+          : `Save ${direction} of ${formatCurrency(confirmAmount)}?`
+      }
+      confirmText="Save"
+      onConfirm={() => void confirmEntry()}
+      loading={loading || creatingParty}
+    />
+  </>
   );
 }

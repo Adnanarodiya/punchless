@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  refineSettlementFields,
+  settlementTypeSchema,
+} from "@/lib/validations/settlement.schema";
+
 export const generalEntrySchema = z
   .object({
     direction: z.enum(["receipt", "payment"]),
@@ -8,6 +13,8 @@ export const generalEntrySchema = z
     entryKind: z.enum(["party", "indirect"]),
     partySide: z.enum(["client", "supplier", ""]).optional(),
     partyId: z.string().optional(),
+    settlementType: settlementTypeSchema.optional().default("direct"),
+    billIds: z.array(z.string()).optional().default([]),
     amount: z.coerce.number().positive("Amount must be greater than 0"),
     entryDate: z.string().min(1, "Date is required"),
     remark: z.string().max(500).optional().or(z.literal("")),
@@ -30,6 +37,7 @@ export const generalEntrySchema = z
           path: ["partyId"],
         });
       }
+      refineSettlementFields(data, ctx);
     }
     if (data.entryKind === "indirect" && !data.particular?.trim()) {
       ctx.addIssue({

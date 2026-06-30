@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type KeyboardEvent } from "react";
 
 import { cn } from "@punchless/ui/lib/utils";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
@@ -17,6 +17,7 @@ type Props = {
   name?: string;
   label?: string;
   className?: string;
+  onEnterAdvance?: () => void;
 };
 
 export function BankAccountField({
@@ -27,6 +28,7 @@ export function BankAccountField({
   name = "bankId",
   label = "Bank account",
   className,
+  onEnterAdvance,
 }: Props) {
   const soleBank = banks.length === 1 ? banks[0] : null;
 
@@ -71,6 +73,12 @@ export function BankAccountField({
         required
         value={bankId}
         onChange={(e) => onBankIdChange(e.target.value)}
+        onKeyDown={(e: KeyboardEvent<HTMLSelectElement>) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onEnterAdvance?.();
+          }
+        }}
         className={fieldClass}
       >
         <option value="" disabled>

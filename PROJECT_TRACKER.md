@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-29 (Data lock — visible Unlock financials button in header)
+> **Last updated:** 2026-06-30 (Fix dashboard hook error — server-only party-bill queries, client-safe types)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -255,12 +255,22 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
 | `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — customer autocomplete, auto-create party, payment modes; **no GST link** |
-| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — cash indirect asks “what for?” → saved as `particular` in reports |
-| `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + indirect transactions; bank ledger writes for bank mode |
-| `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode + bank account required when payment mode is bank |
-| `pay-supplier-modal.tsx` | **UX** | Pay supplier modal — searchable supplier picker, auto-create new supplier on blur/submit, cash/bank payment with bank account + UPI/net-banking selection |
-| `collect-payment-modal.tsx` | **UX** | Collect payment modal — searchable customer picker, auto-create new customer on blur/submit, cash/bank receipt with bank account + UPI/net-banking selection |
-| `bank-payment-fields.tsx` | **UX** | Shared payment mode + bank channel + bank account picker for customer/supplier payment forms |
+| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — 2-col bill panel when Against bill, ConfirmModal on save |
+| `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + against-bill remark + client invoice credit reduction |
+| `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode, settlement type, bill required when against bill |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier — widens to 2-col when Against bill; bill panel on right with search |
+| `collect-payment-modal.tsx` | **UX** | Collect payment — widens to 2-col when Against bill; bill panel on right with search |
+| `party-search-field.tsx` | **V3-B** | Shared party autocomplete — search by name or bill number; shows party + bill; Enter → next field |
+| `against-bill-picker.tsx` | **V3-B** | Panel mode — right-side bill list with bill-number search, multi-select, selected total due |
+| `settlement-type-field.tsx` | **V3-B** | Direct vs Against bill toggle — Enter advances to bills or date |
+| `lib/types/party-bill.types.ts` | **V3-B** | Client-safe types for party/bill search (no server imports) |
+| `lib/queries/party-bill.queries.ts` | **V3-B** | Server-only — search parties+bills; fetch outstanding bills per party |
+| `lib/validations/settlement.schema.ts` | **V3-B** | `settlementType` + against-bill remark builder |
+| `lib/utils/settlement.ts` | **V3-B** | Resolve against-bill remark; reduce client invoice `credit_amount` |
+| `lib/utils/form-keyboard.ts` | **V3-B** | `focusField`, `handleEnterToNextField` — Enter advances without form submit |
+| `app/api/party-search/route.ts` | **V3-B** | GET — party + bill number search for payment modals |
+| `app/api/party-bills/route.ts` | **V3-B** | GET — outstanding bills for a party |
+| `bank-payment-fields.tsx` | **UX** | Payment mode + bank channel + bank account — Enter callbacks chain to settlement |
 | `bank-account-field.tsx` | **UX** | Bank account picker — auto-uses sole bank (name only, no dropdown); dropdown when 2+ banks |
 | `dashboard-home-modals.tsx` | **UX** | Home modal host — quick bill, collect payment, pay supplier; deep-link query params |
 
@@ -458,7 +468,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 |--------|-------------|
 | `dialog.tsx` / `alert-dialog.tsx` | Lower border radius (`rounded-lg`), removed duplicate overlay in Modal |
 | `button.tsx` | `loading` prop — spinner + auto-disable |
-| `confirm-modal.tsx` | `loading` prop on destructive/default confirms |
+| `confirm-modal.tsx` | `loading` prop; Enter key confirms when open |
 | `collapsible-nav-group.tsx` | Controlled open state for accordion sidebar |
 | `sidebar.tsx` | Independent scroll (`h-screen`), one nav group open at a time, single-link groups flat |
 | `dashboard-shell.tsx` | Main content scroll only; `NavigationProgress` on route change |

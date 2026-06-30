@@ -77,7 +77,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
               tabIndex={locked ? -1 : undefined}
               aria-hidden={locked}
             >
-              <div className={cn(locked && "select-none blur-md")}>
+              <div className={cn(locked && "select-none")}>
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <p className="text-base font-medium text-muted-foreground">
                     {card.label}
@@ -86,7 +86,7 @@ export function DashboardMoneyHero({ summary, hasDataLockPin }: Props) {
                     <Icon className="size-5" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold tracking-tight sm:text-4xl">
+                <p className={cn("text-3xl font-bold tracking-tight sm:text-4xl", locked && "blur-md select-none")}>
                   {card.value}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">{card.hint}</p>

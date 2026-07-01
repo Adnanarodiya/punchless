@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-07-01 (Journal modal — discount settlements + credit/debit notes)
+> **Last updated:** 2026-07-01 (Journal — edit/delete, supplier notes, payment guard)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -110,6 +110,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
 | `migrations/20260625200000_push_tokens.sql` | 8 | `push_tokens` table — Expo push tokens per user/device + RLS (own tokens only) |
 | `migrations/20260701120000_journal_discount_credit_notes.sql` | **V3-B** | `discount_settlements`, `credit_notes`, `debit_notes`; purchase `credit_amount`; journal entry categories; ledger ref types include existing `bank_transaction`/`transfer`/HR types |
+| `migrations/20260701140000_supplier_journal_notes.sql` | **V3-B** | `supplier_credit_notes`, `supplier_debit_notes`; ledger ref types `supplier_credit_note`, `supplier_debit_note` |
 | `migrations/20260702120000_system_income_expense_parties.sql` | **V3-B** | `clients`/`suppliers` `is_system`; `ensure_system_parties()`; auto INCOME + EXPENSE on signup + backfill |
 | `migrations/20260703120000_ensure_system_parties_grant.sql` | **V3-B** | `GRANT EXECUTE` on `ensure_system_parties` for app + wipe script |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
@@ -260,11 +261,16 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
 | `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — global entry date in header; customer autocomplete; **no GST link** |
-| `journal-modal.tsx` | **V3-B** | Journal — Discount (given/received + bill search) or Credit note / Debit note |
+| `journal-modal.tsx` | **V3-B** | Journal — Discount (given/received) or Credit/Debit note (customer + supplier); tab label **Credit / Debit note** |
+| `edit-journal-entry-modal.tsx` | **V3-B** | Statement edit/delete for discount settlements and credit/debit notes |
 | `general-entry-modal.tsx` | **V3-B** | Legacy general entry (replaced by `journal-modal.tsx` on home) |
-| `lib/actions/journal.actions.ts` | **V3-B** | Discount settlement, credit note (CN-0001), debit note (DN-0001) |
-| `lib/validations/journal.schema.ts` | **V3-B** | Zod — discount must be less than bill due; payment = due − discount |
-| `lib/utils/journal-number.ts` | **V3-B** | CN-/DN- auto number formatting |
+| `lib/actions/journal.actions.ts` | **V3-B** | Create discount settlement, CN/DN, supplier SCN/SDN |
+| `lib/actions/journal-edit.actions.ts` | **V3-B** | Update/delete discount settlement; update/delete journal notes; load settlement detail |
+| `lib/queries/journal.queries.ts` | **V3-B** | Discount settlement lookup for statement editability |
+| `lib/utils/journal-guard.ts` | **V3-B** | Block standalone edit/delete of discount-linked payments |
+| `lib/validations/journal.schema.ts` | **V3-B** | Zod — discount, notes, supplier notes, update/delete schemas |
+| `lib/utils/journal-number.ts` | **V3-B** | CN-/DN-/SCN-/SDN- auto number formatting |
+| `lib/utils/settlement.ts` | **V3-B** | Added `reverseClientBillSettlement`, `reversePurchaseBillSettlement` for journal corrections |
 | `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + against-bill remark + client invoice credit reduction |
 | `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode, settlement type, bill required when against bill |
 | `pay-supplier-modal.tsx` | **UX** | Pay supplier — bill suffix search locks against-bill; hides settlement toggle; creates supplier on save only |

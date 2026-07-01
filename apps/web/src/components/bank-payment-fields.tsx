@@ -19,6 +19,8 @@ const BANK_SUB_MODES = [
 type Props = {
   banks: BankWithBalance[];
   defaultPaymentMode?: "cash" | "bank";
+  defaultBankId?: string;
+  defaultBankSubMode?: "upi" | "net_banking" | "";
   includeCredit?: boolean;
   paymentModeSelectId?: string;
   bankSelectId?: string;
@@ -32,6 +34,8 @@ type Props = {
 export function BankPaymentFields({
   banks,
   defaultPaymentMode = "cash",
+  defaultBankId,
+  defaultBankSubMode = "",
   includeCredit = false,
   paymentModeSelectId = "paymentMode",
   bankSelectId = "bankPaymentBankId",
@@ -45,8 +49,10 @@ export function BankPaymentFields({
   const [paymentMode, setPaymentMode] = useState<"cash" | "bank" | "credit">(
     defaultPaymentMode
   );
-  const [bankSubMode, setBankSubMode] = useState<"upi" | "net_banking" | "">("");
-  const [bankId, setBankId] = useState(soleBankId);
+  const [bankSubMode, setBankSubMode] = useState<"upi" | "net_banking" | "">(
+    defaultBankSubMode
+  );
+  const [bankId, setBankId] = useState(defaultBankId || soleBankId);
 
   useEffect(() => {
     if (paymentMode === "bank" && banks.length === 1) {

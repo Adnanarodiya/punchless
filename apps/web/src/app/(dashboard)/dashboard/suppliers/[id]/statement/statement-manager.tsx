@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { SupplierStatementRowActions } from "@/components/supplier-statement-row-actions";
 import { StatementScreen } from "@/components/statement-screen";
 import { isSystemExpenseSupplier } from "@/lib/constants/system-parties";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { SupplierWithPayable } from "@/lib/queries/supplier.queries";
 import type { StatementResult } from "@/lib/utils/statement";
@@ -19,6 +20,7 @@ interface Props {
   startDate: string;
   endDate: string;
   statement: StatementResult;
+  banks: BankWithBalance[];
 }
 
 export function SupplierStatementManager({
@@ -27,6 +29,7 @@ export function SupplierStatementManager({
   startDate,
   endDate,
   statement,
+  banks,
 }: Props) {
   const router = useRouter();
   const isSystemExpense = isSystemExpenseSupplier(supplier);
@@ -76,6 +79,7 @@ export function SupplierStatementManager({
         <SupplierStatementRowActions
           supplierId={supplier.id}
           line={line}
+          banks={banks}
           onSuccess={() => router.refresh()}
         />
       )}

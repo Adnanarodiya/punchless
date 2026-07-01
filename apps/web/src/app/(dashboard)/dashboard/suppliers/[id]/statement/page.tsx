@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { getBanks } from "@/lib/queries/bank.queries";
 import {
   getSupplierById,
   getSupplierStatement,
@@ -22,10 +23,11 @@ export default async function SupplierStatementPage({
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
-  const [supplier, company, statement] = await Promise.all([
+  const [supplier, company, statement, banks] = await Promise.all([
     getSupplierById(id),
     getCompanyProfile(),
     getSupplierStatement(id, startDate, endDate),
+    getBanks(),
   ]);
 
   if (!supplier || !company) notFound();
@@ -37,6 +39,7 @@ export default async function SupplierStatementPage({
       startDate={startDate}
       endDate={endDate}
       statement={statement}
+      banks={banks}
     />
   );
 }

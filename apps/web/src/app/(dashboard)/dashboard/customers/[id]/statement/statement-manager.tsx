@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClientStatementRowActions } from "@/components/client-statement-row-actions";
 import { StatementScreen } from "@/components/statement-screen";
 import { isSystemIncomeClient } from "@/lib/constants/system-parties";
+import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { StatementResult } from "@/lib/utils/statement";
@@ -19,6 +20,7 @@ interface Props {
   startDate: string;
   endDate: string;
   statement: StatementResult;
+  banks: BankWithBalance[];
 }
 
 export function StatementManager({
@@ -27,6 +29,7 @@ export function StatementManager({
   startDate,
   endDate,
   statement,
+  banks,
 }: Props) {
   const router = useRouter();
   const isSystemIncome = isSystemIncomeClient(client);
@@ -72,6 +75,7 @@ export function StatementManager({
         <ClientStatementRowActions
           clientId={client.id}
           line={line}
+          banks={banks}
           onSuccess={() => router.refresh()}
         />
       )}

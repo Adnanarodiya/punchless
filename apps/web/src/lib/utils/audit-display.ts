@@ -105,6 +105,51 @@ const ACTION_CONFIG: Record<string, AuditActionDisplay> = {
     summary: "Funds moved between bank accounts",
   },
 
+  create_discount_settlement: {
+    label: "Discount Saved",
+    tone: "primary",
+    summary: "Discount settlement recorded with payment",
+  },
+  update_discount_settlement: {
+    label: "Discount Updated",
+    tone: "primary",
+    summary: "Discount settlement corrected",
+  },
+  delete_discount_settlement: {
+    label: "Discount Deleted",
+    tone: "destructive",
+    summary: "Discount settlement removed",
+  },
+  create_credit_note: {
+    label: "Credit Note",
+    tone: "success",
+    summary: "Customer credit note issued",
+  },
+  create_debit_note: {
+    label: "Debit Note",
+    tone: "warning",
+    summary: "Customer debit note issued",
+  },
+  create_supplier_credit_note: {
+    label: "Supplier Credit Note",
+    tone: "success",
+    summary: "Supplier credit note recorded",
+  },
+  create_supplier_debit_note: {
+    label: "Supplier Debit Note",
+    tone: "warning",
+    summary: "Supplier debit note recorded",
+  },
+  update_journal_note: {
+    label: "Journal Note Updated",
+    tone: "primary",
+    summary: "Credit or debit note corrected",
+  },
+  delete_journal_note: {
+    label: "Journal Note Deleted",
+    tone: "destructive",
+    summary: "Credit or debit note removed",
+  },
   create_transaction: {
     label: "Income / Expense",
     tone: "warning",

@@ -140,3 +140,83 @@ export async function applyClientBillSettlement(
     remaining = Math.round((remaining - applied) * 100) / 100;
   }
 }
+
+export async function reverseClientBillSettlement(
+  supabase: Supabase,
+  options: {
+    billIds: string[];
+    amount: number;
+  }
+) {
+  let remaining = options.amount;
+
+  for (const billId of options.billIds) {
+    if (remaining <= 0.01) break;
+
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("credit_amount, total_amount")
+      .eq("id", billId)
+      .maybeSingle();
+
+    if (!invoice) continue;
+
+    const currentCredit = Number(invoice.credit_amount) || 0;
+    const totalAmount = Number(invoice.total_amount) || 0;
+    const headroom = Math.max(0, totalAmount - currentCredit);
+    if (headroom <= 0.01) continue;
+
+    const restored = Math.min(remaining, headroom);
+    const nextCredit = Math.min(
+      totalAmount,
+      Math.round((currentCredit + restored) * 100) / 100
+    );
+
+    await supabase
+      .from("invoices")
+      .update({ credit_amount: nextCredit } as never)
+      .eq("id", billId);
+
+    remaining = Math.round((remaining - restored) * 100) / 100;
+  }
+}
+
+export async function reversePurchaseBillSettlement(
+  supabase: Supabase,
+  options: {
+    billIds: string[];
+    amount: number;
+  }
+) {
+  let remaining = options.amount;
+
+  for (const billId of options.billIds) {
+    if (remaining <= 0.01) break;
+
+    const { data: invoice } = await supabase
+      .from("purchase_invoices")
+      .select("credit_amount, total_amount")
+      .eq("id", billId)
+      .maybeSingle();
+
+    if (!invoice) continue;
+
+    const currentCredit = Number(invoice.credit_amount) || 0;
+    const totalAmount = Number(invoice.total_amount) || 0;
+    const headroom = Math.max(0, totalAmount - currentCredit);
+    if (headroom <= 0.01) continue;
+
+    const restored = Math.min(remaining, headroom);
+    const nextCredit = Math.min(
+      totalAmount,
+      Math.round((currentCredit + restored) * 100) / 100
+    );
+
+    await supabase
+      .from("purchase_invoices")
+      .update({ credit_amount: nextCredit } as never)
+      .eq("id", billId);
+
+    remaining = Math.round((remaining - restored) * 100) / 100;
+  }
+}

@@ -58,5 +58,47 @@ export const creditNoteSchema = z.object({
 
 export const debitNoteSchema = creditNoteSchema;
 
+export const supplierCreditNoteSchema = z.object({
+  supplierId: z.string().uuid("Select a supplier"),
+  purchaseInvoiceId: z.string().uuid("Select a bill"),
+  amount: z.coerce.number().positive("Enter an amount"),
+  entryDate: z.string().min(1, "Date is required"),
+  remark: z.string().max(500).optional(),
+});
+
+export const supplierDebitNoteSchema = supplierCreditNoteSchema;
+
+export const updateDiscountSettlementSchema = z
+  .object({
+    settlementId: z.string().uuid(),
+    discountAmount: z.coerce.number().positive("Enter a discount amount"),
+    paymentMode: paymentModeSchema,
+    bankSubMode: bankSubModeSchema,
+    bankId: z.string().optional(),
+    entryDate: z.string().min(1, "Date is required"),
+    remark: z.string().max(500).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentMode === "bank" && !data.bankId?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Select a bank account",
+        path: ["bankId"],
+      });
+    }
+  });
+
+export const deleteJournalEntrySchema = z.object({
+  entryId: z.string().uuid(),
+});
+
+export const updateJournalNoteSchema = z.object({
+  noteId: z.string().uuid(),
+  amount: z.coerce.number().positive("Enter an amount"),
+  entryDate: z.string().min(1, "Date is required"),
+  remark: z.string().max(500).optional(),
+});
+
 export type DiscountSettlementInput = z.infer<typeof discountSettlementSchema>;
 export type CreditNoteInput = z.infer<typeof creditNoteSchema>;
+export type SupplierCreditNoteInput = z.infer<typeof supplierCreditNoteSchema>;

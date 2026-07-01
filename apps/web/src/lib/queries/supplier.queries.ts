@@ -7,10 +7,12 @@ import {
 } from "@/lib/utils/ledger-pagination";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import type { Database } from "@punchless/types/database.types";
+import { getDiscountSettlementIdsByPaymentIds } from "@/lib/queries/journal.queries";
 import {
   displayStatementLinesNewestFirst,
   getBalanceMeta,
   resolveStatementSource,
+  type StatementEditableEntity,
   type StatementResult,
 } from "@/lib/utils/statement";
 
@@ -49,15 +51,34 @@ function sortSupplierEntries(entries: LedgerRow[]) {
   });
 }
 
-function resolveEditableEntity(entry: LedgerRow): {
-  entity: "supplier_payment" | "purchase" | null;
+function resolveEditableEntity(
+  entry: LedgerRow,
+  discountPaymentMap: Map<string, string>
+): {
+  entity: StatementEditableEntity | null;
   id: string | null;
 } {
   if (entry.reference_type === "opening_balance" || !entry.reference_id) {
     return { entity: null, id: null };
   }
 
+  if (entry.reference_type === "discount_settlement") {
+    return { entity: "discount_settlement", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "supplier_credit_note") {
+    return { entity: "supplier_credit_note", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "supplier_debit_note") {
+    return { entity: "supplier_debit_note", id: entry.reference_id };
+  }
+
   if (entry.reference_type === "payment") {
+    const settlementId = discountPaymentMap.get(entry.reference_id);
+    if (settlementId) {
+      return { entity: "discount_settlement", id: settlementId };
+    }
     return { entity: "supplier_payment", id: entry.reference_id };
   }
 
@@ -181,22 +202,25 @@ export async function getSupplierStatement(
   const openingBalance = sumSupplierPayable(beforePeriod);
   const opening = getBalanceMeta(openingBalance, "supplier");
 
-  const purchaseIds = [
+  const paymentIds = [
     ...new Set(
-      inPeriod.flatMap((entry) => {
-        const editable = resolveEditableEntity(entry);
-        return editable.entity === "purchase" && editable.id ? [editable.id] : [];
-      })
+      inPeriod
+        .filter(
+          (entry) =>
+            entry.reference_type === "payment" && Boolean(entry.reference_id)
+        )
+        .map((entry) => entry.reference_id as string)
     ),
   ];
 
-  const paymentIds = [
+  const discountPaymentMap =
+    await getDiscountSettlementIdsByPaymentIds(paymentIds);
+
+  const purchaseIds = [
     ...new Set(
       inPeriod.flatMap((entry) => {
-        const editable = resolveEditableEntity(entry);
-        return editable.entity === "supplier_payment" && editable.id
-          ? [editable.id]
-          : [];
+        const editable = resolveEditableEntity(entry, discountPaymentMap);
+        return editable.entity === "purchase" && editable.id ? [editable.id] : [];
       })
     ),
   ];
@@ -252,7 +276,7 @@ export async function getSupplierStatement(
     totalCredit = Math.round((totalCredit + credit) * 100) / 100;
     index += 1;
 
-    const editable = resolveEditableEntity(entry);
+    const editable = resolveEditableEntity(entry, discountPaymentMap);
     const purchase =
       editable.entity === "purchase" && editable.id
         ? purchaseMap.get(editable.id)

@@ -466,6 +466,14 @@ export const updateSupplierPayment = protectedAction<FormData>({
     return { success: false, error: "Payment does not belong to this supplier" };
   }
 
+  const { assertPaymentNotDiscountLinked } = await import(
+    "@/lib/utils/journal-guard"
+  );
+  const discountGuard = await assertPaymentNotDiscountLinked(supabase, paymentId);
+  if (discountGuard) {
+    return { success: false, error: discountGuard };
+  }
+
   const previousBankId = existing.bank_id as string | null;
 
   const { error: updateError } = await supabase
@@ -578,6 +586,14 @@ export const deleteSupplierPayment = protectedAction<FormData>({
 
   if (existing.supplier_id !== supplierId) {
     return { success: false, error: "Payment does not belong to this supplier" };
+  }
+
+  const { assertPaymentNotDiscountLinked } = await import(
+    "@/lib/utils/journal-guard"
+  );
+  const discountGuard = await assertPaymentNotDiscountLinked(supabase, paymentId);
+  if (discountGuard) {
+    return { success: false, error: discountGuard };
   }
 
   const previousBankId = existing.bank_id as string | null;

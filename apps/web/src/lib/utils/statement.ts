@@ -10,7 +10,12 @@ export type StatementEditableEntity =
   | "invoice"
   | "client_payment"
   | "supplier_payment"
-  | "purchase";
+  | "purchase"
+  | "discount_settlement"
+  | "credit_note"
+  | "debit_note"
+  | "supplier_credit_note"
+  | "supplier_debit_note";
 
 export type StatementLine = {
   id: string;
@@ -94,7 +99,27 @@ export function resolveStatementSource(referenceType: string | null): string {
       return "payment";
     case "purchase":
       return "purchase";
+    case "discount_settlement":
+      return "discount";
+    case "credit_note":
+    case "supplier_credit_note":
+      return "credit_note";
+    case "debit_note":
+    case "supplier_debit_note":
+      return "debit_note";
     default:
       return referenceType ?? "entry";
   }
+}
+
+export function isJournalEditableEntity(
+  entity: StatementEditableEntity | null | undefined
+): boolean {
+  return (
+    entity === "discount_settlement" ||
+    entity === "credit_note" ||
+    entity === "debit_note" ||
+    entity === "supplier_credit_note" ||
+    entity === "supplier_debit_note"
+  );
 }

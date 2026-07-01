@@ -477,6 +477,14 @@ export const updateClientPayment = protectedAction<FormData>({
     return { success: false, error: "Payment does not belong to this customer" };
   }
 
+  const { assertPaymentNotDiscountLinked } = await import(
+    "@/lib/utils/journal-guard"
+  );
+  const discountGuard = await assertPaymentNotDiscountLinked(supabase, paymentId);
+  if (discountGuard) {
+    return { success: false, error: discountGuard };
+  }
+
   const previousBankId = existing.bank_id as string | null;
 
   const { error: updateError } = await supabase
@@ -589,6 +597,14 @@ export const deleteClientPayment = protectedAction<FormData>({
 
   if (existing.client_id !== clientId) {
     return { success: false, error: "Payment does not belong to this customer" };
+  }
+
+  const { assertPaymentNotDiscountLinked } = await import(
+    "@/lib/utils/journal-guard"
+  );
+  const discountGuard = await assertPaymentNotDiscountLinked(supabase, paymentId);
+  if (discountGuard) {
+    return { success: false, error: discountGuard };
   }
 
   const previousBankId = existing.bank_id as string | null;

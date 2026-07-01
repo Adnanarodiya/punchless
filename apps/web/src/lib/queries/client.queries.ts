@@ -7,10 +7,12 @@ import {
 } from "@/lib/utils/ledger-pagination";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import { SYSTEM_INCOME_CLIENT_NAME } from "@/lib/constants/system-parties";
+import { getDiscountSettlementIdsByPaymentIds } from "@/lib/queries/journal.queries";
 import {
   displayStatementLinesNewestFirst,
   getBalanceMeta,
   resolveStatementSource,
+  type StatementEditableEntity,
   type StatementResult,
 } from "@/lib/utils/statement";
 
@@ -381,10 +383,23 @@ export async function getClientsSummary(): Promise<ClientSummary> {
 
 function resolveEditableEntity(
   entry: PreparedStatementEntry,
-  invoiceIdSet: Set<string>
-): { entity: "invoice" | "client_payment" | null; id: string | null } {
+  invoiceIdSet: Set<string>,
+  discountPaymentMap: Map<string, string>
+): { entity: StatementEditableEntity | null; id: string | null } {
   if (entry.reference_type === "opening_balance" || !entry.reference_id) {
     return { entity: null, id: null };
+  }
+
+  if (entry.reference_type === "discount_settlement") {
+    return { entity: "discount_settlement", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "credit_note") {
+    return { entity: "credit_note", id: entry.reference_id };
+  }
+
+  if (entry.reference_type === "debit_note") {
+    return { entity: "debit_note", id: entry.reference_id };
   }
 
   if (entry.reference_type === "invoice") {
@@ -394,6 +409,10 @@ function resolveEditableEntity(
   if (entry.reference_type === "payment") {
     if (invoiceIdSet.has(entry.reference_id)) {
       return { entity: "invoice", id: entry.reference_id };
+    }
+    const settlementId = discountPaymentMap.get(entry.reference_id);
+    if (settlementId) {
+      return { entity: "discount_settlement", id: settlementId };
     }
     return { entity: "client_payment", id: entry.reference_id };
   }
@@ -412,22 +431,29 @@ async function enrichClientStatementLines(
 }> {
   const supabase = await createClient();
 
-  const invoiceIds = [
+  const paymentIds = [
     ...new Set(
-      entries.flatMap((entry) => {
-        const editable = resolveEditableEntity(entry, invoiceIdSet);
-        return editable.entity === "invoice" && editable.id ? [editable.id] : [];
-      })
+      entries
+        .filter(
+          (entry) =>
+            entry.reference_type === "payment" && Boolean(entry.reference_id)
+        )
+        .map((entry) => entry.reference_id as string)
     ),
   ];
 
-  const paymentIds = [
+  const discountPaymentMap =
+    await getDiscountSettlementIdsByPaymentIds(paymentIds);
+
+  const invoiceIds = [
     ...new Set(
       entries.flatMap((entry) => {
-        const editable = resolveEditableEntity(entry, invoiceIdSet);
-        return editable.entity === "client_payment" && editable.id
-          ? [editable.id]
-          : [];
+        const editable = resolveEditableEntity(
+          entry,
+          invoiceIdSet,
+          discountPaymentMap
+        );
+        return editable.entity === "invoice" && editable.id ? [editable.id] : [];
       })
     ),
   ];
@@ -484,7 +510,11 @@ async function enrichClientStatementLines(
       totalCredit = Math.round((totalCredit + entry.credit) * 100) / 100;
       index += 1;
 
-      const editable = resolveEditableEntity(entry, invoiceIdSet);
+      const editable = resolveEditableEntity(
+        entry,
+        invoiceIdSet,
+        discountPaymentMap
+      );
       const invoice =
         editable.entity === "invoice" && editable.id
           ? invoiceMap.get(editable.id)

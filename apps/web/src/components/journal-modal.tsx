@@ -15,6 +15,8 @@ import {
   createCreditNote,
   createDebitNote,
   createDiscountSettlement,
+  createSupplierCreditNote,
+  createSupplierDebitNote,
 } from "@/lib/actions/journal.actions";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
@@ -29,6 +31,7 @@ const fieldClass =
 type JournalTab = "discount" | "credit";
 type DiscountKind = "given" | "received";
 type CreditKind = "credit_note" | "debit_note";
+type NotePartySide = "client" | "supplier";
 
 type Props = {
   open: boolean;
@@ -95,6 +98,7 @@ export function JournalModal({
   const [tab, setTab] = useState<JournalTab>("discount");
   const [discountKind, setDiscountKind] = useState<DiscountKind>("given");
   const [creditKind, setCreditKind] = useState<CreditKind>("credit_note");
+  const [notePartySide, setNotePartySide] = useState<NotePartySide>("client");
 
   const [partyId, setPartyId] = useState("");
   const [partyQuery, setPartyQuery] = useState("");
@@ -123,6 +127,7 @@ export function JournalModal({
       setTab("discount");
       setDiscountKind("given");
       setCreditKind("credit_note");
+      setNotePartySide("client");
       clearBillSelection();
       setDiscountAmount("");
       setCreditAmount("");
@@ -187,7 +192,37 @@ export function JournalModal({
     },
   });
 
-  const saving = savingDiscount || savingCredit || savingDebit;
+  const { execute: saveSupplierCreditNote, loading: savingSupplierCredit } = useAction(
+    createSupplierCreditNote,
+    {
+      successMessage: "Supplier credit note saved.",
+      onSuccess: () => {
+        onSuccess?.();
+        onOpenChange(false);
+      },
+    }
+  );
+
+  const { execute: saveSupplierDebitNote, loading: savingSupplierDebit } = useAction(
+    createSupplierDebitNote,
+    {
+      successMessage: "Supplier debit note saved.",
+      onSuccess: () => {
+        onSuccess?.();
+        onOpenChange(false);
+      },
+    }
+  );
+
+  const notePartySideLabel = notePartySide === "client" ? "client" : "supplier";
+  const noteEntities = notePartySide === "client" ? clients : suppliers;
+
+  const saving =
+    savingDiscount ||
+    savingCredit ||
+    savingDebit ||
+    savingSupplierCredit ||
+    savingSupplierDebit;
 
   function buildDiscountForm(form: HTMLFormElement) {
     const formData = new FormData(form);
@@ -202,8 +237,13 @@ export function JournalModal({
 
   function buildCreditForm(form: HTMLFormElement) {
     const formData = new FormData(form);
-    formData.set("clientId", partyId);
-    formData.set("invoiceId", billId);
+    if (notePartySide === "client") {
+      formData.set("clientId", partyId);
+      formData.set("invoiceId", billId);
+    } else {
+      formData.set("supplierId", partyId);
+      formData.set("purchaseInvoiceId", billId);
+    }
     formData.set("amount", creditAmount);
     return formData;
   }
@@ -238,7 +278,20 @@ export function JournalModal({
       return;
     }
 
-    if (creditKind === "credit_note" && amount > billDueAmount) {
+    if (
+      creditKind === "credit_note" &&
+      notePartySide === "client" &&
+      amount > billDueAmount
+    ) {
+      toast.error(`Amount cannot exceed bill due of ${formatCurrency(billDueAmount)}`);
+      return;
+    }
+
+    if (
+      creditKind === "credit_note" &&
+      notePartySide === "supplier" &&
+      amount > billDueAmount
+    ) {
       toast.error(`Amount cannot exceed bill due of ${formatCurrency(billDueAmount)}`);
       return;
     }
@@ -252,6 +305,12 @@ export function JournalModal({
 
     if (tab === "discount") {
       await saveDiscount(pendingFormData);
+    } else if (notePartySide === "supplier") {
+      if (creditKind === "credit_note") {
+        await saveSupplierCreditNote(pendingFormData);
+      } else {
+        await saveSupplierDebitNote(pendingFormData);
+      }
     } else if (creditKind === "credit_note") {
       await saveCreditNote(pendingFormData);
     } else {
@@ -283,7 +342,7 @@ export function JournalModal({
             value={tab}
             options={[
               { value: "discount", label: "Discount" },
-              { value: "credit", label: "Credit" },
+              { value: "credit", label: "Credit / Debit note" },
             ]}
             onChange={(value) => {
               setTab(value);
@@ -378,6 +437,20 @@ export function JournalModal({
           ) : (
             <>
               <ToggleGroup
+                label="Party type"
+                value={notePartySide}
+                options={[
+                  { value: "client", label: "Customer" },
+                  { value: "supplier", label: "Supplier" },
+                ]}
+                onChange={(value) => {
+                  setNotePartySide(value);
+                  clearBillSelection();
+                  setCreditAmount("");
+                }}
+              />
+
+              <ToggleGroup
                 label="Note type"
                 value={creditKind}
                 options={[
@@ -393,9 +466,9 @@ export function JournalModal({
 
               <PartySearchField
                 id="journalCreditParty"
-                label="Customer"
-                side="client"
-                entities={clients}
+                label={notePartySide === "client" ? "Customer" : "Supplier"}
+                side={notePartySideLabel}
+                entities={noteEntities}
                 partyId={partyId}
                 query={partyQuery}
                 selectedInvoiceNumber={selectedInvoiceNumber}
@@ -426,7 +499,7 @@ export function JournalModal({
                     <span className="font-medium text-foreground">
                       {formatCurrency(billDueAmount)}
                     </span>
-                    {creditKind === "credit_note" ? (
+                    {creditKind === "credit_note" && billDueAmount > 0 ? (
                       <>
                         {" · "}
                         Max credit:{" "}

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { getBanks } from "@/lib/queries/bank.queries";
 import {
   getClientById,
   getClientStatement,
@@ -22,10 +23,11 @@ export default async function ClientStatementPage({
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
-  const [client, company, statement] = await Promise.all([
+  const [client, company, statement, banks] = await Promise.all([
     getClientById(id),
     getCompanyProfile(),
     getClientStatement(id, startDate, endDate),
+    getBanks(),
   ]);
 
   if (!client || !company) notFound();
@@ -37,6 +39,7 @@ export default async function ClientStatementPage({
       startDate={startDate}
       endDate={endDate}
       statement={statement}
+      banks={banks}
     />
   );
 }

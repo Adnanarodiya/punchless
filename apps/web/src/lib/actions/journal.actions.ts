@@ -7,6 +7,8 @@ import { insertBankLedgerEntry, bankModeLabel, normalizeBankSubMode } from "@/li
 import {
   formatCreditNoteNumber,
   formatDebitNoteNumber,
+  formatSupplierCreditNoteNumber,
+  formatSupplierDebitNoteNumber,
   parseNoteSequence,
 } from "@/lib/utils/journal-number";
 import { resolveBankIdForPayment } from "@/lib/utils/resolve-bank-id";
@@ -20,6 +22,8 @@ import {
   creditNoteSchema,
   debitNoteSchema,
   discountSettlementSchema,
+  supplierCreditNoteSchema,
+  supplierDebitNoteSchema,
 } from "@/lib/validations/journal.schema";
 
 function revalidateJournalPages(bankId?: string | null) {
@@ -545,6 +549,235 @@ export const createDebitNote = protectedAction<FormData>({
     entry_type: "debit",
     amount: data.amount,
     reference_type: "debit_note",
+    reference_id: note.id,
+    remark: ledgerRemark,
+    entry_date: data.entryDate,
+    entry_category: "debit_note",
+    created_by: me.id,
+  } as never);
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  revalidateJournalPages();
+  return { success: true, data: { debitNoteNumber: noteNumber } };
+});
+
+async function nextSupplierCreditNoteNumber(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  companyId: string
+) {
+  const { data } = await supabase
+    .from("supplier_credit_notes")
+    .select("credit_note_number")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const maxSeq = (data ?? []).reduce((max, row) => {
+    const seq = parseNoteSequence(
+      (row as { credit_note_number: string }).credit_note_number,
+      "SCN"
+    );
+    return Math.max(max, seq);
+  }, 0);
+
+  return formatSupplierCreditNoteNumber(maxSeq + 1);
+}
+
+async function nextSupplierDebitNoteNumber(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  companyId: string
+) {
+  const { data } = await supabase
+    .from("supplier_debit_notes")
+    .select("debit_note_number")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const maxSeq = (data ?? []).reduce((max, row) => {
+    const seq = parseNoteSequence(
+      (row as { debit_note_number: string }).debit_note_number,
+      "SDN"
+    );
+    return Math.max(max, seq);
+  }, 0);
+
+  return formatSupplierDebitNoteNumber(maxSeq + 1);
+}
+
+export const createSupplierCreditNote = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_supplier_credit_note", entityType: "purchase" },
+})(async (formData, { supabase, me }) => {
+  const parsed = supplierCreditNoteSchema.safeParse({
+    supplierId: formData.get("supplierId"),
+    purchaseInvoiceId: formData.get("purchaseInvoiceId"),
+    amount: formData.get("amount"),
+    entryDate: formData.get("entryDate"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+  const outstanding = await getPurchaseBillOutstanding(
+    supabase,
+    data.purchaseInvoiceId
+  );
+
+  if (data.amount > outstanding + 0.02) {
+    return {
+      success: false,
+      error: `Credit amount cannot exceed bill due of ${outstanding}`,
+    };
+  }
+
+  const { data: purchase } = await supabase
+    .from("purchase_invoices")
+    .select("supplier_id, invoice_number, is_deleted")
+    .eq("id", data.purchaseInvoiceId)
+    .maybeSingle();
+
+  if (!purchase || purchase.is_deleted) {
+    return { success: false, error: "Purchase bill not found" };
+  }
+
+  if (purchase.supplier_id !== data.supplierId) {
+    return { success: false, error: "Bill does not belong to this supplier" };
+  }
+
+  const noteNumber = await nextSupplierCreditNoteNumber(supabase, me.company_id);
+  const billLabel = purchase.invoice_number ? `#${purchase.invoice_number}` : "bill";
+  const ledgerRemark =
+    data.remark?.trim() || `Credit note ${noteNumber} — ${billLabel}`;
+
+  const { data: note, error: noteError } = await supabase
+    .from("supplier_credit_notes")
+    .insert({
+      company_id: me.company_id,
+      credit_note_number: noteNumber,
+      purchase_invoice_id: data.purchaseInvoiceId,
+      supplier_id: data.supplierId,
+      issue_date: data.entryDate,
+      amount: data.amount,
+      remark: data.remark || null,
+      created_by: me.id,
+    } as never)
+    .select("id")
+    .single();
+
+  if (noteError || !note) {
+    return { success: false, error: noteError?.message || "Failed to create credit note" };
+  }
+
+  const { error: ledgerError } = await supabase.from("ledger_entries").insert({
+    company_id: me.company_id,
+    entity_type: "supplier",
+    entity_id: data.supplierId,
+    entry_type: "debit",
+    amount: data.amount,
+    reference_type: "supplier_credit_note",
+    reference_id: note.id,
+    remark: ledgerRemark,
+    entry_date: data.entryDate,
+    entry_category: "credit_note",
+    created_by: me.id,
+  } as never);
+
+  if (ledgerError) {
+    return { success: false, error: ledgerError.message };
+  }
+
+  await applyPurchaseBillSettlement(supabase, {
+    billIds: [data.purchaseInvoiceId],
+    amount: data.amount,
+  });
+
+  revalidateJournalPages();
+  return { success: true, data: { creditNoteNumber: noteNumber } };
+});
+
+export const createSupplierDebitNote = protectedAction<FormData>({
+  roles: ["owner", "admin"],
+  audit: { action: "create_supplier_debit_note", entityType: "purchase" },
+})(async (formData, { supabase, me }) => {
+  const parsed = supplierDebitNoteSchema.safeParse({
+    supplierId: formData.get("supplierId"),
+    purchaseInvoiceId: formData.get("purchaseInvoiceId"),
+    amount: formData.get("amount"),
+    entryDate: formData.get("entryDate"),
+    remark: formData.get("remark"),
+  });
+
+  if (!parsed.success) {
+    const firstError = parsed.error.issues[0];
+    return { success: false, error: firstError?.message || "Validation failed" };
+  }
+
+  const data = parsed.data;
+
+  const { data: purchase } = await supabase
+    .from("purchase_invoices")
+    .select("supplier_id, invoice_number, credit_amount, is_deleted")
+    .eq("id", data.purchaseInvoiceId)
+    .maybeSingle();
+
+  if (!purchase || purchase.is_deleted) {
+    return { success: false, error: "Purchase bill not found" };
+  }
+
+  if (purchase.supplier_id !== data.supplierId) {
+    return { success: false, error: "Bill does not belong to this supplier" };
+  }
+
+  const noteNumber = await nextSupplierDebitNoteNumber(supabase, me.company_id);
+  const billLabel = purchase.invoice_number ? `#${purchase.invoice_number}` : "bill";
+  const ledgerRemark =
+    data.remark?.trim() || `Debit note ${noteNumber} — ${billLabel}`;
+
+  const { data: note, error: noteError } = await supabase
+    .from("supplier_debit_notes")
+    .insert({
+      company_id: me.company_id,
+      debit_note_number: noteNumber,
+      purchase_invoice_id: data.purchaseInvoiceId,
+      supplier_id: data.supplierId,
+      issue_date: data.entryDate,
+      amount: data.amount,
+      remark: data.remark || null,
+      created_by: me.id,
+    } as never)
+    .select("id")
+    .single();
+
+  if (noteError || !note) {
+    return { success: false, error: noteError?.message || "Failed to create debit note" };
+  }
+
+  const nextCredit = roundMoney(Number(purchase.credit_amount) + data.amount);
+
+  const { error: purchaseError } = await supabase
+    .from("purchase_invoices")
+    .update({ credit_amount: nextCredit } as never)
+    .eq("id", data.purchaseInvoiceId);
+
+  if (purchaseError) {
+    return { success: false, error: purchaseError.message };
+  }
+
+  const { error: ledgerError } = await supabase.from("ledger_entries").insert({
+    company_id: me.company_id,
+    entity_type: "supplier",
+    entity_id: data.supplierId,
+    entry_type: "credit",
+    amount: data.amount,
+    reference_type: "supplier_debit_note",
     reference_id: note.id,
     remark: ledgerRemark,
     entry_date: data.entryDate,

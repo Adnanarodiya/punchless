@@ -9,7 +9,24 @@ export type SystemLedgerNavLink = {
   href: string;
 };
 
+/** Recreate INCOME + EXPENSE if missing (e.g. after db:wipe-keep-user). */
+export async function ensureSystemParties(): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: companyId, error: companyError } = await supabase.rpc(
+    "get_my_company_id"
+  );
+
+  if (companyError || !companyId) return;
+
+  await supabase.rpc("ensure_system_parties", {
+    p_company_id: companyId,
+  });
+}
+
 export async function getSystemLedgerNavLinks(): Promise<SystemLedgerNavLink[]> {
+  await ensureSystemParties();
+
   const supabase = await createClient();
 
   const [{ data: income }, { data: expense }] = await Promise.all([

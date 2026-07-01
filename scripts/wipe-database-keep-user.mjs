@@ -288,6 +288,17 @@ async function main() {
     console.log("  keeper profile cleaned (owner login ready)");
   }
 
+  console.log("\nRestoring system parties (INCOME + EXPENSE)…");
+  const { error: systemPartiesError } = await admin.rpc(
+    "ensure_system_parties",
+    { p_company_id: keeperCompanyId }
+  );
+  if (systemPartiesError) {
+    console.warn("  ensure_system_parties:", systemPartiesError.message);
+  } else {
+    console.log("  INCOME client + EXPENSE supplier ready");
+  }
+
   console.log("\nDone. Database is empty except:");
   console.log(`  Login: ${keeperEmail}`);
   console.log(`  Company: ${keeper.companies?.name ?? keeperCompanyId}\n`);

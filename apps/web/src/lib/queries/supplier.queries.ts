@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureSystemParties } from "@/lib/queries/system-party.queries";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import type { Database } from "@punchless/types/database.types";
 import {
@@ -93,6 +94,7 @@ async function getLedgerPayablesBySupplier(
 export async function getSuppliers(
   options: { includeDeleted?: boolean } = {}
 ): Promise<SupplierWithPayable[]> {
+  await ensureSystemParties();
   const supabase = await createClient();
 
   let query = supabase

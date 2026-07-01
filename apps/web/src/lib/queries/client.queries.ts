@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { ensureSystemParties } from "@/lib/queries/system-party.queries";
 import type { Database } from "@punchless/types/database.types";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import {
@@ -317,6 +318,7 @@ export async function getActiveClients(): Promise<ClientWithDue[]> {
 export async function getClients(
   options: { includeDeleted?: boolean } = {}
 ): Promise<ClientWithDue[]> {
+  await ensureSystemParties();
   const supabase = await createClient();
 
   let query = supabase

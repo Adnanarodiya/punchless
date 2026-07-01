@@ -57,7 +57,7 @@
 | `scripts/seed-may-salary-payments.mts` | **Ops** | Import `MAY 2026 NEW.xlsx` attendance + mark May 2026 salary paid from bank sheet; maps Sanjitkumar Singh → SUJIT KUMAR (`pnpm db:seed-may-salary`) |
 | `scripts/seed-suhel-dummy-statement.mjs` | **Pay UX** | Demo — SUHEL SAIF MULLA 3-month salary proofs + advance (`pnpm db:seed-suhel-demo`) |
 | `scripts/reset-company-data.mjs` | **Ops** | Wipe Shahin transactional data; keep employees + one owner; includes `sales_register_imports` (`pnpm db:reset-company-data`) |
-| `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login only; includes `sales_register_imports` (`pnpm db:wipe-keep-user:confirm`, default `aiarodiya07@gmail.com`) |
+| `scripts/wipe-database-keep-user.mjs` | **Ops** | Full DB wipe — keep one login; restores INCOME + EXPENSE via `ensure_system_parties` (`pnpm db:wipe-keep-user:confirm`) |
 | `scripts/cleanup-extras.mjs` | **Ops** | Remove workshops, fingerprint aliases, demo employees, wipe "Shahin" demo company |
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
 | `scripts/import-shahin-data.mjs` | **Ops** | Import `shahin data.xlsx` — sales bills, purchase bills, cash receipts, bank book; bank receipts remark `Imported bank receipt` (no duplicate `bank_transactions` deposit row) (`pnpm db:import-shahin-data`) |
@@ -109,6 +109,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `migrations/20260625200000_push_tokens.sql` | 8 | `push_tokens` table — Expo push tokens per user/device + RLS (own tokens only) |
 | `migrations/20260701120000_journal_discount_credit_notes.sql` | **V3-B** | `discount_settlements`, `credit_notes`, `debit_notes`; purchase `credit_amount`; journal entry categories; ledger ref types include existing `bank_transaction`/`transfer`/HR types |
 | `migrations/20260702120000_system_income_expense_parties.sql` | **V3-B** | `clients`/`suppliers` `is_system`; `ensure_system_parties()`; auto INCOME + EXPENSE on signup + backfill |
+| `migrations/20260703120000_ensure_system_parties_grant.sql` | **V3-B** | `GRANT EXECUTE` on `ensure_system_parties` for app + wipe script |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -268,7 +269,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `collect-payment-modal.tsx` | **UX** | Collect payment — bill suffix search; INCOME system client for other income (`INCOME - remark`); required particular remark |
 | `pay-supplier-modal.tsx` | **UX** | Pay supplier — EXPENSE system supplier for other expense (`EXPENSE - remark`); required particular remark |
 | `lib/constants/system-parties.ts` | **V3-B** | `INCOME`/`EXPENSE` names, remark formatters, reserved-name + system-party helpers |
-| `lib/queries/system-party.queries.ts` | **V3-B** | Header nav links to INCOME/EXPENSE statements |
+| `lib/queries/system-party.queries.ts` | **V3-B** | `ensureSystemParties()` + header nav links to INCOME/EXPENSE statements |
 | `lib/utils/sort-system-parties.ts` | **V3-B** | Pin system parties first in customer/supplier lists |
 | `lib/utils/system-statement-display.ts` | **V3-B** | INCOME/EXPENSE statement layout — particular first, strip prefix, no Advance label |
 | `party-search-field.tsx` | **V3-B** | Party autocomplete — digit suffix bill search; empty dropdown when no match; bill total in selected note |

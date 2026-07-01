@@ -6,6 +6,8 @@ import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { cn } from "@punchless/ui/lib/utils";
 import { createQuickPurchaseBill } from "@/lib/actions/purchase.actions";
 import { createQuickSupplier } from "@/lib/actions/supplier.actions";
@@ -29,10 +31,6 @@ type Props = {
   onSuccess?: () => void;
 };
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function PurchaseBillModal({
   open,
   onOpenChange,
@@ -45,7 +43,6 @@ export function PurchaseBillModal({
   const [supplierQuery, setSupplierQuery] = useState("");
   const [showSupplierList, setShowSupplierList] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(todayDate());
   const [gstNumber, setGstNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [remark, setRemark] = useState("");
@@ -61,7 +58,6 @@ export function PurchaseBillModal({
       setSupplierQuery("");
       setShowSupplierList(false);
       setInvoiceNumber("");
-      setInvoiceDate(todayDate());
       setGstNumber("");
       setAmount("");
       setRemark("");
@@ -167,11 +163,12 @@ export function PurchaseBillModal({
   }
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Purchase bill">
-      <p className="mb-4 text-sm text-muted-foreground">
-        Record a supplier bill — posts to the supplier ledger automatically.
-      </p>
-
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Purchase bill"
+      headerAccessory={<EntryDatePicker />}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="purchaseBillNumber" className="mb-1 block text-sm font-medium">
@@ -189,20 +186,7 @@ export function PurchaseBillModal({
           />
         </div>
 
-        <div>
-          <label htmlFor="purchaseBillDate" className="mb-1 block text-sm font-medium">
-            Date
-          </label>
-          <input
-            id="purchaseBillDate"
-            name="invoiceDate"
-            type="date"
-            required
-            value={invoiceDate}
-            onChange={(e) => setInvoiceDate(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
+        <EntryDateHiddenInput name="invoiceDate" />
 
         <div className="relative">
           <label htmlFor="purchaseBillSupplier" className="mb-1 block text-sm font-medium">

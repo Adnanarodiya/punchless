@@ -6,6 +6,8 @@ import { toast } from "sonner";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { cn } from "@punchless/ui/lib/utils";
 import { createSalesBill } from "@/lib/actions/invoice.actions";
 import { createQuickCustomer } from "@/lib/actions/client.actions";
@@ -30,10 +32,6 @@ type Props = {
   onSuccess?: () => void;
 };
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function QuickBillModal({
   open,
   onOpenChange,
@@ -47,7 +45,6 @@ export function QuickBillModal({
   const [customerQuery, setCustomerQuery] = useState("");
   const [showCustomerList, setShowCustomerList] = useState(false);
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(todayDate());
   const [gstNumber, setGstNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [remark, setRemark] = useState("");
@@ -65,7 +62,6 @@ export function QuickBillModal({
       setCustomerQuery("");
       setShowCustomerList(false);
       setInvoiceSuffix("");
-      setInvoiceDate(todayDate());
       setGstNumber("");
       setAmount("");
       setRemark("");
@@ -176,11 +172,12 @@ export function QuickBillModal({
   }
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Sales bill">
-      <p className="mb-4 text-sm text-muted-foreground">
-        Record a sales bill — posts to the customer ledger. Collect payment separately via General.
-      </p>
-
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Sales bill"
+      headerAccessory={<EntryDatePicker />}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="salesBillInvoiceSuffix" className="mb-1 block text-sm font-medium">
@@ -203,20 +200,7 @@ export function QuickBillModal({
           </div>
         </div>
 
-        <div>
-          <label htmlFor="salesBillDate" className="mb-1 block text-sm font-medium">
-            Date
-          </label>
-          <input
-            id="salesBillDate"
-            name="invoiceDate"
-            type="date"
-            required
-            value={invoiceDate}
-            onChange={(e) => setInvoiceDate(e.target.value)}
-            className={fieldClass}
-          />
-        </div>
+        <EntryDateHiddenInput name="invoiceDate" />
 
         <div className="relative">
           <label htmlFor="salesBillCustomer" className="mb-1 block text-sm font-medium">

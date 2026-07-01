@@ -15,6 +15,7 @@ interface ModalProps {
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
   title?: string;
+  headerAccessory?: React.ReactNode;
   hideCloseBtn?: boolean;
   closeOnOverlayClick?: boolean;
   className?: string;
@@ -25,6 +26,7 @@ function Modal({
   onOpenChange,
   children,
   title,
+  headerAccessory,
   hideCloseBtn = false,
   closeOnOverlayClick = true,
   className = "",
@@ -41,10 +43,13 @@ function Modal({
         hideCloseBtn={hideCloseBtn}
       >
         {title ? (
-          <DialogHeader>
-            <DialogTitle className="text-center text-lg font-semibold">
+          <DialogHeader className="mb-1 flex-row items-center justify-between gap-3 space-y-0 border-b border-border/60 pb-3 pr-10">
+            <DialogTitle className="px-0 text-left text-lg font-semibold">
               {title}
             </DialogTitle>
+            {headerAccessory ? (
+              <div className="shrink-0">{headerAccessory}</div>
+            ) : null}
           </DialogHeader>
         ) : (
           <VisuallyHidden>

@@ -13,6 +13,7 @@ export type PartySearchResult =
       partyId: string;
       partyName: string;
       partyAlias: string | null;
+      totalAmount: number;
       outstanding: number;
       label: string;
     };

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@punchless/ui/components/button";
 import { Modal } from "@punchless/ui/components/modal";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { PaymentModeSelect } from "@punchless/ui/components/payment-mode-select";
 import { BankAccountField } from "@/components/bank-account-field";
 import { createTransaction } from "@/lib/actions/transaction.actions";
@@ -17,10 +19,6 @@ type Props = {
   banks: BankWithBalance[];
   onSuccess?: () => void;
 };
-
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 const fieldClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
@@ -67,11 +65,9 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
       open={open}
       onOpenChange={onOpenChange}
       title="Add expense / income"
+      headerAccessory={<EntryDatePicker />}
       className="sm:max-w-md"
     >
-      <p className="-mt-2 mb-4 text-center text-sm text-muted-foreground">
-        Scrap sale, chai, repairs, light bill — no supplier or customer needed.
-      </p>
       <form key={formKey} onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="addExpenseType" className="mb-1 block text-sm font-medium">
@@ -151,19 +147,7 @@ export function AddExpenseModal({ open, onOpenChange, banks, onSuccess }: Props)
           <input type="hidden" name="bankId" value="" />
         )}
 
-        <div>
-          <label htmlFor="addExpenseDate" className="mb-1 block text-sm font-medium">
-            Date
-          </label>
-          <input
-            id="addExpenseDate"
-            name="transactionDate"
-            type="date"
-            required
-            defaultValue={todayDate()}
-            className={fieldClass}
-          />
-        </div>
+        <EntryDateHiddenInput name="transactionDate" />
 
         <div>
           <label htmlFor="addExpenseRemark" className="mb-1 block text-sm font-medium">

@@ -30,6 +30,14 @@ function billSearchLabel(
   return `${invoiceNumber} · ${party}`;
 }
 
+function isDigitOnlyQuery(query: string) {
+  return /^\d+$/.test(query);
+}
+
+function invoiceNumberEndsWith(invoiceNumber: string, digits: string) {
+  return invoiceNumber.endsWith(digits);
+}
+
 export async function searchPartiesAndBills(
   query: string,
   side: "client" | "supplier"
@@ -38,7 +46,9 @@ export async function searchPartiesAndBills(
   if (q.length < 1) return [];
 
   const supabase = await createClient();
-  const pattern = `%${q}%`;
+  const namePattern = `%${q}%`;
+  const digitQuery = isDigitOnlyQuery(q);
+  const billPattern = digitQuery ? `%${q}` : null;
   const limit = 8;
   const results: PartySearchResult[] = [];
   const seenPartyIds = new Set<string>();
@@ -49,7 +59,7 @@ export async function searchPartiesAndBills(
       .from("clients")
       .select("id, name, alias")
       .eq("is_deleted", false)
-      .or(`name.ilike.${pattern},alias.ilike.${pattern}`)
+      .or(`name.ilike.${namePattern},alias.ilike.${namePattern}`)
       .limit(limit);
 
     for (const row of parties ?? []) {
@@ -63,46 +73,52 @@ export async function searchPartiesAndBills(
       });
     }
 
-    const { data: bills } = await supabase
-      .from("invoices")
-      .select(
-        "id, invoice_number, total_amount, cash_amount, bank_amount, credit_amount, clients(id, name, alias)"
-      )
-      .eq("is_deleted", false)
-      .not("invoice_number", "is", null)
-      .ilike("invoice_number", pattern)
-      .limit(limit);
+    if (billPattern) {
+      const { data: bills } = await supabase
+        .from("invoices")
+        .select(
+          "id, invoice_number, total_amount, cash_amount, bank_amount, credit_amount, clients(id, name, alias)"
+        )
+        .eq("is_deleted", false)
+        .not("invoice_number", "is", null)
+        .ilike("invoice_number", billPattern)
+        .limit(limit * 2);
 
-    for (const row of bills ?? []) {
-      if (!row.invoice_number || seenBillIds.has(row.id)) continue;
-      const client = row.clients as { id: string; name: string; alias: string | null } | null;
-      if (!client) continue;
+      for (const row of bills ?? []) {
+        if (!row.invoice_number || seenBillIds.has(row.id)) continue;
+        if (!invoiceNumberEndsWith(row.invoice_number, q)) continue;
 
-      const outstanding = billOutstanding(
-        parseAmount(row.total_amount),
-        parseAmount(row.cash_amount),
-        parseAmount(row.bank_amount),
-        parseAmount(row.credit_amount)
-      );
+        const client = row.clients as { id: string; name: string; alias: string | null } | null;
+        if (!client) continue;
 
-      seenBillIds.add(row.id);
-      results.push({
-        type: "bill",
-        billId: row.id,
-        invoiceNumber: row.invoice_number,
-        partyId: client.id,
-        partyName: client.name,
-        partyAlias: client.alias,
-        outstanding,
-        label: billSearchLabel(row.invoice_number, client.name, client.alias),
-      });
+        const totalAmount = parseAmount(row.total_amount);
+        const outstanding = billOutstanding(
+          totalAmount,
+          parseAmount(row.cash_amount),
+          parseAmount(row.bank_amount),
+          parseAmount(row.credit_amount)
+        );
+
+        seenBillIds.add(row.id);
+        results.push({
+          type: "bill",
+          billId: row.id,
+          invoiceNumber: row.invoice_number,
+          partyId: client.id,
+          partyName: client.name,
+          partyAlias: client.alias,
+          totalAmount,
+          outstanding,
+          label: billSearchLabel(row.invoice_number, client.name, client.alias),
+        });
+      }
     }
   } else {
     const { data: parties } = await supabase
       .from("suppliers")
       .select("id, name, alias")
       .eq("is_deleted", false)
-      .or(`name.ilike.${pattern},alias.ilike.${pattern}`)
+      .or(`name.ilike.${namePattern},alias.ilike.${namePattern}`)
       .limit(limit);
 
     for (const row of parties ?? []) {
@@ -116,33 +132,40 @@ export async function searchPartiesAndBills(
       });
     }
 
-    const { data: bills } = await supabase
-      .from("purchase_invoices")
-      .select(
-        "id, invoice_number, total_amount, invoice_type, suppliers(id, name, alias)"
-      )
-      .eq("is_deleted", false)
-      .eq("invoice_type", "purchase")
-      .not("invoice_number", "is", null)
-      .or(`invoice_number.ilike.${pattern},remark.ilike.${pattern}`)
-      .limit(limit);
+    if (billPattern) {
+      const { data: bills } = await supabase
+        .from("purchase_invoices")
+        .select(
+          "id, invoice_number, total_amount, invoice_type, suppliers(id, name, alias)"
+        )
+        .eq("is_deleted", false)
+        .eq("invoice_type", "purchase")
+        .not("invoice_number", "is", null)
+        .ilike("invoice_number", billPattern)
+        .limit(limit * 2);
 
-    for (const row of bills ?? []) {
-      if (!row.invoice_number || seenBillIds.has(row.id)) continue;
-      const supplier = row.suppliers as { id: string; name: string; alias: string | null } | null;
-      if (!supplier) continue;
+      for (const row of bills ?? []) {
+        if (!row.invoice_number || seenBillIds.has(row.id)) continue;
+        if (!invoiceNumberEndsWith(row.invoice_number, q)) continue;
 
-      seenBillIds.add(row.id);
-      results.push({
-        type: "bill",
-        billId: row.id,
-        invoiceNumber: row.invoice_number,
-        partyId: supplier.id,
-        partyName: supplier.name,
-        partyAlias: supplier.alias,
-        outstanding: parseAmount(row.total_amount),
-        label: billSearchLabel(row.invoice_number, supplier.name, supplier.alias),
-      });
+        const supplier = row.suppliers as { id: string; name: string; alias: string | null } | null;
+        if (!supplier) continue;
+
+        const totalAmount = parseAmount(row.total_amount);
+
+        seenBillIds.add(row.id);
+        results.push({
+          type: "bill",
+          billId: row.id,
+          invoiceNumber: row.invoice_number,
+          partyId: supplier.id,
+          partyName: supplier.name,
+          partyAlias: supplier.alias,
+          totalAmount,
+          outstanding: totalAmount,
+          label: billSearchLabel(row.invoice_number, supplier.name, supplier.alias),
+        });
+      }
     }
   }
 

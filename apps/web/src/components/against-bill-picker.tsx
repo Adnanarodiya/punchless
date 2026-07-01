@@ -177,7 +177,7 @@ export function AgainstBillPicker({
 
       <div
         className={cn(
-          "space-y-2 overflow-auto rounded-lg border border-border p-2",
+          "space-y-2 overflow-auto rounded-lg ",
           isPanel ? "max-h-[min(420px,50dvh)]" : "max-h-48"
         )}
       >

@@ -9,6 +9,8 @@ import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
 import { AgainstBillPicker } from "@/components/against-bill-picker";
 import { BankAccountField } from "@/components/bank-account-field";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { PartySearchField } from "@/components/party-search-field";
 import { SettlementTypeField } from "@/components/settlement-type-field";
 import { createGeneralEntry } from "@/lib/actions/general-entry.actions";
@@ -38,10 +40,6 @@ type Props = {
   banks: BankWithBalance[];
   onSuccess?: () => void;
 };
-
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 type PartySide = "client" | "supplier";
 
@@ -269,6 +267,7 @@ export function GeneralEntryModal({
       open={open}
       onOpenChange={onOpenChange}
       title="General entry"
+      headerAccessory={<EntryDatePicker />}
       className={cn(showBillPanel && "sm:max-w-4xl")}
     >
       <form
@@ -280,10 +279,6 @@ export function GeneralEntryModal({
         )}
       >
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Cash can be party-linked or indirect. Bank entries must link to a customer or
-            supplier.
-          </p>
         <div>
           <span className="mb-2 block text-sm font-medium">Receipt or payment?</span>
           <div className="grid grid-cols-2 gap-2">
@@ -557,7 +552,7 @@ export function GeneralEntryModal({
             required
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            onKeyDown={(e) => handleEnterToNextField(e, "generalDate")}
+            onKeyDown={(e) => handleEnterToNextField(e, "generalRemark")}
             className={fieldClass}
           />
           {settlementType === "against_bill" && selectedBillsTotal > 0 ? (
@@ -570,20 +565,7 @@ export function GeneralEntryModal({
           ) : null}
         </div>
 
-        <div>
-          <label htmlFor="generalDate" className="mb-1 block text-sm font-medium">
-            Date
-          </label>
-          <input
-            id="generalDate"
-            name="entryDate"
-            type="date"
-            required
-            defaultValue={todayDate()}
-            onKeyDown={(e) => handleEnterToNextField(e, "generalRemark")}
-            className={fieldClass}
-          />
-        </div>
+        <EntryDateHiddenInput name="entryDate" />
 
         <div>
           <label htmlFor="generalRemark" className="mb-1 block text-sm font-medium">

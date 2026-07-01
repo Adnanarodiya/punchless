@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-06-30 (Fix dashboard hook error — server-only party-bill queries, client-safe types)
+> **Last updated:** 2026-07-01 (Bill total shown below amount field when bill selected from search)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -141,7 +141,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `src/components/button.tsx` | 1 | Button component with variants (default, destructive, outline, secondary, ghost, link) |
 | `src/components/dialog.tsx` | 1 | Dialog/modal component (Radix Dialog) |
 | `src/components/alert-dialog.tsx` | 1 | Alert dialog for confirmations (Radix AlertDialog) |
-| `src/components/modal.tsx` | 1 | Reusable modal wrapper |
+| `src/components/modal.tsx` | 1 | Modal wrapper — title left, optional `headerAccessory` right (e.g. entry date) |
 | `src/components/confirm-modal.tsx` | 1 | Confirm/cancel modal with actions |
 | `src/components/visually-hidden.tsx` | 1 | Accessibility helper for screen readers |
 | `src/components/page-header.tsx` | 11A/9 | Page title + optional `titleAddon` + description + actions slot |
@@ -224,7 +224,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/queries/cash-book.queries.ts` | **V3-C** | Cash/bank book queries — filter daily book by mode; single day or date range |
 | `dashboard/todays-entry/page.tsx` | **Today's entry** | Server page — date picker, saved import days, sales register upload for one day |
 | `dashboard/todays-entry/todays-entry-manager.tsx` | **Today's entry** | Upload imports all days in file; date picker views one day; saved-days list; table + pagination |
-| `components/add-expense-modal.tsx` | **Simple home** | Modal — income or expense (scrap, chai, repairs, petty cash; no supplier/client) |
+| `components/add-expense-modal.tsx` | **Simple home** | Modal — income/expense; uses global entry date (no per-form date field) |
 | `dashboard/dashboard-primary-actions.tsx` | **Simple home** | Quick actions order: Add expense / income → New bill → Collect → Pay supplier → Pay employee |
 | `components/sidebar.tsx` | 11A | Multi-open sidebar groups — Commerce / More tools expand without resetting |
 | `lib/queries/daily-book.queries.ts` | **Daily/Monthly report** | Full day/month book — invoices, payments, salary, expenses, bank tx; bank client receipts show once as `Bank deposit` + `Imported bank receipt` (no duplicate bank_transaction line); 5-card summary vs prior period |
@@ -254,17 +254,17 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/purchases/purchase-manager.tsx` | 12/**UX** | Supplier bills UI — page title, forms, table; GST slabs + live total preview |
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
-| `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — customer autocomplete, auto-create party, payment modes; **no GST link** |
-| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — 2-col bill panel when Against bill, ConfirmModal on save |
+| `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — global entry date in header; customer autocomplete; **no GST link** |
+| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — global entry date; 2-col bill panel when Against bill |
 | `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + against-bill remark + client invoice credit reduction |
 | `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode, settlement type, bill required when against bill |
-| `pay-supplier-modal.tsx` | **UX** | Pay supplier — widens to 2-col when Against bill; bill panel on right with search |
-| `collect-payment-modal.tsx` | **UX** | Collect payment — widens to 2-col when Against bill; bill panel on right with search |
-| `party-search-field.tsx` | **V3-B** | Shared party autocomplete — search by name or bill number; shows party + bill; Enter → next field |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier — bill suffix search locks against-bill; hides settlement toggle; creates supplier on save only |
+| `collect-payment-modal.tsx` | **UX** | Collect payment — bill suffix search locks against-bill; shows bill total note; creates customer on save only |
+| `party-search-field.tsx` | **V3-B** | Party autocomplete — digit suffix bill search; empty dropdown when no match; bill total in selected note |
 | `against-bill-picker.tsx` | **V3-B** | Panel mode — right-side bill list with bill-number search, multi-select, selected total due |
 | `settlement-type-field.tsx` | **V3-B** | Direct vs Against bill toggle — Enter advances to bills or date |
-| `lib/types/party-bill.types.ts` | **V3-B** | Client-safe types for party/bill search (no server imports) |
-| `lib/queries/party-bill.queries.ts` | **V3-B** | Server-only — search parties+bills; fetch outstanding bills per party |
+| `lib/types/party-bill.types.ts` | **V3-B** | Client-safe types — party/bill search results include `totalAmount` on bills |
+| `lib/queries/party-bill.queries.ts` | **V3-B** | Server-only — party name search; digit-only bill suffix match; outstanding bills per party |
 | `lib/validations/settlement.schema.ts` | **V3-B** | `settlementType` + against-bill remark builder |
 | `lib/utils/settlement.ts` | **V3-B** | Resolve against-bill remark; reduce client invoice `credit_amount` |
 | `lib/utils/form-keyboard.ts` | **V3-B** | `focusField`, `handleEnterToNextField` — Enter advances without form submit |
@@ -399,7 +399,10 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard-money-hero.tsx` | **P0-1** | Top 4 summary cards — per-card `blur-md` when locked (not dot-masked) |
 | `dashboard-todays-book.tsx` | **P0-1** | Today's cash/bank book — always shows amounts on home (not data-lock masked) |
 | `dashboard-shell.tsx` | 11A/4/**P0-1** | Shell: sticky header nav (no sidebar), skip-to-content, global search, data-lock idle |
-| `dashboard-nav-header.tsx` | **P0-1** | Sticky top header — company name as brand, nav groups as dropdowns, search, lock, user, logout; mobile slide-over aside drawer with backdrop |
+| `dashboard-nav-header.tsx` | **P0-1** | Sticky top header — company name, nav, search, lock, user, logout |
+| `entry-date-picker.tsx` | **UX** | Global entry date — compact pill in modal header; popover with Today/Done |
+| `entry-date-hidden-input.tsx` | **UX** | Hidden form field bound to global entry date store |
+| `lib/stores/entry-date.store.ts` | **UX** | Zustand — shared entry date (sessionStorage); defaults to today |
 | `dashboard-header.tsx` | 11A/9 | Legacy top bar (replaced by `dashboard-nav-header.tsx`; unused) |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
 | `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |

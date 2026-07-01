@@ -23,6 +23,8 @@ import { PageHeader } from "@/components/page-header";
 import { DataTable } from "@punchless/ui/components/data-table";
 import { cn } from "@punchless/ui/lib/utils";
 import { BankPaymentFields } from "@/components/bank-payment-fields";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import type { BankWithBalance } from "@/lib/queries/bank.queries";
 
 import {
@@ -50,7 +52,7 @@ interface Props {
 
 type ViewFilter = "active" | "deleted";
 
-const defaultPaymentDate = () => new Date().toISOString().slice(0, 10);
+
 
 export function CustomerManager({
   customers,
@@ -410,6 +412,7 @@ export function CustomerManager({
         open={!!paymentClient}
         onOpenChange={(open) => !open && setPaymentClient(null)}
         title={`Collect payment — ${paymentClient?.name ?? ""}`}
+        headerAccessory={<EntryDatePicker />}
       >
         {paymentClient ? (
           <form onSubmit={handlePaymentSubmit} className="space-y-4">
@@ -432,13 +435,7 @@ export function CustomerManager({
               paymentModeSelectId="customerManagerPaymentMode"
               bankSelectId="customerManagerBankId"
             />
-            <Field
-              label="Payment Date"
-              name="paymentDate"
-              type="date"
-              required
-              defaultValue={defaultPaymentDate()}
-            />
+            <EntryDateHiddenInput name="paymentDate" />
             <Field label="Remark" name="remark" />
             <div className="flex justify-end">
               <Button type="submit" loading={paying} disabled={paying}>

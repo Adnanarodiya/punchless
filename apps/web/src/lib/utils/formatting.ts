@@ -33,6 +33,18 @@ export function formatDate(isoString: string | null): string {
   });
 }
 
+/** ISO date (YYYY-MM-DD) → "1 July 2026" for global entry date display */
+export function formatEntryDateDisplay(isoDate: string): string {
+  const normalized = isoDate.length === 10 ? `${isoDate}T00:00:00` : isoDate;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return isoDate;
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 /** Month picker value (YYYY-MM) → "June 2026" */
 export function formatMonthYear(monthStr: string): string {
   const [year, month] = monthStr.split("-").map(Number);

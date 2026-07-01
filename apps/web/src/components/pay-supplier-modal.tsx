@@ -9,6 +9,8 @@ import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
 import { AgainstBillPicker } from "@/components/against-bill-picker";
 import { BankPaymentFields } from "@/components/bank-payment-fields";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { PartySearchField } from "@/components/party-search-field";
 import { SettlementTypeField } from "@/components/settlement-type-field";
 import { createQuickSupplier, paySupplier } from "@/lib/actions/supplier.actions";
@@ -33,10 +35,6 @@ type Props = {
   onSuccess?: () => void;
 };
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function PaySupplierModal({
   open,
   onOpenChange,
@@ -52,6 +50,8 @@ export function PaySupplierModal({
   const [billIds, setBillIds] = useState<string[]>([]);
   const [selectedBillsTotal, setSelectedBillsTotal] = useState(0);
   const [selectedInvoiceNumber, setSelectedInvoiceNumber] = useState("");
+  const [selectedBillTotal, setSelectedBillTotal] = useState(0);
+  const [billLinkedFromSearch, setBillLinkedFromSearch] = useState(false);
   const [amount, setAmount] = useState("");
   const [creatingSupplier, setCreatingSupplier] = useState(false);
   const [confirmPayOpen, setConfirmPayOpen] = useState(false);
@@ -70,6 +70,8 @@ export function PaySupplierModal({
       setBillIds([]);
       setSelectedBillsTotal(0);
       setSelectedInvoiceNumber("");
+      setSelectedBillTotal(0);
+      setBillLinkedFromSearch(false);
       setAmount("");
       setConfirmPayOpen(false);
       setPendingPayment(null);
@@ -98,9 +100,15 @@ export function PaySupplierModal({
 
   function selectSupplier(
     supplier: SupplierWithPayable,
-    invoiceNumber?: string,
-    linkedBillId?: string
+    options?: {
+      invoiceNumber?: string;
+      linkedBillId?: string;
+      billTotal?: number;
+      fromBillSearch?: boolean;
+    }
   ) {
+    const { invoiceNumber, linkedBillId, billTotal, fromBillSearch } = options ?? {};
+
     setSupplierId(supplier.id);
     setSupplierQuery(
       invoiceNumber
@@ -109,6 +117,12 @@ export function PaySupplierModal({
     );
     setSelectedInvoiceNumber(invoiceNumber ?? "");
     setBillIds(linkedBillId ? [linkedBillId] : []);
+    setSelectedBillTotal(billTotal ?? 0);
+    setBillLinkedFromSearch(Boolean(fromBillSearch && linkedBillId));
+    setSettlementType(fromBillSearch && linkedBillId ? "against_bill" : "direct");
+    if (!fromBillSearch) {
+      setSelectedBillsTotal(0);
+    }
   }
 
   function clearSupplierSelection() {
@@ -116,6 +130,9 @@ export function PaySupplierModal({
     setBillIds([]);
     setSelectedBillsTotal(0);
     setSelectedInvoiceNumber("");
+    setSelectedBillTotal(0);
+    setBillLinkedFromSearch(false);
+    setSettlementType("direct");
   }
 
   async function ensureSupplierSelected(): Promise<string | null> {
@@ -126,7 +143,7 @@ export function PaySupplierModal({
 
     const exact = findEntityByQuery(supplierOptions, name);
     if (exact) {
-      selectSupplier(exact);
+      selectSupplier(exact, {});
       return exact.id;
     }
 
@@ -145,7 +162,7 @@ export function PaySupplierModal({
 
       const created = result.data as SupplierWithPayable;
       setSupplierOptions((prev) => [...prev, created]);
-      selectSupplier(created);
+      selectSupplier(created, {});
       return created.id;
     } finally {
       setCreatingSupplier(false);
@@ -154,19 +171,22 @@ export function PaySupplierModal({
 
   async function submitPayment(formData: FormData, resolvedSupplierId: string) {
     formData.set("supplierId", resolvedSupplierId);
-    formData.set("settlementType", settlementType);
+    formData.set(
+      "settlementType",
+      billLinkedFromSearch ? "against_bill" : settlementType
+    );
     await execPayment(formData);
   }
 
   async function openPaymentConfirm(form: HTMLFormElement): Promise<boolean> {
-    const resolvedSupplierId = await ensureSupplierSelected();
-    if (!resolvedSupplierId) {
+    if (!supplierId && !trimmedQuery) {
       toast.error("Enter a supplier name");
       supplierInputRef.current?.focus();
       return false;
     }
 
-    if (settlementType === "against_bill" && billIds.length === 0) {
+    const effectiveSettlement = billLinkedFromSearch ? "against_bill" : settlementType;
+    if (effectiveSettlement === "against_bill" && billIds.length === 0) {
       toast.error("Select at least one bill to settle against");
       return false;
     }
@@ -195,18 +215,27 @@ export function PaySupplierModal({
   }
 
   function focusSettlementField() {
+    if (billLinkedFromSearch) {
+      focusField("paySupplierRemark");
+      return;
+    }
     focusField("paySupplierSettlementDirect");
   }
 
   function focusAfterSettlement() {
+    if (billLinkedFromSearch) {
+      focusField("paySupplierRemark");
+      return;
+    }
     if (settlementType === "against_bill" && supplierId) {
       if (focusField("paySupplierBillSearch")) return;
       if (focusField("paySupplierFirstBill")) return;
     }
-    focusField("paySupplierDate");
+    focusField("paySupplierRemark");
   }
 
-  const showBillPanel = settlementType === "against_bill" && Boolean(supplierId);
+  const showBillPanel =
+    settlementType === "against_bill" && Boolean(supplierId) && !billLinkedFromSearch;
 
   async function confirmPayment() {
     if (!pendingPayment) return;
@@ -219,12 +248,32 @@ export function PaySupplierModal({
     setPendingPayment(null);
   }
 
-  function handleSupplierBlur() {
-    window.setTimeout(() => {
-      if (!supplierId && trimmedQuery) {
-        void ensureSupplierSelected();
-      }
-    }, 150);
+  function handlePartySelect(selection: {
+    partyId: string;
+    partyName: string;
+    billId?: string;
+    invoiceNumber?: string;
+    totalAmount?: number;
+    displayQuery: string;
+  }) {
+    const supplier = supplierOptions.find((s) => s.id === selection.partyId);
+    if (supplier) {
+      selectSupplier(supplier, {
+        invoiceNumber: selection.invoiceNumber,
+        linkedBillId: selection.billId,
+        billTotal: selection.totalAmount,
+        fromBillSearch: Boolean(selection.billId),
+      });
+      return;
+    }
+
+    setSupplierId(selection.partyId);
+    setSupplierQuery(selection.displayQuery);
+    setBillIds(selection.billId ? [selection.billId] : []);
+    setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
+    setSelectedBillTotal(selection.totalAmount ?? 0);
+    setBillLinkedFromSearch(Boolean(selection.billId));
+    setSettlementType(selection.billId ? "against_bill" : "direct");
   }
 
   return (
@@ -233,6 +282,7 @@ export function PaySupplierModal({
         open={open}
         onOpenChange={onOpenChange}
         title="Pay a supplier"
+        headerAccessory={<EntryDatePicker />}
         className={cn(showBillPanel && "sm:max-w-4xl")}
       >
         <form
@@ -244,41 +294,22 @@ export function PaySupplierModal({
           )}
         >
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Record cash or bank payment to a vendor. Search by party name or bill number.
-            </p>
-          <div onBlur={handleSupplierBlur}>
-            <PartySearchField
-              id="paySupplierSearch"
-              label="Supplier"
-              side="supplier"
-              entities={supplierOptions}
-              partyId={supplierId}
-              query={supplierQuery}
-              selectedInvoiceNumber={selectedInvoiceNumber}
-              onQueryChange={setSupplierQuery}
-              onSelect={(selection) => {
-                const supplier = supplierOptions.find((s) => s.id === selection.partyId);
-                if (supplier) {
-                  selectSupplier(
-                    supplier,
-                    selection.invoiceNumber,
-                    selection.billId
-                  );
-                } else {
-                  setSupplierId(selection.partyId);
-                  setSupplierQuery(selection.displayQuery);
-                  setBillIds(selection.billId ? [selection.billId] : []);
-                  setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
-                }
-              }}
-              onClearSelection={clearSupplierSelection}
-              nextFieldId="paySupplierAmount"
-              outstandingAmount={selectedSupplier?.payable_amount}
-              outstandingLabel="Payable"
-              newPartyHint="New supplier — will be added when you record payment"
-            />
-          </div>
+          <PartySearchField
+            id="paySupplierSearch"
+            label="Supplier"
+            side="supplier"
+            entities={supplierOptions}
+            partyId={supplierId}
+            query={supplierQuery}
+            selectedInvoiceNumber={selectedInvoiceNumber}
+            onQueryChange={setSupplierQuery}
+            onSelect={handlePartySelect}
+            onClearSelection={clearSupplierSelection}
+            nextFieldId="paySupplierAmount"
+            outstandingAmount={selectedSupplier?.payable_amount}
+            outstandingLabel="Payable"
+            newPartyHint="New supplier — will be added when you record payment"
+          />
 
           <div>
             <label htmlFor="paySupplierAmount" className="mb-1 block text-sm font-medium">
@@ -296,7 +327,14 @@ export function PaySupplierModal({
               onKeyDown={(e) => handleEnterToNextField(e, "paySupplierPaymentMode")}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
-            {settlementType === "against_bill" && selectedBillsTotal > 0 ? (
+            {billLinkedFromSearch && selectedBillTotal > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Bill total:{" "}
+                <span className="font-medium text-foreground">
+                  {formatCurrency(selectedBillTotal)}
+                </span>
+              </p>
+            ) : settlementType === "against_bill" && selectedBillsTotal > 0 ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 Selected bills total due:{" "}
                 <span className="font-medium text-foreground">
@@ -323,33 +361,31 @@ export function PaySupplierModal({
             onBankAccountEnter={focusSettlementField}
           />
 
-          <SettlementTypeField
-            idPrefix="paySupplier"
-            value={settlementType}
-            onChange={(value) => {
-              setSettlementType(value);
-              if (value === "direct") {
-                setBillIds([]);
-                setSelectedBillsTotal(0);
-              }
-            }}
-            onEnterAdvance={focusAfterSettlement}
-          />
+          {billLinkedFromSearch
+            ? billIds.map((id) => (
+                <input key={id} type="hidden" name="billIds" value={id} />
+              ))
+            : null}
 
-          <div>
-            <label htmlFor="paySupplierDate" className="mb-1 block text-sm font-medium">
-              Payment date
-            </label>
-            <input
-              id="paySupplierDate"
-              name="paymentDate"
-              type="date"
-              required
-              defaultValue={todayDate()}
-              onKeyDown={(e) => handleEnterToNextField(e, "paySupplierRemark")}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          {!billLinkedFromSearch ? (
+            <SettlementTypeField
+              idPrefix="paySupplier"
+              value={settlementType}
+              onChange={(value) => {
+                setSettlementType(value);
+                if (value === "direct") {
+                  setBillIds([]);
+                  setSelectedBillsTotal(0);
+                  setSelectedBillTotal(0);
+                }
+              }}
+              onEnterAdvance={focusAfterSettlement}
             />
-          </div>
+          ) : (
+            <input type="hidden" name="settlementTypeUi" value="against_bill" />
+          )}
+
+          <EntryDateHiddenInput name="paymentDate" />
 
           <div>
             <label htmlFor="paySupplierRemark" className="mb-1 block text-sm font-medium">
@@ -386,8 +422,8 @@ export function PaySupplierModal({
                 onSelectedTotalChange={setSelectedBillsTotal}
                 searchInputId="paySupplierBillSearch"
                 firstBillFocusId="paySupplierFirstBill"
-                onSearchEnter={() => focusField("paySupplierDate")}
-                onEnterAdvance={() => focusField("paySupplierDate")}
+                onSearchEnter={() => focusField("paySupplierRemark")}
+                onEnterAdvance={() => focusField("paySupplierRemark")}
               />
             </aside>
           ) : null}

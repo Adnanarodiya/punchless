@@ -9,6 +9,8 @@ import { Modal } from "@punchless/ui/components/modal";
 import { cn } from "@punchless/ui/lib/utils";
 import { AgainstBillPicker } from "@/components/against-bill-picker";
 import { BankPaymentFields } from "@/components/bank-payment-fields";
+import { EntryDateHiddenInput } from "@/components/entry-date-hidden-input";
+import { EntryDatePicker } from "@/components/entry-date-picker";
 import { PartySearchField } from "@/components/party-search-field";
 import { SettlementTypeField } from "@/components/settlement-type-field";
 import {
@@ -36,10 +38,6 @@ type Props = {
   onSuccess?: () => void;
 };
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export function CollectPaymentModal({
   open,
   onOpenChange,
@@ -55,6 +53,8 @@ export function CollectPaymentModal({
   const [billIds, setBillIds] = useState<string[]>([]);
   const [selectedBillsTotal, setSelectedBillsTotal] = useState(0);
   const [selectedInvoiceNumber, setSelectedInvoiceNumber] = useState("");
+  const [selectedBillTotal, setSelectedBillTotal] = useState(0);
+  const [billLinkedFromSearch, setBillLinkedFromSearch] = useState(false);
   const [amount, setAmount] = useState("");
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [confirmPayOpen, setConfirmPayOpen] = useState(false);
@@ -73,6 +73,8 @@ export function CollectPaymentModal({
       setBillIds([]);
       setSelectedBillsTotal(0);
       setSelectedInvoiceNumber("");
+      setSelectedBillTotal(0);
+      setBillLinkedFromSearch(false);
       setAmount("");
       setConfirmPayOpen(false);
       setPendingPayment(null);
@@ -99,7 +101,17 @@ export function CollectPaymentModal({
     },
   });
 
-  function selectCustomer(client: ClientWithDue, invoiceNumber?: string, linkedBillId?: string) {
+  function selectCustomer(
+    client: ClientWithDue,
+    options?: {
+      invoiceNumber?: string;
+      linkedBillId?: string;
+      billTotal?: number;
+      fromBillSearch?: boolean;
+    }
+  ) {
+    const { invoiceNumber, linkedBillId, billTotal, fromBillSearch } = options ?? {};
+
     setClientId(client.id);
     setCustomerQuery(
       invoiceNumber
@@ -108,6 +120,12 @@ export function CollectPaymentModal({
     );
     setSelectedInvoiceNumber(invoiceNumber ?? "");
     setBillIds(linkedBillId ? [linkedBillId] : []);
+    setSelectedBillTotal(billTotal ?? 0);
+    setBillLinkedFromSearch(Boolean(fromBillSearch && linkedBillId));
+    setSettlementType(fromBillSearch && linkedBillId ? "against_bill" : "direct");
+    if (!fromBillSearch) {
+      setSelectedBillsTotal(0);
+    }
   }
 
   function clearCustomerSelection() {
@@ -115,6 +133,9 @@ export function CollectPaymentModal({
     setBillIds([]);
     setSelectedBillsTotal(0);
     setSelectedInvoiceNumber("");
+    setSelectedBillTotal(0);
+    setBillLinkedFromSearch(false);
+    setSettlementType("direct");
   }
 
   async function ensureCustomerSelected(): Promise<string | null> {
@@ -125,7 +146,7 @@ export function CollectPaymentModal({
 
     const exact = findEntityByQuery(clientOptions, name);
     if (exact) {
-      selectCustomer(exact);
+      selectCustomer(exact, {});
       return exact.id;
     }
 
@@ -144,7 +165,7 @@ export function CollectPaymentModal({
 
       const created = result.data as ClientWithDue;
       setClientOptions((prev) => [...prev, created]);
-      selectCustomer(created);
+      selectCustomer(created, {});
       return created.id;
     } finally {
       setCreatingCustomer(false);
@@ -153,19 +174,22 @@ export function CollectPaymentModal({
 
   async function submitPayment(formData: FormData, resolvedClientId: string) {
     formData.set("clientId", resolvedClientId);
-    formData.set("settlementType", settlementType);
+    formData.set(
+      "settlementType",
+      billLinkedFromSearch ? "against_bill" : settlementType
+    );
     await execPayment(formData);
   }
 
   async function openPaymentConfirm(form: HTMLFormElement): Promise<boolean> {
-    const resolvedClientId = await ensureCustomerSelected();
-    if (!resolvedClientId) {
+    if (!clientId && !trimmedQuery) {
       toast.error("Enter a customer name");
       customerInputRef.current?.focus();
       return false;
     }
 
-    if (settlementType === "against_bill" && billIds.length === 0) {
+    const effectiveSettlement = billLinkedFromSearch ? "against_bill" : settlementType;
+    if (effectiveSettlement === "against_bill" && billIds.length === 0) {
       toast.error("Select at least one bill to settle against");
       return false;
     }
@@ -194,18 +218,27 @@ export function CollectPaymentModal({
   }
 
   function focusSettlementField() {
+    if (billLinkedFromSearch) {
+      focusField("collectPaymentRemark");
+      return;
+    }
     focusField("collectPaymentSettlementDirect");
   }
 
   function focusAfterSettlement() {
+    if (billLinkedFromSearch) {
+      focusField("collectPaymentRemark");
+      return;
+    }
     if (settlementType === "against_bill" && clientId) {
       if (focusField("collectPaymentBillSearch")) return;
       if (focusField("collectPaymentFirstBill")) return;
     }
-    focusField("collectPaymentDate");
+    focusField("collectPaymentRemark");
   }
 
-  const showBillPanel = settlementType === "against_bill" && Boolean(clientId);
+  const showBillPanel =
+    settlementType === "against_bill" && Boolean(clientId) && !billLinkedFromSearch;
 
   async function confirmPayment() {
     if (!pendingPayment) return;
@@ -218,12 +251,32 @@ export function CollectPaymentModal({
     setPendingPayment(null);
   }
 
-  function handleCustomerBlur() {
-    window.setTimeout(() => {
-      if (!clientId && trimmedQuery) {
-        void ensureCustomerSelected();
-      }
-    }, 150);
+  function handlePartySelect(selection: {
+    partyId: string;
+    partyName: string;
+    billId?: string;
+    invoiceNumber?: string;
+    totalAmount?: number;
+    displayQuery: string;
+  }) {
+    const client = clientOptions.find((c) => c.id === selection.partyId);
+    if (client) {
+      selectCustomer(client, {
+        invoiceNumber: selection.invoiceNumber,
+        linkedBillId: selection.billId,
+        billTotal: selection.totalAmount,
+        fromBillSearch: Boolean(selection.billId),
+      });
+      return;
+    }
+
+    setClientId(selection.partyId);
+    setCustomerQuery(selection.displayQuery);
+    setBillIds(selection.billId ? [selection.billId] : []);
+    setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
+    setSelectedBillTotal(selection.totalAmount ?? 0);
+    setBillLinkedFromSearch(Boolean(selection.billId));
+    setSettlementType(selection.billId ? "against_bill" : "direct");
   }
 
   return (
@@ -232,6 +285,7 @@ export function CollectPaymentModal({
         open={open}
         onOpenChange={onOpenChange}
         title="Collect payment"
+        headerAccessory={<EntryDatePicker />}
         className={cn(showBillPanel && "sm:max-w-4xl")}
       >
         <form
@@ -243,42 +297,22 @@ export function CollectPaymentModal({
           )}
         >
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Record cash or bank received from a customer. Search by party name or bill
-              number.
-            </p>
-          <div onBlur={handleCustomerBlur}>
-            <PartySearchField
-              id="collectPaymentSearch"
-              label="Customer"
-              side="client"
-              entities={clientOptions}
-              partyId={clientId}
-              query={customerQuery}
-              selectedInvoiceNumber={selectedInvoiceNumber}
-              onQueryChange={setCustomerQuery}
-              onSelect={(selection) => {
-                const client = clientOptions.find((c) => c.id === selection.partyId);
-                if (client) {
-                  selectCustomer(
-                    client,
-                    selection.invoiceNumber,
-                    selection.billId
-                  );
-                } else {
-                  setClientId(selection.partyId);
-                  setCustomerQuery(selection.displayQuery);
-                  setBillIds(selection.billId ? [selection.billId] : []);
-                  setSelectedInvoiceNumber(selection.invoiceNumber ?? "");
-                }
-              }}
-              onClearSelection={clearCustomerSelection}
-              nextFieldId="collectPaymentAmount"
-              outstandingAmount={selectedClient?.due_amount}
-              outstandingLabel="Due"
-              newPartyHint="New customer — will be added when you record payment"
-            />
-          </div>
+          <PartySearchField
+            id="collectPaymentSearch"
+            label="Customer"
+            side="client"
+            entities={clientOptions}
+            partyId={clientId}
+            query={customerQuery}
+            selectedInvoiceNumber={selectedInvoiceNumber}
+            onQueryChange={setCustomerQuery}
+            onSelect={handlePartySelect}
+            onClearSelection={clearCustomerSelection}
+            nextFieldId="collectPaymentAmount"
+            outstandingAmount={selectedClient?.due_amount}
+            outstandingLabel="Due"
+            newPartyHint="New customer — will be added when you record payment"
+          />
 
           <div>
             <label htmlFor="collectPaymentAmount" className="mb-1 block text-sm font-medium">
@@ -296,7 +330,14 @@ export function CollectPaymentModal({
               onKeyDown={(e) => handleEnterToNextField(e, "collectPaymentMode")}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
-            {settlementType === "against_bill" && selectedBillsTotal > 0 ? (
+            {billLinkedFromSearch && selectedBillTotal > 0 ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Bill total:{" "}
+                <span className="font-medium text-foreground">
+                  {formatCurrency(selectedBillTotal)}
+                </span>
+              </p>
+            ) : settlementType === "against_bill" && selectedBillsTotal > 0 ? (
               <p className="mt-1 text-xs text-muted-foreground">
                 Selected bills total due:{" "}
                 <span className="font-medium text-foreground">
@@ -323,33 +364,31 @@ export function CollectPaymentModal({
             onBankAccountEnter={focusSettlementField}
           />
 
-          <SettlementTypeField
-            idPrefix="collectPayment"
-            value={settlementType}
-            onChange={(value) => {
-              setSettlementType(value);
-              if (value === "direct") {
-                setBillIds([]);
-                setSelectedBillsTotal(0);
-              }
-            }}
-            onEnterAdvance={focusAfterSettlement}
-          />
+          {billLinkedFromSearch
+            ? billIds.map((id) => (
+                <input key={id} type="hidden" name="billIds" value={id} />
+              ))
+            : null}
 
-          <div>
-            <label htmlFor="collectPaymentDate" className="mb-1 block text-sm font-medium">
-              Payment date
-            </label>
-            <input
-              id="collectPaymentDate"
-              name="paymentDate"
-              type="date"
-              required
-              defaultValue={todayDate()}
-              onKeyDown={(e) => handleEnterToNextField(e, "collectPaymentRemark")}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          {!billLinkedFromSearch ? (
+            <SettlementTypeField
+              idPrefix="collectPayment"
+              value={settlementType}
+              onChange={(value) => {
+                setSettlementType(value);
+                if (value === "direct") {
+                  setBillIds([]);
+                  setSelectedBillsTotal(0);
+                  setSelectedBillTotal(0);
+                }
+              }}
+              onEnterAdvance={focusAfterSettlement}
             />
-          </div>
+          ) : (
+            <input type="hidden" name="settlementTypeUi" value="against_bill" />
+          )}
+
+          <EntryDateHiddenInput name="paymentDate" />
 
           <div>
             <label htmlFor="collectPaymentRemark" className="mb-1 block text-sm font-medium">
@@ -386,8 +425,8 @@ export function CollectPaymentModal({
                 onSelectedTotalChange={setSelectedBillsTotal}
                 searchInputId="collectPaymentBillSearch"
                 firstBillFocusId="collectPaymentFirstBill"
-                onSearchEnter={() => focusField("collectPaymentDate")}
-                onEnterAdvance={() => focusField("collectPaymentDate")}
+                onSearchEnter={() => focusField("collectPaymentRemark")}
+                onEnterAdvance={() => focusField("collectPaymentRemark")}
               />
             </aside>
           ) : null}

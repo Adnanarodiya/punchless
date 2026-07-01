@@ -20,6 +20,7 @@ export type PartySelection = {
   partyName: string;
   billId?: string;
   invoiceNumber?: string;
+  totalAmount?: number;
   displayQuery: string;
 };
 
@@ -47,6 +48,10 @@ function partyWithBillLabel(partyName: string, invoiceNumber?: string) {
   return `${partyName} · #${invoiceNumber}`;
 }
 
+function isDigitOnlyQuery(query: string) {
+  return /^\d+$/.test(query);
+}
+
 export function PartySearchField({
   id,
   label,
@@ -70,6 +75,7 @@ export function PartySearchField({
   const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const trimmedQuery = query.trim();
+  const digitOnlyQuery = isDigitOnlyQuery(trimmedQuery);
 
   const localParties = useMemo(
     () => filterEntitiesByQuery(entities, query, 6),
@@ -141,10 +147,7 @@ export function PartySearchField({
         items.push({
           key: `bill-${result.billId}`,
           label: result.label,
-          sublabel:
-            result.outstanding > 0.01
-              ? `Due ${formatCurrency(result.outstanding)}`
-              : undefined,
+          sublabel: `Bill total ${formatCurrency(result.totalAmount)}`,
           onPick: () => {
             const partyLabel = entityDisplayLabel({
               name: result.partyName,
@@ -155,6 +158,7 @@ export function PartySearchField({
               partyName: result.partyName,
               billId: result.billId,
               invoiceNumber: result.invoiceNumber,
+              totalAmount: result.totalAmount,
               displayQuery: partyWithBillLabel(partyLabel, result.invoiceNumber),
             });
             setShowList(false);
@@ -165,6 +169,15 @@ export function PartySearchField({
 
     return items.slice(0, 10);
   }, [localParties, remoteResults, onSelect]);
+
+  const showNewPartyHint =
+    allowNew &&
+    !partyId &&
+    trimmedQuery.length > 0 &&
+    !digitOnlyQuery &&
+    isNewParty &&
+    dropdownItems.length === 0 &&
+    !searching;
 
   function handleChange(value: string) {
     onQueryChange(value);
@@ -255,13 +268,13 @@ export function PartySearchField({
             </>
           ) : null}
         </p>
-      ) : isNewParty ? (
+      ) : showNewPartyHint ? (
         <p className="mt-1 text-xs text-muted-foreground">
           {newPartyHint ?? `New party — will be added when you save`}
         </p>
       ) : null}
 
-      {showList && (dropdownItems.length > 0 || isNewParty || searching) ? (
+      {showList && (dropdownItems.length > 0 || searching) ? (
         <ul
           className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border bg-popover py-1 shadow-md"
           role="listbox"
@@ -290,11 +303,6 @@ export function PartySearchField({
               </button>
             </li>
           ))}
-          {isNewParty && dropdownItems.length === 0 && !searching ? (
-            <li className="px-3 py-2 text-sm text-muted-foreground">
-              Press Enter for next field — &quot;{trimmedQuery}&quot; will be added as new
-            </li>
-          ) : null}
         </ul>
       ) : null}
     </div>

@@ -1206,3 +1206,11 @@ BEGIN
 
   RAISE NOTICE 'Income/expense seed complete — 10 INCOME + 10 EXPENSE entries';
 END $$;
+
+-- ============================================
+-- Shahin Motors — Real Tally data (Apr–Jun 2026)
+-- 1163 sales + 184 purchases + cash/bank book
+-- Kotak Bank 4112748249 | Idempotent via ISHABA2627000001
+-- Regenerate: python scripts/generate_shahin_seed.py
+-- ============================================
+\i seed_shahin_real_data.sql

@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureSystemParties } from "@/lib/queries/system-party.queries";
+import { SYSTEM_EXPENSE_SUPPLIER_NAME } from "@/lib/constants/system-parties";
+import {
+  fetchAllLedgerEntries,
+  fetchAllLedgerRowsForEntity,
+} from "@/lib/utils/ledger-pagination";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import type { Database } from "@punchless/types/database.types";
 import {
@@ -70,16 +75,12 @@ async function getLedgerPayablesBySupplier(
   if (supplierIds.length === 0) return {};
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("ledger_entries")
-    .select("entity_id, entry_type, amount")
-    .eq("entity_type", "supplier")
-    .in("entity_id", supplierIds);
+  const data = await fetchAllLedgerEntries(supabase, "supplier", supplierIds);
 
   const balances: Record<string, number> = {};
   for (const id of supplierIds) balances[id] = 0;
 
-  for (const entry of data ?? []) {
+  for (const entry of data) {
     const id = entry.entity_id as string;
     if (entry.entry_type === "credit") {
       balances[id] = (balances[id] ?? 0) + Number(entry.amount);
@@ -124,9 +125,15 @@ export async function getActiveSuppliers(): Promise<SupplierWithPayable[]> {
 
 export async function getSuppliersSummary(): Promise<SupplierSummary> {
   const suppliers = await getSuppliers();
+  const vendors = suppliers.filter(
+    (s) => !s.is_system && s.name !== SYSTEM_EXPENSE_SUPPLIER_NAME
+  );
   return {
-    totalSuppliers: suppliers.length,
-    totalPayable: suppliers.reduce((sum, s) => sum + s.payable_amount, 0),
+    totalSuppliers: vendors.length,
+    totalPayable: vendors.reduce(
+      (sum, s) => sum + Math.max(0, s.payable_amount),
+      0
+    ),
   };
 }
 
@@ -159,15 +166,11 @@ export async function getSupplierStatement(
 ): Promise<StatementResult> {
   const supabase = await createClient();
 
-  const { data: allEntries } = await supabase
-    .from("ledger_entries")
-    .select("*")
-    .eq("entity_type", "supplier")
-    .eq("entity_id", supplierId)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const entries = (allEntries as LedgerRow[]) ?? [];
+  const entries = (await fetchAllLedgerRowsForEntity(
+    supabase,
+    "supplier",
+    supplierId
+  )) as LedgerRow[];
   const beforePeriod = entries.filter((entry) => entry.entry_date < startDate);
   const inPeriod = sortSupplierEntries(
     entries.filter(

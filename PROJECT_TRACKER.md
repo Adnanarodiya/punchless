@@ -82,7 +82,9 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | File | Phase | Description |
 |------|-------|-------------|
 | `config.toml` | 2 | Supabase local config (project ID: `lwjnkyaihiclbfnukrvn`) |
-| `seed.sql` | 2/13.5 | **Statement + journal + income/expense demo seed** — Rajesh/Patel, BILAL/ZAID bills; **INCOME**/**EXPENSE** 10+10 indirect entries; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
+| `seed.sql` | 2/13.5 | **Statement + journal + income/expense demo seed** — Rajesh/Patel, BILAL/ZAID bills; **INCOME**/**EXPENSE** 10+10 indirect entries; includes `\i seed_shahin_real_data.sql`; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
+| `seed_shahin_real_data.sql` | **V3-B** | **Shahin real Tally data** (Apr–Jun 2026) — 1147 sales, 184 purchases, 480 receipts, 145 bank payments + full ledger; Kotak Bank `4112748249` + opening balance; load: `npx supabase db query --linked -f supabase/seed_shahin_real_data.sql` |
+| `scripts/generate_shahin_seed.py` | **V3-B** | Regenerates `seed_shahin_real_data.sql` from `Sale File.xls`, `Purchase File.xls`, `CASH Detail.xls`, `BANK Receipt.xls`, `Bank Payment.xls` |
 | `migrations/.gitkeep` | 2 | Placeholder |
 | `migrations/20260207112531_initial_schema.sql` | 2 | **Main schema**: companies, users, workshops, jobs, attendance_sessions, salary_advances + RLS + indexes + trigger |
 | `migrations/20260207154949_fix_signup_trigger_schema_qualified.sql` | 2 | Fix: schema-qualified `public.companies`/`public.users` in signup trigger |
@@ -440,6 +442,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `fingerprint-salary-report.ts` | **Phase 0** | Shahin salary line calc (÷ eligible days, OT × multiplier) + export rows |
 | `sales-register-parser.ts` | **Today's entry** | Parse `Sales Register` CSV/xlsx; `resolveSalesRegisterEntryDate()` — fallback to latest bill day ≤ selected date |
 | `client-match.ts` | **Today's entry** | Customer resolve — exact name → GST number → create new client |
+| `ledger-pagination.ts` | **V3-C** | Paginated ledger fetch past Supabase 1000-row cap — stable `id` order; used by customer/supplier/bank balances + statements + reports |
 
 #### Server Utilities (`src/lib/server/`)
 

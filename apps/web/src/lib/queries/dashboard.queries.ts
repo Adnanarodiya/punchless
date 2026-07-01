@@ -361,7 +361,7 @@ export async function getTopPendingDues(
   ]);
 
   const clientRows: PendingDueRow[] = clients
-    .filter((c) => c.due_amount > 0.01)
+    .filter((c) => !c.is_system && c.due_amount > 0.01)
     .map((c) => ({
       id: c.id,
       name: c.name,
@@ -370,7 +370,9 @@ export async function getTopPendingDues(
     }));
 
   const supplierRows: PendingDueRow[] = suppliers
-    .filter((s) => !s.is_deleted && s.payable_amount > 0.01)
+    .filter(
+      (s) => !s.is_deleted && !s.is_system && s.payable_amount > 0.01
+    )
     .map((s) => ({
       id: s.id,
       name: s.name,

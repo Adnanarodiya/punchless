@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureSystemParties } from "@/lib/queries/system-party.queries";
 import type { Database } from "@punchless/types/database.types";
+import {
+  fetchAllLedgerEntries,
+  fetchAllLedgerRowsForEntity,
+} from "@/lib/utils/ledger-pagination";
 import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
+import { SYSTEM_INCOME_CLIENT_NAME } from "@/lib/constants/system-parties";
 import {
   displayStatementLinesNewestFirst,
   getBalanceMeta,
@@ -289,16 +294,12 @@ async function getLedgerBalancesByClient(
   if (clientIds.length === 0) return {};
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("ledger_entries")
-    .select("entity_id, entry_type, amount")
-    .eq("entity_type", "client")
-    .in("entity_id", clientIds);
+  const data = await fetchAllLedgerEntries(supabase, "client", clientIds);
 
   const balances: Record<string, number> = {};
   for (const id of clientIds) balances[id] = 0;
 
-  for (const entry of data ?? []) {
+  for (const entry of data) {
     const id = entry.entity_id as string;
     const amount = parseLedgerAmount(entry.amount);
     if (entry.entry_type === "debit") {
@@ -366,9 +367,15 @@ export async function getClientById(
 
 export async function getClientsSummary(): Promise<ClientSummary> {
   const clients = await getClients();
+  const billable = clients.filter(
+    (c) => !c.is_system && c.name !== SYSTEM_INCOME_CLIENT_NAME
+  );
   return {
-    totalClients: clients.length,
-    totalDue: clients.reduce((sum, client) => sum + client.due_amount, 0),
+    totalClients: billable.length,
+    totalDue: billable.reduce(
+      (sum, client) => sum + Math.max(0, client.due_amount),
+      0
+    ),
   };
 }
 
@@ -535,27 +542,14 @@ export async function getClientStatement(
 ): Promise<StatementResult> {
   const supabase = await createClient();
 
-  const { data: allEntries } = await supabase
-    .from("ledger_entries")
-    .select("*")
-    .eq("entity_type", "client")
-    .eq("entity_id", clientId)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const entries = (allEntries as LedgerRow[]) ?? [];
   const invoices = await getClientInvoices(clientId);
   await cleanupStaleInvoiceLedgerEntries(clientId, invoices);
 
-  const { data: refreshedEntries } = await supabase
-    .from("ledger_entries")
-    .select("*")
-    .eq("entity_type", "client")
-    .eq("entity_id", clientId)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const ledgerRows = (refreshedEntries as LedgerRow[]) ?? entries;
+  const ledgerRows = (await fetchAllLedgerRowsForEntity(
+    supabase,
+    "client",
+    clientId
+  )) as LedgerRow[];
   const fullyPaidInvoiceIds = getFullyPaidInvoiceIds(invoices);
   const invoiceIdSet = new Set(invoices.map((invoice) => invoice.id));
 

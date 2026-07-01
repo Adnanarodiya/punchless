@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  fetchAllLedgerEntries,
+  fetchAllLedgerRowsForEntity,
+} from "@/lib/utils/ledger-pagination";
 import type { Database } from "@punchless/types/database.types";
 
 type BankRow = Database["public"]["Tables"]["bank_accounts"]["Row"];
@@ -57,16 +61,12 @@ async function getLedgerBalancesByBank(
   if (bankIds.length === 0) return {};
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("ledger_entries")
-    .select("entity_id, entry_type, amount")
-    .eq("entity_type", "bank")
-    .in("entity_id", bankIds);
+  const data = await fetchAllLedgerEntries(supabase, "bank", bankIds);
 
   const balances: Record<string, number> = {};
   for (const id of bankIds) balances[id] = 0;
 
-  for (const entry of data ?? []) {
+  for (const entry of data) {
     const id = entry.entity_id as string;
     const amount = parseAmount(entry.amount);
     if (entry.entry_type === "credit") {
@@ -143,15 +143,11 @@ export async function getBankStatement(
 }> {
   const supabase = await createClient();
 
-  const { data: allEntries } = await supabase
-    .from("ledger_entries")
-    .select("*")
-    .eq("entity_type", "bank")
-    .eq("entity_id", bankId)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const entries = (allEntries as LedgerRow[]) ?? [];
+  const entries = (await fetchAllLedgerRowsForEntity(
+    supabase,
+    "bank",
+    bankId
+  )) as LedgerRow[];
   const beforePeriod = entries.filter((entry) => entry.entry_date < startDate);
   const inPeriod = entries.filter(
     (entry) =>

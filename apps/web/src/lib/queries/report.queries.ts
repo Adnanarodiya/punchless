@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllLedgerRows } from "@/lib/utils/ledger-pagination";
 
 function parseAmount(value: unknown): number {
   const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
@@ -447,26 +448,27 @@ export async function getRojmelReport(
 ): Promise<RojmelRow[]> {
   const supabase = await createClient();
 
-  const { data: openingRows } = await supabase
-    .from("ledger_entries")
-    .select("entry_type, amount")
-    .lt("entry_date", startDate);
+  const openingRows = await fetchAllLedgerRows(supabase, {
+    dateFilter: { kind: "lt", date: startDate },
+  });
 
   let opening = 0;
-  for (const row of openingRows ?? []) {
+  for (const row of openingRows) {
     const amount = parseAmount(row.amount);
     if (row.entry_type === "credit") opening += amount;
     else opening -= amount;
   }
   opening = round2(opening);
 
-  const { data } = await supabase
-    .from("ledger_entries")
-    .select("*")
-    .gte("entry_date", startDate)
-    .lte("entry_date", endDate)
-    .order("entry_date", { ascending: true })
-    .order("created_at", { ascending: true });
+  const periodRows = await fetchAllLedgerRows(supabase, {
+    dateFilter: { kind: "range", start: startDate, end: endDate },
+  });
+  const data = [...periodRows].sort((a, b) => {
+    if (a.entry_date !== b.entry_date) {
+      return a.entry_date.localeCompare(b.entry_date);
+    }
+    return (a.created_at ?? "").localeCompare(b.created_at ?? "");
+  });
 
   let balance = opening;
   const lines: RojmelRow[] = [];
@@ -483,7 +485,7 @@ export async function getRojmelReport(
     });
   }
 
-  for (const row of data ?? []) {
+  for (const row of data) {
     const amount = parseAmount(row.amount);
     const debit = row.entry_type === "debit" ? amount : 0;
     const credit = row.entry_type === "credit" ? amount : 0;
@@ -589,21 +591,19 @@ async function getBalanceSnapshot(
   const supabase = await createClient();
   const dateFilter = inclusive ? "lte" : "lt";
 
-  const ledgerQuery = supabase
-    .from("ledger_entries")
-    .select("entity_type, entity_id, entry_type, amount, entry_date");
-
-  const { data: ledgerRows } =
-    dateFilter === "lte"
-      ? await ledgerQuery.lte("entry_date", asOfDate)
-      : await ledgerQuery.lt("entry_date", asOfDate);
+  const ledgerRows = await fetchAllLedgerRows(supabase, {
+    dateFilter:
+      dateFilter === "lte"
+        ? { kind: "lte", date: asOfDate }
+        : { kind: "lt", date: asOfDate },
+  });
 
   const clientBalances: Record<string, number> = {};
   const supplierBalances: Record<string, number> = {};
   const staffBalances: Record<string, number> = {};
   const bankBalances: Record<string, number> = {};
 
-  for (const row of ledgerRows ?? []) {
+  for (const row of ledgerRows) {
     const amount = parseAmount(row.amount);
     const entityId = row.entity_id as string;
     if (!entityId) continue;

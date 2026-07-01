@@ -35,6 +35,74 @@ export async function resolveSettlementRemark(options: {
   };
 }
 
+export async function getClientBillOutstanding(
+  supabase: Supabase,
+  billId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from("invoices")
+    .select("credit_amount")
+    .eq("id", billId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+
+  if (!data) return 0;
+  return Math.round(Number(data.credit_amount) * 100) / 100;
+}
+
+export async function getPurchaseBillOutstanding(
+  supabase: Supabase,
+  billId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from("purchase_invoices")
+    .select("credit_amount")
+    .eq("id", billId)
+    .eq("is_deleted", false)
+    .maybeSingle();
+
+  if (!data) return 0;
+  return Math.round(Number(data.credit_amount) * 100) / 100;
+}
+
+export async function applyPurchaseBillSettlement(
+  supabase: Supabase,
+  options: {
+    billIds: string[];
+    amount: number;
+  }
+) {
+  let remaining = options.amount;
+
+  for (const billId of options.billIds) {
+    if (remaining <= 0.01) break;
+
+    const { data: invoice } = await supabase
+      .from("purchase_invoices")
+      .select("credit_amount")
+      .eq("id", billId)
+      .maybeSingle();
+
+    if (!invoice) continue;
+
+    const currentCredit = Number(invoice.credit_amount) || 0;
+    if (currentCredit <= 0.01) continue;
+
+    const applied = Math.min(remaining, currentCredit);
+    const nextCredit = Math.max(
+      0,
+      Math.round((currentCredit - applied) * 100) / 100
+    );
+
+    await supabase
+      .from("purchase_invoices")
+      .update({ credit_amount: nextCredit } as never)
+      .eq("id", billId);
+
+    remaining = Math.round((remaining - applied) * 100) / 100;
+  }
+}
+
 export async function applyClientBillSettlement(
   supabase: Supabase,
   options: {

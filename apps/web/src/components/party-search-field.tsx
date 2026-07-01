@@ -21,6 +21,7 @@ export type PartySelection = {
   billId?: string;
   invoiceNumber?: string;
   totalAmount?: number;
+  outstanding?: number;
   displayQuery: string;
 };
 
@@ -159,6 +160,7 @@ export function PartySearchField({
               billId: result.billId,
               invoiceNumber: result.invoiceNumber,
               totalAmount: result.totalAmount,
+              outstanding: result.outstanding,
               displayQuery: partyWithBillLabel(partyLabel, result.invoiceNumber),
             });
             setShowList(false);

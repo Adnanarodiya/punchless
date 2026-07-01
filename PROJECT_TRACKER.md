@@ -1,6 +1,6 @@
 # 📊 Punchless — Project Tracker
 
-> **Last updated:** 2026-07-01 (Bill total shown below amount field when bill selected from search)
+> **Last updated:** 2026-07-01 (Journal modal — discount settlements + credit/debit notes)
 >
 > This file tracks every file in the project, what it does, and which phase it belongs to.
 > **Rule:** This file MUST be updated whenever any file is created, modified, or deleted.
@@ -82,7 +82,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | File | Phase | Description |
 |------|-------|-------------|
 | `config.toml` | 2 | Supabase local config (project ID: `lwjnkyaihiclbfnukrvn`) |
-| `seed.sql` | 2/13.5 | **Statement demo seed** — clients, suppliers, banks, staff ledger data; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
+| `seed.sql` | 2/13.5 | **Statement + journal demo seed** — Rajesh/Patel clients, Auto Parts suppliers, banks, staff ledgers; **BILAL** (customer) + **ZAID** (supplier) with 10 sales + 10 purchase bills, discounts, CN/DN; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
 | `migrations/.gitkeep` | 2 | Placeholder |
 | `migrations/20260207112531_initial_schema.sql` | 2 | **Main schema**: companies, users, workshops, jobs, attendance_sessions, salary_advances + RLS + indexes + trigger |
 | `migrations/20260207154949_fix_signup_trigger_schema_qualified.sql` | 2 | Fix: schema-qualified `public.companies`/`public.users` in signup trigger |
@@ -107,6 +107,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `migrations/20260625160000_audit_logs.sql` | 18 | `audit_logs` table — company-scoped action trail; owner SELECT, owner/admin INSERT |
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
 | `migrations/20260625200000_push_tokens.sql` | 8 | `push_tokens` table — Expo push tokens per user/device + RLS (own tokens only) |
+| `migrations/20260701120000_journal_discount_credit_notes.sql` | **V3-B** | `discount_settlements`, `credit_notes`, `debit_notes`; purchase `credit_amount`; journal entry categories; ledger ref types include existing `bank_transaction`/`transfer`/HR types |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -255,7 +256,11 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/invoices/page.tsx` | 13 | Server component: invoices + clients + jobs + suggested number |
 | `dashboard/invoices/invoice-manager.tsx` | 13/3/**P1-2** | Quick bill modal; **Add GST** converts quick bill → tax invoice; `?convertGst=1` deep link |
 | `quick-bill-modal.tsx` | **V3-A** | Sales bill modal — global entry date in header; customer autocomplete; **no GST link** |
-| `general-entry-modal.tsx` | **V3-B** | General receipt/payment — global entry date; 2-col bill panel when Against bill |
+| `journal-modal.tsx` | **V3-B** | Journal — Discount (given/received + bill search) or Credit note / Debit note |
+| `general-entry-modal.tsx` | **V3-B** | Legacy general entry (replaced by `journal-modal.tsx` on home) |
+| `lib/actions/journal.actions.ts` | **V3-B** | Discount settlement, credit note (CN-0001), debit note (DN-0001) |
+| `lib/validations/journal.schema.ts` | **V3-B** | Zod — discount must be less than bill due; payment = due − discount |
+| `lib/utils/journal-number.ts` | **V3-B** | CN-/DN- auto number formatting |
 | `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + against-bill remark + client invoice credit reduction |
 | `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode, settlement type, bill required when against bill |
 | `pay-supplier-modal.tsx` | **UX** | Pay supplier — bill suffix search locks against-bill; hides settlement toggle; creates supplier on save only |

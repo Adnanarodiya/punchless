@@ -1160,11 +1160,226 @@ export type Database = {
           },
         ]
       }
+      credit_notes: {
+        Row: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          credit_note_number: string
+          deleted_at: string | null
+          id: string
+          invoice_id: string
+          is_deleted: boolean
+          issue_date: string
+          remark: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          credit_note_number: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id: string
+          is_deleted?: boolean
+          issue_date?: string
+          remark?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          credit_note_number?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string
+          is_deleted?: boolean
+          issue_date?: string
+          remark?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debit_notes: {
+        Row: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          debit_note_number: string
+          deleted_at: string | null
+          id: string
+          invoice_id: string
+          is_deleted: boolean
+          issue_date: string
+          remark: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          debit_note_number: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id: string
+          is_deleted?: boolean
+          issue_date?: string
+          remark?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          debit_note_number?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string
+          is_deleted?: boolean
+          issue_date?: string
+          remark?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debit_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      discount_settlements: {
+        Row: {
+          bank_id: string | null
+          bank_sub_mode: Database["public"]["Enums"]["bank_sub_mode"] | null
+          bill_amount: number
+          bill_id: string
+          bill_side: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          entry_date: string
+          id: string
+          invoice_number: string | null
+          party_id: string
+          party_side: string
+          payment_amount: number
+          payment_mode: string
+          payment_reference_id: string | null
+          remark: string | null
+          settlement_kind: string
+        }
+        Insert: {
+          bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
+          bill_amount: number
+          bill_id: string
+          bill_side: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount: number
+          entry_date?: string
+          id?: string
+          invoice_number?: string | null
+          party_id: string
+          party_side: string
+          payment_amount: number
+          payment_mode: string
+          payment_reference_id?: string | null
+          remark?: string | null
+          settlement_kind: string
+        }
+        Update: {
+          bank_id?: string | null
+          bank_sub_mode?: Database["public"]["Enums"]["bank_sub_mode"] | null
+          bill_amount?: number
+          bill_id?: string
+          bill_side?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          entry_date?: string
+          id?: string
+          invoice_number?: string | null
+          party_id?: string
+          party_side?: string
+          payment_amount?: number
+          payment_mode?: string
+          payment_reference_id?: string | null
+          remark?: string | null
+          settlement_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_settlements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_invoices: {
         Row: {
           company_id: string
           created_at: string | null
           created_by: string | null
+          credit_amount: number
           deleted_at: string | null
           entry_category: Database["public"]["Enums"]["entry_category"] | null
           gst_amount: number
@@ -1184,6 +1399,7 @@ export type Database = {
           company_id: string
           created_at?: string | null
           created_by?: string | null
+          credit_amount?: number
           deleted_at?: string | null
           entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
@@ -1203,6 +1419,7 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           created_by?: string | null
+          credit_amount?: number
           deleted_at?: string | null
           entry_category?: Database["public"]["Enums"]["entry_category"] | null
           gst_amount?: number
@@ -1962,6 +2179,10 @@ export type Database = {
         | "payment"
         | "indirect_income"
         | "indirect_expense"
+        | "discount_given"
+        | "discount_received"
+        | "credit_note"
+        | "debit_note"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2100,6 +2321,10 @@ export const Constants = {
         "payment",
         "indirect_income",
         "indirect_expense",
+        "discount_given",
+        "discount_received",
+        "credit_note",
+        "debit_note",
       ],
     },
   },

@@ -11,7 +11,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { CollectPaymentModal } from "@/components/collect-payment-modal";
-import { GeneralEntryModal } from "@/components/general-entry-modal";
+import { JournalModal } from "@/components/journal-modal";
 import { PaySupplierModal } from "@/components/pay-supplier-modal";
 import { PurchaseBillModal } from "@/components/purchase-bill-modal";
 import { QuickBillModal } from "@/components/quick-bill-modal";
@@ -190,7 +190,7 @@ export function DashboardHomeModals({
         onSuccess={refresh}
       />
 
-      <GeneralEntryModal
+      <JournalModal
         open={generalOpen}
         onOpenChange={setGeneralOpen}
         clients={clients}

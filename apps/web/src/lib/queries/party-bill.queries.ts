@@ -136,7 +136,7 @@ export async function searchPartiesAndBills(
       const { data: bills } = await supabase
         .from("purchase_invoices")
         .select(
-          "id, invoice_number, total_amount, invoice_type, suppliers(id, name, alias)"
+          "id, invoice_number, total_amount, credit_amount, invoice_type, suppliers(id, name, alias)"
         )
         .eq("is_deleted", false)
         .eq("invoice_type", "purchase")
@@ -152,6 +152,7 @@ export async function searchPartiesAndBills(
         if (!supplier) continue;
 
         const totalAmount = parseAmount(row.total_amount);
+        const outstanding = parseAmount(row.credit_amount);
 
         seenBillIds.add(row.id);
         results.push({
@@ -162,7 +163,7 @@ export async function searchPartiesAndBills(
           partyName: supplier.name,
           partyAlias: supplier.alias,
           totalAmount,
-          outstanding: totalAmount,
+          outstanding: outstanding > 0.01 ? outstanding : totalAmount,
           label: billSearchLabel(row.invoice_number, supplier.name, supplier.alias),
         });
       }
@@ -209,19 +210,24 @@ export async function getOutstandingBillsForParty(
 
   const { data } = await supabase
     .from("purchase_invoices")
-    .select("id, invoice_number, invoice_date, total_amount, invoice_type")
+    .select("id, invoice_number, invoice_date, total_amount, credit_amount, invoice_type")
     .eq("supplier_id", partyId)
     .eq("is_deleted", false)
     .eq("invoice_type", "purchase")
     .order("invoice_date", { ascending: false });
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    invoiceNumber: row.invoice_number,
-    invoiceDate: row.invoice_date,
-    totalAmount: parseAmount(row.total_amount),
-    outstanding: parseAmount(row.total_amount),
-  }));
+  return (data ?? [])
+    .map((row) => {
+      const outstanding = parseAmount(row.credit_amount);
+      return {
+        id: row.id,
+        invoiceNumber: row.invoice_number,
+        invoiceDate: row.invoice_date,
+        totalAmount: parseAmount(row.total_amount),
+        outstanding,
+      };
+    })
+    .filter((bill) => bill.outstanding > 0.01);
 }
 
 export async function getBillReference(

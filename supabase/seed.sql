@@ -7,7 +7,9 @@
 --   • Bank statement     (/dashboard/banks/.../statement)
 --   • Staff statement    (/dashboard/employees/.../statement)
 --
--- Idempotent: skips if "Rajesh Transport" client already exists for the company.
+-- Idempotent:
+--   Block 1 — skips if "Rajesh Transport" client already exists.
+--   Block 2 — skips if "BILAL" client already exists (journal demo with ZAID supplier).
 --
 -- Fresh local reset login (only when no owner existed before seed):
 --   Email:    owner@demo.punchless
@@ -509,4 +511,480 @@ BEGIN
   RAISE NOTICE '  Supplier: Auto Parts Hub';
   RAISE NOTICE '  Bank:     HDFC Bank';
   RAISE NOTICE '  Staff:    Vikram Mechanic';
+END $$;
+
+-- ============================================
+-- Journal demo: BILAL (customer) + ZAID (supplier)
+-- 10 sales bills + 10 purchase bills with discounts, CN/DN, payments
+-- Idempotent: skips if BILAL client already exists.
+-- ============================================
+
+DO $$
+DECLARE
+  v_company_id UUID;
+  v_owner_id UUID;
+  v_bank_hdfc UUID;
+  v_client_bilal UUID := 'b1111111-b111-b111-b111-b11111111111';
+  v_supplier_zaid UUID := 'a2111111-1111-1111-1111-111111111111';
+  v_bil_inv1 UUID := 'c1000001-0001-4001-8001-000000000001';
+  v_bil_inv2 UUID := 'c1000002-0001-4001-8001-000000000002';
+  v_bil_inv3 UUID := 'c1000003-0001-4001-8001-000000000003';
+  v_bil_inv4 UUID := 'c1000004-0001-4001-8001-000000000004';
+  v_bil_inv5 UUID := 'c1000005-0001-4001-8001-000000000005';
+  v_bil_inv6 UUID := 'c1000006-0001-4001-8001-000000000006';
+  v_bil_inv7 UUID := 'c1000007-0001-4001-8001-000000000007';
+  v_bil_inv8 UUID := 'c1000008-0001-4001-8001-000000000008';
+  v_bil_inv9 UUID := 'c1000009-0001-4001-8001-000000000009';
+  v_bil_inv10 UUID := 'c100000a-0001-4001-8001-00000000000a';
+  v_zaid_pur1 UUID := 'd1000001-0001-4001-8001-000000000001';
+  v_zaid_pur2 UUID := 'd1000002-0001-4001-8001-000000000002';
+  v_zaid_pur3 UUID := 'd1000003-0001-4001-8001-000000000003';
+  v_zaid_pur4 UUID := 'd1000004-0001-4001-8001-000000000004';
+  v_zaid_pur5 UUID := 'd1000005-0001-4001-8001-000000000005';
+  v_zaid_pur6 UUID := 'd1000006-0001-4001-8001-000000000006';
+  v_zaid_pur7 UUID := 'd1000007-0001-4001-8001-000000000007';
+  v_zaid_pur8 UUID := 'd1000008-0001-4001-8001-000000000008';
+  v_zaid_pur9 UUID := 'd1000009-0001-4001-8001-000000000009';
+  v_zaid_pur10 UUID := 'd100000a-0001-4001-8001-00000000000a';
+  v_ds_bil2 UUID := 'e1000002-0001-4001-8001-000000000002';
+  v_ds_bil8 UUID := 'e1000008-0001-4001-8001-000000000008';
+  v_ds_zaid2 UUID := 'e2000002-0001-4001-8001-000000000002';
+  v_ds_zaid5 UUID := 'e2000005-0001-4001-8001-000000000005';
+  v_ds_zaid8 UUID := 'e2000008-0001-4001-8001-000000000008';
+  v_cp_bil2 UUID := 'f1000002-0001-4001-8001-000000000002';
+  v_cp_bil8 UUID := 'f1000008-0001-4001-8001-000000000008';
+  v_cp_bil9 UUID := 'f1000009-0001-4001-8001-000000000009';
+  v_sp_zaid2 UUID := 'f2000002-0001-4001-8001-000000000002';
+  v_sp_zaid4 UUID := 'f2000004-0001-4001-8001-000000000004';
+  v_sp_zaid5 UUID := 'f2000005-0001-4001-8001-000000000005';
+  v_sp_zaid7 UUID := 'f2000007-0001-4001-8001-000000000007';
+  v_sp_zaid8 UUID := 'f2000008-0001-4001-8001-000000000008';
+  v_sp_zaid10 UUID := 'f200000a-0001-4001-8001-00000000000a';
+  v_cn1 UUID := 'a1000001-0001-4001-8001-000000000001';
+  v_cn2 UUID := 'a1000002-0001-4001-8001-000000000002';
+  v_dn1 UUID := 'a2000001-0001-4001-8001-000000000001';
+BEGIN
+  SELECT u.company_id, u.id
+  INTO v_company_id, v_owner_id
+  FROM public.users u
+  WHERE u.role = 'owner'
+  ORDER BY u.created_at
+  LIMIT 1;
+
+  IF v_company_id IS NULL THEN
+    RAISE NOTICE 'Journal seed: no company found. Run main seed first.';
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.clients
+    WHERE company_id = v_company_id AND name = 'BILAL'
+  ) THEN
+    RAISE NOTICE 'Journal seed: BILAL demo already exists for company %. Skipping.', v_company_id;
+    RETURN;
+  END IF;
+
+  SELECT id INTO v_bank_hdfc
+  FROM public.bank_accounts
+  WHERE company_id = v_company_id AND bank_name = 'HDFC Bank'
+  LIMIT 1;
+
+  IF v_bank_hdfc IS NULL THEN
+    RAISE NOTICE 'Journal seed: HDFC bank not found. Run main seed first.';
+    RETURN;
+  END IF;
+
+  RAISE NOTICE 'Journal seed: inserting BILAL + ZAID demo for company %', v_company_id;
+
+  INSERT INTO public.clients (
+    id, company_id, name, alias, contact, address, opening_balance
+  ) VALUES (
+    v_client_bilal, v_company_id, 'BILAL', 'BIL', '9900112233',
+    'Navrangpura, Ahmedabad', 0
+  );
+
+  INSERT INTO public.suppliers (
+    id, company_id, name, alias, contact, address, opening_balance
+  ) VALUES (
+    v_supplier_zaid, v_company_id, 'ZAID', 'ZAI', '9900334455',
+    'Naroda, Ahmedabad', 0
+  );
+
+  -- BILAL — 10 sales bills (bookkeeping, no GST)
+  INSERT INTO public.invoices (
+    id, company_id, client_id, invoice_number, invoice_date, vehicle_number,
+    taxable_amount, gst_percent, gst_amount, total_amount,
+    payment_mode, cash_amount, bank_amount, credit_amount, remark, created_by
+  ) VALUES
+    (v_bil_inv1, v_company_id, v_client_bilal, 'SB-BIL-001', '2026-01-05', 'GJ01BL1001',
+     10000, 0, 0, 10000, 'credit', 0, 0, 10000, 'General repair — open', v_owner_id),
+    (v_bil_inv2, v_company_id, v_client_bilal, 'SB-BIL-002', '2026-01-10', 'GJ01BL1002',
+     15000, 0, 0, 15000, 'credit', 0, 0, 0, 'Paint job — discount + cash settled', v_owner_id),
+    (v_bil_inv3, v_company_id, v_client_bilal, 'SB-BIL-003', '2026-01-15', 'GJ01BL1003',
+     12000, 0, 0, 12000, 'credit', 0, 0, 9000, 'Service — partial credit note', v_owner_id),
+    (v_bil_inv4, v_company_id, v_client_bilal, 'SB-BIL-004', '2026-01-20', 'GJ01BL1004',
+     8000, 0, 0, 8000, 'credit', 0, 0, 8000, 'Wheel alignment — open', v_owner_id),
+    (v_bil_inv5, v_company_id, v_client_bilal, 'SB-BIL-005', '2026-02-01', 'GJ01BL1005',
+     20000, 0, 0, 20000, 'credit', 0, 0, 21500, 'Engine work — debit note added', v_owner_id),
+    (v_bil_inv6, v_company_id, v_client_bilal, 'SB-BIL-006', '2026-02-05', 'GJ01BL1006',
+     5000, 0, 0, 5000, 'credit', 0, 0, 0, 'Minor service — fully credited off', v_owner_id),
+    (v_bil_inv7, v_company_id, v_client_bilal, 'SB-BIL-007', '2026-02-10', 'GJ01BL1007',
+     18000, 0, 0, 18000, 'credit', 0, 0, 18000, 'AC repair — open', v_owner_id),
+    (v_bil_inv8, v_company_id, v_client_bilal, 'SB-BIL-008', '2026-02-15', 'GJ01BL1008',
+     22000, 0, 0, 22000, 'credit', 0, 0, 0, 'Body work — discount + bank settled', v_owner_id),
+    (v_bil_inv9, v_company_id, v_client_bilal, 'SB-BIL-009', '2026-02-20', 'GJ01BL1009',
+     9000, 0, 0, 9000, 'credit', 0, 0, 0, 'Oil change — paid in full', v_owner_id),
+    (v_bil_inv10, v_company_id, v_client_bilal, 'SB-BIL-010', '2026-06-01', 'GJ01BL1010',
+     16000, 0, 0, 16000, 'credit', 0, 0, 16000, 'Clutch job — open', v_owner_id);
+
+  INSERT INTO public.invoice_line_items (invoice_id, description, quantity, unit_price, gst_percent, amount, sort_order)
+  VALUES
+    (v_bil_inv1, 'Labour + parts', 1, 10000, 0, 10000, 0),
+    (v_bil_inv2, 'Full paint', 1, 15000, 0, 15000, 0),
+    (v_bil_inv3, 'Periodic service', 1, 12000, 0, 12000, 0),
+    (v_bil_inv4, 'Wheel alignment', 1, 8000, 0, 8000, 0),
+    (v_bil_inv5, 'Engine overhaul', 1, 20000, 0, 20000, 0),
+    (v_bil_inv6, 'Minor service', 1, 5000, 0, 5000, 0),
+    (v_bil_inv7, 'AC gas + coil', 1, 18000, 0, 18000, 0),
+    (v_bil_inv8, 'Panel beating', 1, 22000, 0, 22000, 0),
+    (v_bil_inv9, 'Oil + filter', 1, 9000, 0, 9000, 0),
+    (v_bil_inv10, 'Clutch plate', 1, 16000, 0, 16000, 0);
+
+  -- BILAL invoice ledger (debits on bill)
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'client', v_client_bilal, 'debit', 10000, 'invoice', v_bil_inv1, 'Sales bill #SB-BIL-001', '2026-01-05', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 15000, 'invoice', v_bil_inv2, 'Sales bill #SB-BIL-002', '2026-01-10', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 12000, 'invoice', v_bil_inv3, 'Sales bill #SB-BIL-003', '2026-01-15', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 8000, 'invoice', v_bil_inv4, 'Sales bill #SB-BIL-004', '2026-01-20', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 20000, 'invoice', v_bil_inv5, 'Sales bill #SB-BIL-005', '2026-02-01', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 5000, 'invoice', v_bil_inv6, 'Sales bill #SB-BIL-006', '2026-02-05', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 18000, 'invoice', v_bil_inv7, 'Sales bill #SB-BIL-007', '2026-02-10', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 22000, 'invoice', v_bil_inv8, 'Sales bill #SB-BIL-008', '2026-02-15', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 9000, 'invoice', v_bil_inv9, 'Sales bill #SB-BIL-009', '2026-02-20', 'sales_bill', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'debit', 16000, 'invoice', v_bil_inv10, 'Sales bill #SB-BIL-010', '2026-06-01', 'sales_bill', v_owner_id);
+
+  -- BILAL bill 002: discount given 2000 + cash 13000
+  INSERT INTO public.discount_settlements (
+    id, company_id, settlement_kind, party_side, party_id, bill_id, bill_side,
+    invoice_number, bill_amount, discount_amount, payment_amount, payment_mode,
+    entry_date, remark, created_by
+  ) VALUES (
+    v_ds_bil2, v_company_id, 'given', 'client', v_client_bilal, v_bil_inv2, 'client',
+    'SB-BIL-002', 15000, 2000, 13000, 'cash', '2026-01-12',
+    'Festival discount on paint job', v_owner_id
+  );
+
+  INSERT INTO public.client_payments (
+    id, company_id, client_id, amount, payment_mode, payment_date, remark,
+    entry_category, created_by
+  ) VALUES (
+    v_cp_bil2, v_company_id, v_client_bilal, 13000, 'cash', '2026-01-12',
+    'Payment received (cash) — #SB-BIL-002', 'receipt', v_owner_id
+  );
+
+  UPDATE public.discount_settlements
+  SET payment_reference_id = v_cp_bil2
+  WHERE id = v_ds_bil2;
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'client', v_client_bilal, 'credit', 13000, 'cash', 'payment', v_cp_bil2,
+     'Payment received (cash) — #SB-BIL-002', '2026-01-12', 'receipt', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'credit', 2000, NULL, 'discount_settlement', v_ds_bil2,
+     'Discount given — #SB-BIL-002', '2026-01-12', 'discount_given', v_owner_id);
+
+  -- BILAL bill 003: credit note CN-0001 for 3000
+  INSERT INTO public.credit_notes (
+    id, company_id, credit_note_number, invoice_id, client_id, issue_date, amount, remark, created_by
+  ) VALUES (
+    v_cn1, v_company_id, 'CN-0001', v_bil_inv3, v_client_bilal, '2026-01-18', 3000,
+    'Warranty adjustment on service', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'client', v_client_bilal, 'credit', 3000, 'credit_note', v_cn1,
+    'Credit note CN-0001 — #SB-BIL-003', '2026-01-18', 'credit_note', v_owner_id
+  );
+
+  -- BILAL bill 005: debit note DN-0001 for 1500
+  INSERT INTO public.debit_notes (
+    id, company_id, debit_note_number, invoice_id, client_id, issue_date, amount, remark, created_by
+  ) VALUES (
+    v_dn1, v_company_id, 'DN-0001', v_bil_inv5, v_client_bilal, '2026-02-03', 1500,
+    'Extra parts not on original bill', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'client', v_client_bilal, 'debit', 1500, 'debit_note', v_dn1,
+    'Debit note DN-0001 — #SB-BIL-005', '2026-02-03', 'debit_note', v_owner_id
+  );
+
+  -- BILAL bill 006: credit note CN-0002 full settlement
+  INSERT INTO public.credit_notes (
+    id, company_id, credit_note_number, invoice_id, client_id, issue_date, amount, remark, created_by
+  ) VALUES (
+    v_cn2, v_company_id, 'CN-0002', v_bil_inv6, v_client_bilal, '2026-02-07', 5000,
+    'Bill cancelled — goodwill credit', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'client', v_client_bilal, 'credit', 5000, 'credit_note', v_cn2,
+    'Credit note CN-0002 — #SB-BIL-006', '2026-02-07', 'credit_note', v_owner_id
+  );
+
+  -- BILAL bill 008: discount given 3000 + bank 19000
+  INSERT INTO public.discount_settlements (
+    id, company_id, settlement_kind, party_side, party_id, bill_id, bill_side,
+    invoice_number, bill_amount, discount_amount, payment_amount, payment_mode,
+    bank_sub_mode, bank_id, entry_date, remark, created_by
+  ) VALUES (
+    v_ds_bil8, v_company_id, 'given', 'client', v_client_bilal, v_bil_inv8, 'client',
+    'SB-BIL-008', 22000, 3000, 19000, 'bank', 'net_banking', v_bank_hdfc, '2026-02-18',
+    'Volume discount on body work', v_owner_id
+  );
+
+  INSERT INTO public.client_payments (
+    id, company_id, client_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES (
+    v_cp_bil8, v_company_id, v_client_bilal, 19000, 'bank', 'net_banking', v_bank_hdfc,
+    '2026-02-18', 'Payment received (net banking) — #SB-BIL-008', 'receipt', v_owner_id
+  );
+
+  UPDATE public.discount_settlements
+  SET payment_reference_id = v_cp_bil8
+  WHERE id = v_ds_bil8;
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'client', v_client_bilal, 'credit', 19000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_cp_bil8, 'Payment received (net banking) — #SB-BIL-008', '2026-02-18', 'receipt', v_owner_id),
+    (v_company_id, 'client', v_client_bilal, 'credit', 3000, NULL, NULL, NULL,
+     'discount_settlement', v_ds_bil8, 'Discount given — #SB-BIL-008', '2026-02-18', 'discount_given', v_owner_id),
+    (v_company_id, 'bank', v_bank_hdfc, 'credit', 19000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_cp_bil8, 'Payment received (net banking) — #SB-BIL-008', '2026-02-18', 'receipt', v_owner_id);
+
+  -- BILAL bill 009: full cash payment
+  INSERT INTO public.client_payments (
+    id, company_id, client_id, amount, payment_mode, payment_date, remark,
+    entry_category, created_by
+  ) VALUES (
+    v_cp_bil9, v_company_id, v_client_bilal, 9000, 'cash', '2026-02-22',
+    'Payment received (cash) — #SB-BIL-009', 'receipt', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'client', v_client_bilal, 'credit', 9000, 'cash', 'payment', v_cp_bil9,
+    'Payment received (cash) — #SB-BIL-009', '2026-02-22', 'receipt', v_owner_id
+  );
+
+  -- ZAID — 10 purchase bills
+  INSERT INTO public.purchase_invoices (
+    id, company_id, supplier_id, invoice_type, invoice_number, invoice_date,
+    taxable_amount, gst_percent, gst_amount, total_amount, credit_amount, remark, created_by
+  ) VALUES
+    (v_zaid_pur1, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-001', '2026-01-06',
+     14000, 0, 0, 14000, 14000, 'Spare parts batch — open', v_owner_id),
+    (v_zaid_pur2, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-002', '2026-01-11',
+     11000, 0, 0, 11000, 0, 'Filters — discount + cash settled', v_owner_id),
+    (v_zaid_pur3, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-003', '2026-01-16',
+     9500, 0, 0, 9500, 9500, 'Bearings — open', v_owner_id),
+    (v_zaid_pur4, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-004', '2026-01-22',
+     18000, 0, 0, 18000, 0, 'Engine oil drums — bank paid', v_owner_id),
+    (v_zaid_pur5, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-005', '2026-02-02',
+     7500, 0, 0, 7500, 0, 'Gaskets — discount + bank settled', v_owner_id),
+    (v_zaid_pur6, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-006', '2026-02-08',
+     20000, 0, 0, 20000, 20000, 'Clutch kits — open', v_owner_id),
+    (v_zaid_pur7, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-007', '2026-02-12',
+     12500, 0, 0, 12500, 7500, 'Brake pads — partial paid', v_owner_id),
+    (v_zaid_pur8, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-008', '2026-02-16',
+     16000, 0, 0, 16000, 0, 'Radiators — discount + bank settled', v_owner_id),
+    (v_zaid_pur9, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-009', '2026-02-25',
+     8800, 0, 0, 8800, 8800, 'Hoses — open', v_owner_id),
+    (v_zaid_pur10, v_company_id, v_supplier_zaid, 'purchase', 'PB-ZAID-010', '2026-06-02',
+     13200, 0, 0, 13200, 0, 'Belts — cash paid', v_owner_id);
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 14000, 'purchase', v_zaid_pur1, 'Purchase bill #PB-ZAID-001', '2026-01-06', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 11000, 'purchase', v_zaid_pur2, 'Purchase bill #PB-ZAID-002', '2026-01-11', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 9500, 'purchase', v_zaid_pur3, 'Purchase bill #PB-ZAID-003', '2026-01-16', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 18000, 'purchase', v_zaid_pur4, 'Purchase bill #PB-ZAID-004', '2026-01-22', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 7500, 'purchase', v_zaid_pur5, 'Purchase bill #PB-ZAID-005', '2026-02-02', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 20000, 'purchase', v_zaid_pur6, 'Purchase bill #PB-ZAID-006', '2026-02-08', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 12500, 'purchase', v_zaid_pur7, 'Purchase bill #PB-ZAID-007', '2026-02-12', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 16000, 'purchase', v_zaid_pur8, 'Purchase bill #PB-ZAID-008', '2026-02-16', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 8800, 'purchase', v_zaid_pur9, 'Purchase bill #PB-ZAID-009', '2026-02-25', 'purchase_bill', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'credit', 13200, 'purchase', v_zaid_pur10, 'Purchase bill #PB-ZAID-010', '2026-06-02', 'purchase_bill', v_owner_id);
+
+  -- ZAID bill 002: discount received 1000 + cash 10000
+  INSERT INTO public.discount_settlements (
+    id, company_id, settlement_kind, party_side, party_id, bill_id, bill_side,
+    invoice_number, bill_amount, discount_amount, payment_amount, payment_mode,
+    entry_date, remark, created_by
+  ) VALUES (
+    v_ds_zaid2, v_company_id, 'received', 'supplier', v_supplier_zaid, v_zaid_pur2, 'supplier',
+    'PB-ZAID-002', 11000, 1000, 10000, 'cash', '2026-01-14',
+    'Bulk purchase discount from ZAID', v_owner_id
+  );
+
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, payment_date, remark,
+    entry_category, created_by
+  ) VALUES (
+    v_sp_zaid2, v_company_id, v_supplier_zaid, 10000, 'cash', '2026-01-14',
+    'Payment made (cash) — #PB-ZAID-002', 'payment', v_owner_id
+  );
+
+  UPDATE public.discount_settlements SET payment_reference_id = v_sp_zaid2 WHERE id = v_ds_zaid2;
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 10000, 'cash', 'payment', v_sp_zaid2,
+     'Payment made (cash) — #PB-ZAID-002', '2026-01-14', 'payment', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 1000, NULL, 'discount_settlement', v_ds_zaid2,
+     'Discount received — #PB-ZAID-002', '2026-01-14', 'discount_received', v_owner_id);
+
+  -- ZAID bill 004: full bank payment
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES (
+    v_sp_zaid4, v_company_id, v_supplier_zaid, 18000, 'bank', 'upi', v_bank_hdfc,
+    '2026-01-24', 'Payment made (upi) — #PB-ZAID-004', 'payment', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 18000, 'bank', 'upi', v_bank_hdfc,
+     'payment', v_sp_zaid4, 'Payment made (upi) — #PB-ZAID-004', '2026-01-24', 'payment', v_owner_id),
+    (v_company_id, 'bank', v_bank_hdfc, 'debit', 18000, 'bank', 'upi', v_bank_hdfc,
+     'payment', v_sp_zaid4, 'Payment made (upi) — #PB-ZAID-004', '2026-01-24', 'payment', v_owner_id);
+
+  -- ZAID bill 005: discount received 500 + bank 7000
+  INSERT INTO public.discount_settlements (
+    id, company_id, settlement_kind, party_side, party_id, bill_id, bill_side,
+    invoice_number, bill_amount, discount_amount, payment_amount, payment_mode,
+    bank_sub_mode, bank_id, entry_date, remark, created_by
+  ) VALUES (
+    v_ds_zaid5, v_company_id, 'received', 'supplier', v_supplier_zaid, v_zaid_pur5, 'supplier',
+    'PB-ZAID-005', 7500, 500, 7000, 'bank', 'net_banking', v_bank_hdfc, '2026-02-04',
+    'Early payment discount', v_owner_id
+  );
+
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES (
+    v_sp_zaid5, v_company_id, v_supplier_zaid, 7000, 'bank', 'net_banking', v_bank_hdfc,
+    '2026-02-04', 'Payment made (net banking) — #PB-ZAID-005', 'payment', v_owner_id
+  );
+
+  UPDATE public.discount_settlements SET payment_reference_id = v_sp_zaid5 WHERE id = v_ds_zaid5;
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 7000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_zaid5, 'Payment made (net banking) — #PB-ZAID-005', '2026-02-04', 'payment', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 500, NULL, NULL, NULL,
+     'discount_settlement', v_ds_zaid5, 'Discount received — #PB-ZAID-005', '2026-02-04', 'discount_received', v_owner_id),
+    (v_company_id, 'bank', v_bank_hdfc, 'debit', 7000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_zaid5, 'Payment made (net banking) — #PB-ZAID-005', '2026-02-04', 'payment', v_owner_id);
+
+  -- ZAID bill 007: partial payment 5000
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, payment_date, remark,
+    entry_category, created_by
+  ) VALUES (
+    v_sp_zaid7, v_company_id, v_supplier_zaid, 5000, 'cash', '2026-02-14',
+    'Payment made (cash) — #PB-ZAID-007', 'payment', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'supplier', v_supplier_zaid, 'debit', 5000, 'cash', 'payment', v_sp_zaid7,
+    'Payment made (cash) — #PB-ZAID-007', '2026-02-14', 'payment', v_owner_id
+  );
+
+  -- ZAID bill 008: discount received 2000 + bank 14000
+  INSERT INTO public.discount_settlements (
+    id, company_id, settlement_kind, party_side, party_id, bill_id, bill_side,
+    invoice_number, bill_amount, discount_amount, payment_amount, payment_mode,
+    bank_sub_mode, bank_id, entry_date, remark, created_by
+  ) VALUES (
+    v_ds_zaid8, v_company_id, 'received', 'supplier', v_supplier_zaid, v_zaid_pur8, 'supplier',
+    'PB-ZAID-008', 16000, 2000, 14000, 'bank', 'net_banking', v_bank_hdfc, '2026-02-18',
+    'Year-end discount from ZAID', v_owner_id
+  );
+
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES (
+    v_sp_zaid8, v_company_id, v_supplier_zaid, 14000, 'bank', 'net_banking', v_bank_hdfc,
+    '2026-02-18', 'Payment made (net banking) — #PB-ZAID-008', 'payment', v_owner_id
+  );
+
+  UPDATE public.discount_settlements SET payment_reference_id = v_sp_zaid8 WHERE id = v_ds_zaid8;
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 14000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_zaid8, 'Payment made (net banking) — #PB-ZAID-008', '2026-02-18', 'payment', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_zaid, 'debit', 2000, NULL, NULL, NULL,
+     'discount_settlement', v_ds_zaid8, 'Discount received — #PB-ZAID-008', '2026-02-18', 'discount_received', v_owner_id),
+    (v_company_id, 'bank', v_bank_hdfc, 'debit', 14000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_zaid8, 'Payment made (net banking) — #PB-ZAID-008', '2026-02-18', 'payment', v_owner_id);
+
+  -- ZAID bill 010: full cash payment
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, payment_date, remark,
+    entry_category, created_by
+  ) VALUES (
+    v_sp_zaid10, v_company_id, v_supplier_zaid, 13200, 'cash', '2026-06-03',
+    'Payment made (cash) — #PB-ZAID-010', 'payment', v_owner_id
+  );
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES (
+    v_company_id, 'supplier', v_supplier_zaid, 'debit', 13200, 'cash', 'payment', v_sp_zaid10,
+    'Payment made (cash) — #PB-ZAID-010', '2026-06-03', 'payment', v_owner_id
+  );
+
+  RAISE NOTICE 'Journal seed complete:';
+  RAISE NOTICE '  Customer BILAL — 10 sales bills (discounts, CN/DN, payments, 4 open)';
+  RAISE NOTICE '  Supplier ZAID  — 10 purchase bills (discounts, payments, 4 open)';
 END $$;

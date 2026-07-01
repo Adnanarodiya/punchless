@@ -109,6 +109,7 @@ export const createQuickPurchaseBill = protectedAction<FormData>({
       gst_percent: gstPercent,
       gst_amount: 0,
       total_amount: totalAmount,
+      credit_amount: totalAmount,
       remark: data.remark || null,
       entry_category: "purchase_bill",
       created_by: me.id,

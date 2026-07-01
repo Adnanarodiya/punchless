@@ -18,6 +18,8 @@ export type StatementTableLabels = {
   creditColumn: string;
   showVehicleColumn: boolean;
   dueBadgePrefix: string;
+  /** INCOME / EXPENSE system ledger — particular first, no bill/vehicle columns */
+  layout?: "party" | "system-income" | "system-expense";
 };
 
 export type StatementTableRow = {
@@ -66,6 +68,36 @@ function AmountCell({
   );
 }
 
+function RunningBalanceCell({
+  balance,
+  layout,
+}: {
+  balance: StatementTableRow["balance_meta"];
+  layout: StatementTableLabels["layout"];
+}) {
+  if (layout === "system-expense") {
+    return (
+      <BalanceBadge
+        balance={balance}
+        showLabel={false}
+        className="text-destructive"
+      />
+    );
+  }
+
+  if (layout === "system-income") {
+    return (
+      <BalanceBadge
+        balance={balance}
+        showLabel={false}
+        className="text-success"
+      />
+    );
+  }
+
+  return <BalanceBadge balance={balance} />;
+}
+
 export function StatementTable({
   totals,
   lines,
@@ -75,7 +107,19 @@ export function StatementTable({
   pageSize = DEFAULT_TABLE_PAGE_SIZE,
   enablePagination = true,
 }: StatementTableProps) {
-  const colSpanMeta = labels.showVehicleColumn ? 3 : 2;
+  const layout = labels.layout ?? "party";
+  const isSystemIncome = layout === "system-income";
+  const isSystemExpense = layout === "system-expense";
+  const isSystemLedger = isSystemIncome || isSystemExpense;
+  const colSpanMeta = isSystemLedger
+    ? 2
+    : labels.showVehicleColumn
+      ? 3
+      : 2;
+  const emptyColSpan = isSystemLedger ? 7 : labels.showVehicleColumn ? 11 : 10;
+  const closingBalance = lines[0]?.balance_meta;
+  const cellPad = isSystemLedger ? "px-4 py-2.5" : "px-2 py-2";
+  const systemColWidth = `${(100 / 7).toFixed(4)}%`;
   const pagination = useTablePagination(lines, {
     pageSize: enablePagination ? pageSize : lines.length || 1,
   });
@@ -84,34 +128,90 @@ export function StatementTable({
   return (
     <div data-slot="statement-table" className={cn("space-y-3", className)}>
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="statement-table w-full min-w-[720px] border-collapse text-sm">
+        <table
+          className={cn(
+            "statement-table w-full border-collapse text-sm",
+            isSystemLedger ? "table-fixed" : "min-w-[720px]"
+          )}
+        >
+          {isSystemLedger ? (
+            <colgroup>
+              {Array.from({ length: 7 }).map((_, index) => (
+                <col key={index} style={{ width: systemColWidth }} />
+              ))}
+            </colgroup>
+          ) : null}
           <thead>
             <tr className="border-b border-border bg-muted/60 text-left">
-              <th className="px-2 py-2 font-semibold">#</th>
-              <th className="px-2 py-2 font-semibold">{labels.invoiceColumn}</th>
-              {labels.showVehicleColumn ? (
-                <th className="px-2 py-2 font-semibold">Vehicle No.</th>
+              <th
+                className={cn(
+                  cellPad,
+                  "font-semibold",
+                  isSystemLedger && "text-center"
+                )}
+              >
+                #
+              </th>
+              {isSystemLedger ? (
+                <th className={cn(cellPad, "font-semibold")}>Particular</th>
+              ) : (
+                <>
+                  <th className={cn(cellPad, "font-semibold")}>{labels.invoiceColumn}</th>
+                  {labels.showVehicleColumn ? (
+                    <th className={cn(cellPad, "font-semibold")}>Vehicle No.</th>
+                  ) : null}
+                </>
+              )}
+              {!isSystemIncome ? (
+                <th className={cn(cellPad, "font-semibold text-right")}>
+                  {labels.debitColumn}
+                </th>
               ) : null}
-              <th className="px-2 py-2 font-semibold text-right">
-                {labels.debitColumn}
+              {!isSystemExpense ? (
+                <th className={cn(cellPad, "font-semibold text-right")}>
+                  {labels.creditColumn}
+                </th>
+              ) : null}
+              <th
+                className={cn(
+                  cellPad,
+                  "font-semibold",
+                  isSystemLedger && "text-center"
+                )}
+              >
+                Date
               </th>
-              <th className="px-2 py-2 font-semibold text-right">
-                {labels.creditColumn}
-              </th>
-              <th className="px-2 py-2 font-semibold">Date</th>
-              <th className="px-2 py-2 font-semibold">Remark</th>
-              <th className="px-2 py-2 font-semibold text-right">
+              {!isSystemLedger ? (
+                <th className={cn(cellPad, "font-semibold")}>Remark</th>
+              ) : null}
+              <th className={cn(cellPad, "font-semibold text-right")}>
                 Running Balance
               </th>
-              <th className="px-2 py-2 font-semibold print:hidden">User</th>
-              <th className="px-2 py-2 font-semibold print:hidden">Action</th>
+              <th
+                className={cn(
+                  cellPad,
+                  "font-semibold print:hidden",
+                  isSystemLedger && "text-center"
+                )}
+              >
+                User
+              </th>
+              <th
+                className={cn(
+                  cellPad,
+                  "font-semibold print:hidden",
+                  isSystemLedger && "text-center"
+                )}
+              >
+                Action
+              </th>
             </tr>
           </thead>
           <tbody>
             {visibleLines.length === 0 ? (
               <tr>
                 <td
-                  colSpan={labels.showVehicleColumn ? 11 : 10}
+                  colSpan={emptyColSpan}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   No statement entries in this period.
@@ -120,30 +220,70 @@ export function StatementTable({
             ) : (
               visibleLines.map((row) => (
                 <tr key={row.id} className="border-b border-border">
-                  <td className="px-2 py-2 tabular-nums">{row.index}</td>
-                  <td className="px-2 py-2">{row.invoice_number ?? "—"}</td>
-                  {labels.showVehicleColumn ? (
-                    <td className="px-2 py-2">{row.vehicle_number ?? "—"}</td>
+                  <td
+                    className={cn(
+                      cellPad,
+                      "tabular-nums text-muted-foreground",
+                      isSystemLedger && "text-center"
+                    )}
+                  >
+                    {row.index}
+                  </td>
+                  {isSystemLedger ? (
+                    <td className={cellPad}>{row.remark ?? "—"}</td>
+                  ) : (
+                    <>
+                      <td className={cellPad}>{row.invoice_number ?? "—"}</td>
+                      {labels.showVehicleColumn ? (
+                        <td className={cellPad}>{row.vehicle_number ?? "—"}</td>
+                      ) : null}
+                    </>
+                  )}
+                  {!isSystemIncome ? (
+                    <td className={cn(cellPad, "text-right")}>
+                      <AmountCell amount={row.debit} variant="debit" />
+                    </td>
                   ) : null}
-                  <td className="px-2 py-2 text-right">
-                    <AmountCell amount={row.debit} variant="debit" />
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <AmountCell amount={row.credit} variant="credit" />
-                  </td>
-                  <td className="px-2 py-2 whitespace-nowrap">
+                  {!isSystemExpense ? (
+                    <td className={cn(cellPad, "text-right")}>
+                      <AmountCell amount={row.credit} variant="credit" />
+                    </td>
+                  ) : null}
+                  <td
+                    className={cn(
+                      cellPad,
+                      "whitespace-nowrap text-muted-foreground",
+                      isSystemLedger && "text-center"
+                    )}
+                  >
                     {formatStatementDate(row.entry_date)}
                   </td>
-                  <td className="px-2 py-2">{row.remark ?? "—"}</td>
-                  <td className="px-2 py-2 text-right">
-                    <BalanceBadge balance={row.balance_meta} />
+                  {!isSystemLedger ? (
+                    <td className={cellPad}>{row.remark ?? "—"}</td>
+                  ) : null}
+                  <td className={cn(cellPad, "text-right")}>
+                    <RunningBalanceCell
+                      balance={row.balance_meta}
+                      layout={layout}
+                    />
                   </td>
-                  <td className="px-2 py-2 print:hidden text-muted-foreground">
+                  <td
+                    className={cn(
+                      cellPad,
+                      "print:hidden text-muted-foreground",
+                      isSystemLedger && "text-center"
+                    )}
+                  >
                     {row.user_name ?? "—"}
                   </td>
-                  <td className="px-2 py-2 print:hidden">
+                  <td className={cn(cellPad, "print:hidden")}>
                     {renderActions ? (
-                      <div className="flex items-center justify-end gap-1">
+                      <div
+                        className={cn(
+                          "flex items-center gap-1",
+                          isSystemLedger ? "justify-center" : "justify-end"
+                        )}
+                      >
                         {renderActions(row)}
                       </div>
                     ) : (
@@ -155,16 +295,35 @@ export function StatementTable({
             )}
 
             <tr className="statement-row-total border-b border-border font-bold">
-              <td colSpan={colSpanMeta} className="px-2 py-2 text-right">
+              <td colSpan={colSpanMeta} className={cn(cellPad, "text-right")}>
                 Period Total
               </td>
-              <td className="px-2 py-2 text-right text-destructive">
-                {formatStatementAmount(totals.debit)}
-              </td>
-              <td className="px-2 py-2 text-right text-success">
-                {formatStatementAmount(totals.credit)}
-              </td>
-              <td colSpan={5} />
+              {!isSystemIncome ? (
+                <td className={cn(cellPad, "text-right text-destructive")}>
+                  {formatStatementAmount(totals.debit)}
+                </td>
+              ) : null}
+              {!isSystemExpense ? (
+                <td className={cn(cellPad, "text-right text-success")}>
+                  {formatStatementAmount(totals.credit)}
+                </td>
+              ) : null}
+              {isSystemLedger ? (
+                <>
+                  <td className={cellPad} />
+                  <td className={cn(cellPad, "text-right")}>
+                    {closingBalance ? (
+                      <RunningBalanceCell
+                        balance={closingBalance}
+                        layout={layout}
+                      />
+                    ) : null}
+                  </td>
+                  <td colSpan={2} className="print:hidden" />
+                </>
+              ) : (
+                <td colSpan={5} />
+              )}
             </tr>
           </tbody>
         </table>

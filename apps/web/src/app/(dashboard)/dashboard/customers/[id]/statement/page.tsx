@@ -5,17 +5,9 @@ import {
   getClientStatement,
 } from "@/lib/queries/client.queries";
 import { getCompanyProfile } from "@/lib/queries/settings.queries";
-import {
-  getCurrentFinancialYearStartYear,
-  getFinancialYearRangeToDate,
-} from "@/lib/utils/financial-year";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
 
 import { StatementManager } from "./statement-manager";
-
-function defaultDateRange() {
-  const range = getFinancialYearRangeToDate(getCurrentFinancialYearStartYear());
-  return { start: range.start, end: range.end };
-}
 
 export default async function ClientStatementPage({
   params,
@@ -26,7 +18,7 @@ export default async function ClientStatementPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const defaults = defaultDateRange();
+  const defaults = defaultStatementDateRange();
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 

@@ -25,6 +25,11 @@ import {
 import { focusField, handleEnterToNextField } from "@/lib/utils/form-keyboard";
 import { formatCurrency } from "@/lib/utils/formatting";
 import type { SettlementType } from "@/lib/validations/settlement.schema";
+import {
+  isReservedPartyName,
+  isSystemExpenseSupplier,
+  SYSTEM_EXPENSE_SUPPLIER_NAME,
+} from "@/lib/constants/system-parties";
 
 type Props = {
   open: boolean;
@@ -89,6 +94,7 @@ export function PaySupplierModal({
   const trimmedQuery = supplierQuery.trim();
   const isNewSupplier = isNewEntityName(supplierOptions, supplierQuery);
   const selectedSupplier = supplierOptions.find((s) => s.id === supplierId);
+  const isExpenseEntry = selectedSupplier ? isSystemExpenseSupplier(selectedSupplier) : false;
 
   const { execute: execPayment, loading: paying } = useAction(paySupplier, {
     successMessage: "Payment recorded.",
@@ -140,6 +146,18 @@ export function PaySupplierModal({
 
     const name = trimmedQuery;
     if (!name) return null;
+
+    if (isReservedPartyName(name)) {
+      const systemSupplier = supplierOptions.find(
+        (s) => s.name === SYSTEM_EXPENSE_SUPPLIER_NAME
+      );
+      if (systemSupplier) {
+        selectSupplier(systemSupplier, {});
+        return systemSupplier.id;
+      }
+      toast.error(`Select ${SYSTEM_EXPENSE_SUPPLIER_NAME} from the list`);
+      return null;
+    }
 
     const exact = findEntityByQuery(supplierOptions, name);
     if (exact) {
@@ -193,6 +211,14 @@ export function PaySupplierModal({
 
     const formData = new FormData(form);
     const payAmount = Number(formData.get("amount") || 0);
+    const remark = String(formData.get("remark") || "").trim();
+
+    if (isExpenseEntry && !remark) {
+      toast.error("Enter what this expense is for");
+      focusField("paySupplierRemark");
+      return false;
+    }
+
     setPendingPayment(formData);
     setConfirmPayAmount(payAmount);
     setConfirmPayOpen(true);
@@ -235,7 +261,10 @@ export function PaySupplierModal({
   }
 
   const showBillPanel =
-    settlementType === "against_bill" && Boolean(supplierId) && !billLinkedFromSearch;
+    !isExpenseEntry &&
+    settlementType === "against_bill" &&
+    Boolean(supplierId) &&
+    !billLinkedFromSearch;
 
   async function confirmPayment() {
     if (!pendingPayment) return;
@@ -367,7 +396,7 @@ export function PaySupplierModal({
               ))
             : null}
 
-          {!billLinkedFromSearch ? (
+          {!billLinkedFromSearch && !isExpenseEntry ? (
             <SettlementTypeField
               idPrefix="paySupplier"
               value={settlementType}
@@ -389,13 +418,18 @@ export function PaySupplierModal({
 
           <div>
             <label htmlFor="paySupplierRemark" className="mb-1 block text-sm font-medium">
-              Remark <span className="font-normal text-muted-foreground">(optional)</span>
+              {isExpenseEntry ? "What was it for?" : "Remark"}{" "}
+              {!isExpenseEntry ? (
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              ) : null}
             </label>
             <input
               id="paySupplierRemark"
               name="remark"
               type="text"
               maxLength={500}
+              required={isExpenseEntry}
+              placeholder={isExpenseEntry ? "e.g. AC repair, tea & snacks" : undefined}
               onKeyDown={(e) => void handleRemarkEnter(e)}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
@@ -433,10 +467,12 @@ export function PaySupplierModal({
       <ConfirmModal
         open={confirmPayOpen}
         onOpenChange={setConfirmPayOpen}
-        title="Confirm supplier payment"
+        title={isExpenseEntry ? "Confirm expense" : "Confirm supplier payment"}
         description={
           selectedSupplier
-            ? `Pay ${formatCurrency(confirmPayAmount)} to ${selectedSupplier.name}?`
+            ? isExpenseEntry
+              ? `Record expense of ${formatCurrency(confirmPayAmount)}?`
+              : `Pay ${formatCurrency(confirmPayAmount)} to ${selectedSupplier.name}?`
             : isNewSupplier
               ? `Pay ${formatCurrency(confirmPayAmount)} to new supplier "${trimmedQuery}"? They will be added automatically.`
               : undefined

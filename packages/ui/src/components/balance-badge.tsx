@@ -12,9 +12,14 @@ export type BalanceMeta = {
 export interface BalanceBadgeProps {
   balance: BalanceMeta;
   className?: string;
+  showLabel?: boolean;
 }
 
-export function BalanceBadge({ balance, className }: BalanceBadgeProps) {
+export function BalanceBadge({
+  balance,
+  className,
+  showLabel = true,
+}: BalanceBadgeProps) {
   const colorClass =
     balance.status === "nil"
       ? "text-muted-foreground"
@@ -22,12 +27,16 @@ export function BalanceBadge({ balance, className }: BalanceBadgeProps) {
         ? "text-destructive"
         : "text-success";
 
+  const label =
+    showLabel && balance.label ? ` (${balance.label})` : "";
+
   return (
     <span
       data-slot="balance-badge"
       className={cn("font-medium tabular-nums", colorClass, className)}
     >
-      {formatStatementAmount(balance.amount)} ({balance.label})
+      {formatStatementAmount(balance.amount)}
+      {label}
     </span>
   );
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import type { Database } from "@punchless/types/database.types";
 import {
   displayStatementLinesNewestFirst,
@@ -107,10 +108,12 @@ export async function getSuppliers(
   const suppliers = (data as SupplierRow[]) ?? [];
   const payables = await getLedgerPayablesBySupplier(suppliers.map((s) => s.id));
 
-  return suppliers.map((supplier) => ({
+  const withPayable = suppliers.map((supplier) => ({
     ...supplier,
     payable_amount: payables[supplier.id] ?? 0,
   }));
+
+  return sortPartiesWithSystemFirst(withPayable);
 }
 
 export async function getActiveSuppliers(): Promise<SupplierWithPayable[]> {

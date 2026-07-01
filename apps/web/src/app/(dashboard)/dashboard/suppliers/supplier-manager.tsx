@@ -39,6 +39,7 @@ import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { IconTooltip } from "@/components/icon-tooltip";
+import { isSystemExpenseSupplier } from "@/lib/constants/system-parties";
 
 interface Props {
   suppliers: SupplierWithPayable[];
@@ -259,26 +260,34 @@ export function SupplierManager({
               {
                 key: "actions",
                 header: "Actions",
-                cell: (row) => (
+                cell: (row) => {
+                  const isSystemExpense = isSystemExpenseSupplier(row);
+                  return (
                   <div className="flex flex-wrap gap-1">
                     {viewFilter === "active" ? (
                       <>
-                        <IconTooltip label="Edit supplier">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setMode("edit"); setEditingSupplier(row); }}
-                            aria-label="Edit supplier"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label="Pay supplier">
+                        {!isSystemExpense ? (
+                          <IconTooltip label="Edit supplier">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setMode("edit"); setEditingSupplier(row); }}
+                              aria-label="Edit supplier"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          </IconTooltip>
+                        ) : null}
+                        <IconTooltip
+                          label={isSystemExpense ? "Record expense" : "Pay supplier"}
+                        >
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setPaymentSupplier(row)}
-                            aria-label="Pay supplier"
+                            aria-label={
+                              isSystemExpense ? "Record expense" : "Pay supplier"
+                            }
                           >
                             <IndianRupee className="size-3.5" />
                           </Button>
@@ -293,17 +302,19 @@ export function SupplierManager({
                             </Link>
                           </Button>
                         </IconTooltip>
-                        <DeleteConfirmButton
-                          entityName={row.name}
-                          entityType="supplier"
-                          size="sm"
-                          loading={deleting}
-                          onConfirm={async () => {
-                            const fd = new FormData();
-                            fd.set("supplierId", row.id);
-                            await execDelete(fd);
-                          }}
-                        />
+                        {!isSystemExpense ? (
+                          <DeleteConfirmButton
+                            entityName={row.name}
+                            entityType="supplier"
+                            size="sm"
+                            loading={deleting}
+                            onConfirm={async () => {
+                              const fd = new FormData();
+                              fd.set("supplierId", row.id);
+                              await execDelete(fd);
+                            }}
+                          />
+                        ) : null}
                       </>
                     ) : (
                       <form action={toastAction(recoverSupplier, "Supplier recovered")}>
@@ -314,7 +325,8 @@ export function SupplierManager({
                       </form>
                     )}
                   </div>
-                ),
+                  );
+                },
               },
             ]}
           />

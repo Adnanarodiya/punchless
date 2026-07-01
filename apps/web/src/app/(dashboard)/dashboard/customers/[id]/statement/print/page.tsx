@@ -1,22 +1,19 @@
 import { notFound } from "next/navigation";
 
 import { StatementPrintDocument } from "@/components/statement-print-document";
+import { isSystemIncomeClient } from "@/lib/constants/system-parties";
 import {
   getClientById,
   getClientStatement,
 } from "@/lib/queries/client.queries";
 import { getCompanyProfile } from "@/lib/queries/settings.queries";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
 import {
-  getCurrentFinancialYearStartYear,
-  getFinancialYearRangeToDate,
-} from "@/lib/utils/financial-year";
+  getSystemIncomeStatementLabels,
+  transformSystemIncomeStatement,
+} from "@/lib/utils/system-statement-display";
 
 import { PrintActions } from "./print-actions";
-
-function defaultDateRange() {
-  const range = getFinancialYearRangeToDate(getCurrentFinancialYearStartYear());
-  return { start: range.start, end: range.end };
-}
 
 export default async function ClientStatementPrintPage({
   params,
@@ -27,7 +24,7 @@ export default async function ClientStatementPrintPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const defaults = defaultDateRange();
+  const defaults = defaultStatementDateRange();
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
@@ -38,6 +35,11 @@ export default async function ClientStatementPrintPage({
   ]);
 
   if (!client || !company) notFound();
+
+  const isSystemIncome = isSystemIncomeClient(client);
+  const displayStatement = isSystemIncome
+    ? transformSystemIncomeStatement(statement)
+    : statement;
 
   const entityLines = [
     { label: "Name", value: client.name },
@@ -58,14 +60,18 @@ export default async function ClientStatementPrintPage({
         entityLines={entityLines}
         startDate={startDate}
         endDate={endDate}
-        statement={statement}
-        tableLabels={{
-          invoiceColumn: "Invoice No.",
-          debitColumn: "Dr (Billed)",
-          creditColumn: "Cr (Received)",
-          showVehicleColumn: true,
-          dueBadgePrefix: "Due",
-        }}
+        statement={displayStatement}
+        tableLabels={
+          isSystemIncome
+            ? getSystemIncomeStatementLabels()
+            : {
+                invoiceColumn: "Invoice No.",
+                debitColumn: "Dr (Billed)",
+                creditColumn: "Cr (Received)",
+                showVehicleColumn: true,
+                dueBadgePrefix: "Due",
+              }
+        }
       />
     </div>
   );

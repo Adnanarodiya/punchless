@@ -4,9 +4,14 @@ import { useRouter } from "next/navigation";
 
 import { ClientStatementRowActions } from "@/components/client-statement-row-actions";
 import { StatementScreen } from "@/components/statement-screen";
+import { isSystemIncomeClient } from "@/lib/constants/system-parties";
 import type { ClientWithDue } from "@/lib/queries/client.queries";
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { StatementResult } from "@/lib/utils/statement";
+import {
+  getSystemIncomeStatementLabels,
+  transformSystemIncomeStatement,
+} from "@/lib/utils/system-statement-display";
 
 interface Props {
   client: ClientWithDue;
@@ -24,6 +29,10 @@ export function StatementManager({
   statement,
 }: Props) {
   const router = useRouter();
+  const isSystemIncome = isSystemIncomeClient(client);
+  const displayStatement = isSystemIncome
+    ? transformSystemIncomeStatement(statement)
+    : statement;
 
   const entityLines = [
     { label: "Name", value: client.name },
@@ -47,14 +56,18 @@ export function StatementManager({
       endDate={endDate}
       statementPath={`/dashboard/customers/${client.id}/statement`}
       printPath={`/dashboard/customers/${client.id}/statement/print`}
-      statement={statement}
-      tableLabels={{
-        invoiceColumn: "Invoice No.",
-        debitColumn: "Dr (Billed)",
-        creditColumn: "Cr (Received)",
-        showVehicleColumn: true,
-        dueBadgePrefix: "Due",
-      }}
+      statement={displayStatement}
+      tableLabels={
+        isSystemIncome
+          ? getSystemIncomeStatementLabels()
+          : {
+              invoiceColumn: "Invoice No.",
+              debitColumn: "Dr (Billed)",
+              creditColumn: "Cr (Received)",
+              showVehicleColumn: true,
+              dueBadgePrefix: "Due",
+            }
+      }
       renderRowActions={(line) => (
         <ClientStatementRowActions
           clientId={client.id}

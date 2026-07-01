@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  SYSTEM_EXPENSE_SUPPLIER_NAME,
+  SYSTEM_INCOME_CLIENT_NAME,
+} from "@/lib/constants/system-parties";
 import { formatPaymentModeLabel } from "@/lib/utils/payment-mode-display";
 
 function parseAmount(value: unknown): number {
@@ -321,10 +325,12 @@ async function buildDailyBookForRange(
     };
     const amount = parseAmount(r.amount);
     const name = r.clients?.name ?? "Customer";
+    const isIncomeLine = name === SYSTEM_INCOME_CLIENT_NAME;
     const clientModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     totalIncome += amount;
-    customerCollected += amount;
+    if (!isIncomeLine) customerCollected += amount;
+    if (isIncomeLine) incomeEntries += amount;
     if (r.payment_mode === "cash") summary.cashReceived += amount;
     if (r.payment_mode === "bank") {
       summary.bankReceived += amount;
@@ -337,8 +343,12 @@ async function buildDailyBookForRange(
       sourceType: "client_payment",
       sourceId: r.id,
       canDelete: false,
-      category: isBankReceipt ? "Bank deposit" : "Payment received",
-      particular: name,
+      category: isIncomeLine
+        ? "Other income"
+        : isBankReceipt
+          ? "Bank deposit"
+          : "Payment received",
+      particular: isIncomeLine ? r.remark ?? name : name,
       income: amount,
       expense: 0,
       transfer: 0,
@@ -369,10 +379,12 @@ async function buildDailyBookForRange(
     };
     const amount = parseAmount(r.amount);
     const name = r.suppliers?.name ?? "Supplier";
+    const isExpenseLine = name === SYSTEM_EXPENSE_SUPPLIER_NAME;
     const supplierModes = lineModes(r.payment_mode, r.bank_id, bankNames);
 
     totalExpense += amount;
-    supplierPaid += amount;
+    if (!isExpenseLine) supplierPaid += amount;
+    if (isExpenseLine) expenseEntries += amount;
     summary.totalExpenses += amount;
 
     lines.push({
@@ -380,8 +392,8 @@ async function buildDailyBookForRange(
       sourceType: "supplier_payment",
       sourceId: r.id,
       canDelete: false,
-      category: "Supplier paid",
-      particular: name,
+      category: isExpenseLine ? "Expense" : "Supplier paid",
+      particular: isExpenseLine ? r.remark ?? name : name,
       income: 0,
       expense: amount,
       transfer: 0,

@@ -41,6 +41,7 @@ import { formatCurrency } from "@/lib/utils/formatting";
 import { useAction, toastAction } from "@/hooks/use-action";
 import { DeleteConfirmButton } from "@/components/delete-confirm-button";
 import { IconTooltip } from "@/components/icon-tooltip";
+import { isSystemIncomeClient } from "@/lib/constants/system-parties";
 
 interface Props {
   customers: ClientWithDue[];
@@ -336,40 +337,50 @@ export function CustomerManager({
               {
                 key: "actions",
                 header: "Actions",
-                cell: (row) => (
+                cell: (row) => {
+                  const isSystemIncome = isSystemIncomeClient(row);
+                  return (
                   <div className="flex flex-wrap gap-1">
                     {viewFilter === "active" ? (
                       <>
-                        <IconTooltip label="Edit customer">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEdit(row)}
-                            aria-label="Edit customer"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label="Receive payment">
+                        {!isSystemIncome ? (
+                          <IconTooltip label="Edit customer">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEdit(row)}
+                              aria-label="Edit customer"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                          </IconTooltip>
+                        ) : null}
+                        <IconTooltip
+                          label={isSystemIncome ? "Record income" : "Receive payment"}
+                        >
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setPaymentClient(row)}
-                            aria-label="Receive payment"
+                            aria-label={
+                              isSystemIncome ? "Record income" : "Receive payment"
+                            }
                           >
                             <IndianRupee className="size-3.5" />
                           </Button>
                         </IconTooltip>
-                        <IconTooltip label="Create invoice">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link
-                              href={`/dashboard/invoices?customer=${row.id}&openForm=1`}
-                              aria-label="Create invoice"
-                            >
-                              <Receipt className="size-3.5" />
-                            </Link>
-                          </Button>
-                        </IconTooltip>
+                        {!isSystemIncome ? (
+                          <IconTooltip label="Create invoice">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link
+                                href={`/dashboard/invoices?customer=${row.id}&openForm=1`}
+                                aria-label="Create invoice"
+                              >
+                                <Receipt className="size-3.5" />
+                              </Link>
+                            </Button>
+                          </IconTooltip>
+                        ) : null}
                         <IconTooltip label="View statement">
                           <Button variant="ghost" size="sm" asChild>
                             <Link
@@ -380,17 +391,19 @@ export function CustomerManager({
                             </Link>
                           </Button>
                         </IconTooltip>
-                        <DeleteConfirmButton
-                          entityName={row.name}
-                          entityType="client"
-                          size="sm"
-                          loading={deleting}
-                          onConfirm={async () => {
-                            const fd = new FormData();
-                            fd.set("clientId", row.id);
-                            await execDelete(fd);
-                          }}
-                        />
+                        {!isSystemIncome ? (
+                          <DeleteConfirmButton
+                            entityName={row.name}
+                            entityType="client"
+                            size="sm"
+                            loading={deleting}
+                            onConfirm={async () => {
+                              const fd = new FormData();
+                              fd.set("clientId", row.id);
+                              await execDelete(fd);
+                            }}
+                          />
+                        ) : null}
                       </>
                     ) : (
                       <form action={toastAction(recoverClient, "Customer recovered")}>
@@ -401,7 +414,8 @@ export function CustomerManager({
                       </form>
                     )}
                   </div>
-                ),
+                  );
+                },
               },
             ]}
           />

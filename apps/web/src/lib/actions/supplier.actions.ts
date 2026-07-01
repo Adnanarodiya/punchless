@@ -20,6 +20,31 @@ import {
   updateSupplierSchema,
 } from "@/lib/validations/supplier.schema";
 import { parseBillIdsFromForm } from "@/lib/validations/settlement.schema";
+import {
+  formatSystemExpenseRemark,
+  isReservedPartyName,
+  SYSTEM_EXPENSE_SUPPLIER_NAME,
+} from "@/lib/constants/system-parties";
+
+async function getSupplierSystemFlags(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  supplierId: string
+) {
+  const { data } = await supabase
+    .from("suppliers")
+    .select("name, is_system")
+    .eq("id", supplierId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as { name: string; is_system: boolean | null };
+  return {
+    isSystemExpense:
+      Boolean(row.is_system) || row.name === SYSTEM_EXPENSE_SUPPLIER_NAME,
+    name: row.name,
+  };
+}
 
 function revalidateSupplierPages(supplierId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/suppliers");
@@ -57,6 +82,10 @@ export const createSupplier = protectedAction<FormData>({
 
   const { name, alias, contact, address, gstNumber, openingBalance } =
     parsed.data;
+
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
 
   const { data: supplier, error } = await supabase
     .from("suppliers")
@@ -115,6 +144,10 @@ export const createQuickSupplier = protectedAction<FormData>({
 
   const { name } = parsed.data;
 
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
+
   const { data: supplier, error } = await supabase
     .from("suppliers")
     .insert({
@@ -162,6 +195,14 @@ export const updateSupplier = protectedAction<FormData>({
 
   const { supplierId, name, alias, contact, address, gstNumber } = parsed.data;
 
+  const systemFlags = await getSupplierSystemFlags(supabase, supplierId);
+  if (systemFlags?.isSystemExpense) {
+    return { success: false, error: "EXPENSE cannot be edited" };
+  }
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
+
   const { error } = await supabase
     .from("suppliers")
     .update({
@@ -185,6 +226,11 @@ export const softDeleteSupplier = protectedAction<FormData>({
 })(async (formData, { supabase }) => {
   const supplierId = String(formData.get("supplierId") || "");
   if (!supplierId) return { success: false, error: "Supplier ID required" };
+
+  const systemFlags = await getSupplierSystemFlags(supabase, supplierId);
+  if (systemFlags?.isSystemExpense) {
+    return { success: false, error: "EXPENSE cannot be deleted" };
+  }
 
   const { error } = await supabase
     .from("suppliers")
@@ -263,13 +309,34 @@ export const paySupplier = protectedAction<FormData>({
   const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
   const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
   const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
-  const settlement = await resolveSettlementRemark({
-    settlementType: settlementType ?? "direct",
-    billIds,
-    partySide: "supplier",
-    remark,
-  });
-  const ledgerRemark = settlement.remark || `Payment made (${modeLabel})`;
+
+  const systemFlags = await getSupplierSystemFlags(supabase, supplierId);
+  const isSystemExpense = Boolean(systemFlags?.isSystemExpense);
+
+  if (isSystemExpense) {
+    const detail = remark?.trim();
+    if (!detail) {
+      return { success: false, error: "Enter what this expense is for" };
+    }
+    if (settlementType === "against_bill" || billIds.length > 0) {
+      return { success: false, error: "EXPENSE entries cannot be linked to bills" };
+    }
+  }
+
+  const settlement = isSystemExpense
+    ? { remark: "", billIds: [] as string[] }
+    : await resolveSettlementRemark({
+        settlementType: settlementType ?? "direct",
+        billIds,
+        partySide: "supplier",
+        remark,
+      });
+
+  const ledgerRemark = isSystemExpense
+    ? formatSystemExpenseRemark(remark ?? "")
+    : settlement.remark || `Payment made (${modeLabel})`;
+
+  const entryCategory = isSystemExpense ? "indirect_expense" : "payment";
 
   const { data: payment, error: paymentError } = await supabase
     .from("supplier_payments")
@@ -282,7 +349,7 @@ export const paySupplier = protectedAction<FormData>({
       bank_id: bankId,
       payment_date: paymentDate,
       remark: ledgerRemark,
-      entry_category: "payment",
+      entry_category: entryCategory,
       created_by: me.id,
     } as never)
     .select("id")
@@ -308,7 +375,7 @@ export const paySupplier = protectedAction<FormData>({
     reference_id: payment.id,
     remark: ledgerRemark,
     entry_date: paymentDate,
-    entry_category: "payment",
+    entry_category: entryCategory,
     created_by: me.id,
   } as never);
 
@@ -326,7 +393,7 @@ export const paySupplier = protectedAction<FormData>({
       referenceId: payment.id,
       remark: ledgerRemark,
       entryDate: paymentDate,
-      entryCategory: "payment",
+      entryCategory,
       bankSubMode: normalizedBankSubMode,
       createdBy: me.id,
     });

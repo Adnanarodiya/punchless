@@ -150,7 +150,7 @@ export function EmployeeStatementManager({
             );
           }}
         >
-          Last 6 months
+          Last 12 months
         </Button>
       </form>
 

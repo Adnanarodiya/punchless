@@ -25,6 +25,10 @@ export function StatementPrintDocument({
   statement,
   tableLabels,
 }: StatementPrintDocumentProps) {
+  const isSystemLedger =
+    tableLabels.layout === "system-income" ||
+    tableLabels.layout === "system-expense";
+
   return (
     <div
       id="printMe"
@@ -44,6 +48,7 @@ export function StatementPrintDocument({
         lines={entityLines}
         startDate={startDate}
         endDate={endDate}
+        variant={isSystemLedger ? "system" : "party"}
       />
 
       <StatementTable

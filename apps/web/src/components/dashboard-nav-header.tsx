@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  FileText,
   LogOut,
   Menu,
   Search,
   X,
 } from "lucide-react";
+import type { SystemLedgerNavLink } from "@/lib/queries/system-party.queries";
 import type { DashboardExperience } from "@punchless/types";
 
 import { Button } from "@punchless/ui/components/button";
@@ -37,6 +39,7 @@ interface DashboardNavHeaderProps {
   dashboardExperience: DashboardExperience;
   hasDataLockPin: boolean;
   onSearchClick?: () => void;
+  systemLedgerLinks?: SystemLedgerNavLink[];
 }
 
 function useNavLabels(experience: DashboardExperience) {
@@ -114,12 +117,14 @@ function NavGroupMenu({
   pathname,
   navLabel,
   onNavigate,
+  systemLedgerLinks = [],
 }: {
   group: NavGroup;
   groupTitle: string;
   pathname: string;
   navLabel: (item: NavItem) => string;
   onNavigate?: () => void;
+  systemLedgerLinks?: SystemLedgerNavLink[];
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -198,6 +203,30 @@ function NavGroupMenu({
               }}
             />
           ))}
+          {group.label === "Commerce" && systemLedgerLinks.length > 0 ? (
+            <>
+              <div className="my-1 border-t border-border" role="separator" />
+              {systemLedgerLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => {
+                    setOpen(false);
+                    onNavigate?.();
+                  }}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
+                    isNavItemActive(pathname, link.href)
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-foreground hover:bg-accent/60"
+                  )}
+                >
+                  <FileText className="size-4 shrink-0 text-muted-foreground" />
+                  {link.label}
+                </Link>
+              ))}
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -212,6 +241,7 @@ function MobileNavDrawer({
   companyName,
   userName,
   onClose,
+  systemLedgerLinks = [],
 }: {
   groups: NavGroup[];
   pathname: string;
@@ -220,6 +250,7 @@ function MobileNavDrawer({
   companyName: string;
   userName: string;
   onClose: () => void;
+  systemLedgerLinks?: SystemLedgerNavLink[];
 }) {
   return (
     <div className="fixed inset-0 z-50 lg:hidden">
@@ -271,6 +302,27 @@ function MobileNavDrawer({
                   onNavigate={onClose}
                 />
               ))}
+              {group.label === "Commerce" && systemLedgerLinks.length > 0 ? (
+                <>
+                  <div className="my-1 border-t border-border" role="separator" />
+                  {systemLedgerLinks.map((link) => (
+                    <Link
+                      key={`${link.href}-mobile`}
+                      href={link.href}
+                      onClick={onClose}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition",
+                        isNavItemActive(pathname, link.href)
+                          ? "bg-accent font-medium text-accent-foreground"
+                          : "text-foreground hover:bg-accent/60"
+                      )}
+                    >
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      {link.label}
+                    </Link>
+                  ))}
+                </>
+              ) : null}
             </div>
           ))}
         </nav>
@@ -286,6 +338,7 @@ export function DashboardNavHeader({
   dashboardExperience,
   hasDataLockPin,
   onSearchClick,
+  systemLedgerLinks = [],
 }: DashboardNavHeaderProps) {
   const pathname = usePathname();
   const storeExperience = useDashboardExperienceStore((s) => s.experience);
@@ -354,6 +407,7 @@ export function DashboardNavHeader({
               groupTitle={groupLabel(group.label)}
               pathname={pathname}
               navLabel={navLabel}
+              systemLedgerLinks={systemLedgerLinks}
             />
           ))}
         </nav>
@@ -417,6 +471,7 @@ export function DashboardNavHeader({
         companyName={companyName}
         userName={userName}
         onClose={() => setMobileNavOpen(false)}
+        systemLedgerLinks={systemLedgerLinks}
         />
       ) : null}
     </>

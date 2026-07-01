@@ -23,6 +23,31 @@ import {
   updateClientSchema,
 } from "@/lib/validations/client.schema";
 import { parseBillIdsFromForm } from "@/lib/validations/settlement.schema";
+import {
+  formatSystemIncomeRemark,
+  isReservedPartyName,
+  SYSTEM_INCOME_CLIENT_NAME,
+} from "@/lib/constants/system-parties";
+
+async function getClientSystemFlags(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  clientId: string
+) {
+  const { data } = await supabase
+    .from("clients")
+    .select("name, is_system")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as { name: string; is_system: boolean | null };
+  return {
+    isSystemIncome:
+      Boolean(row.is_system) || row.name === SYSTEM_INCOME_CLIENT_NAME,
+    name: row.name,
+  };
+}
 
 function revalidateClientPages(clientId?: string, bankId?: string | null) {
   revalidatePath("/dashboard/customers");
@@ -59,6 +84,10 @@ export const createClient = protectedAction<FormData>({
 
   const { name, alias, contact, address, gstNumber, openingBalance } =
     parsed.data;
+
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
 
   const { data: client, error } = await supabase
     .from("clients")
@@ -117,6 +146,10 @@ export const createQuickCustomer = protectedAction<FormData>({
 
   const { name } = parsed.data;
 
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
+
   const { data: client, error } = await supabase
     .from("clients")
     .insert({
@@ -166,6 +199,14 @@ export const updateClient = protectedAction<FormData>({
 
   const { clientId, name, alias, contact, address, gstNumber } = parsed.data;
 
+  const systemFlags = await getClientSystemFlags(supabase, clientId);
+  if (systemFlags?.isSystemIncome) {
+    return { success: false, error: "INCOME cannot be edited" };
+  }
+  if (isReservedPartyName(name)) {
+    return { success: false, error: `"${name.trim().toUpperCase()}" is reserved` };
+  }
+
   const { error } = await supabase
     .from("clients")
     .update({
@@ -189,6 +230,11 @@ export const softDeleteClient = protectedAction<FormData>({
 })(async (formData, { supabase }) => {
   const clientId = String(formData.get("clientId") || "");
   if (!clientId) return { success: false, error: "Customer ID required" };
+
+  const systemFlags = await getClientSystemFlags(supabase, clientId);
+  if (systemFlags?.isSystemIncome) {
+    return { success: false, error: "INCOME cannot be deleted" };
+  }
 
   const { error } = await supabase
     .from("clients")
@@ -267,13 +313,34 @@ export const receiveClientPayment = protectedAction<FormData>({
   const bankId = paymentMode === "bank" && bankIdRaw?.trim() ? bankIdRaw : null;
   const normalizedBankSubMode = normalizeBankSubMode(bankSubMode);
   const modeLabel = paymentMode === "cash" ? "cash" : bankModeLabel(normalizedBankSubMode);
-  const settlement = await resolveSettlementRemark({
-    settlementType: settlementType ?? "direct",
-    billIds,
-    partySide: "client",
-    remark,
-  });
-  const ledgerRemark = settlement.remark || `Payment received (${modeLabel})`;
+
+  const systemFlags = await getClientSystemFlags(supabase, clientId);
+  const isSystemIncome = Boolean(systemFlags?.isSystemIncome);
+
+  if (isSystemIncome) {
+    const detail = remark?.trim();
+    if (!detail) {
+      return { success: false, error: "Enter what this income is for" };
+    }
+    if (settlementType === "against_bill" || billIds.length > 0) {
+      return { success: false, error: "INCOME entries cannot be linked to bills" };
+    }
+  }
+
+  const settlement = isSystemIncome
+    ? { remark: "", billIds: [] as string[] }
+    : await resolveSettlementRemark({
+        settlementType: settlementType ?? "direct",
+        billIds,
+        partySide: "client",
+        remark,
+      });
+
+  const ledgerRemark = isSystemIncome
+    ? formatSystemIncomeRemark(remark ?? "")
+    : settlement.remark || `Payment received (${modeLabel})`;
+
+  const entryCategory = isSystemIncome ? "indirect_income" : "receipt";
 
   const { data: payment, error: paymentError } = await supabase
     .from("client_payments")
@@ -286,7 +353,7 @@ export const receiveClientPayment = protectedAction<FormData>({
       bank_id: bankId,
       payment_date: paymentDate,
       remark: ledgerRemark,
-      entry_category: "receipt",
+      entry_category: entryCategory,
       created_by: me.id,
     } as never)
     .select("id")
@@ -312,7 +379,7 @@ export const receiveClientPayment = protectedAction<FormData>({
     reference_id: payment.id,
     remark: ledgerRemark,
     entry_date: paymentDate,
-    entry_category: "receipt",
+    entry_category: entryCategory,
     created_by: me.id,
   } as never);
 
@@ -320,7 +387,7 @@ export const receiveClientPayment = protectedAction<FormData>({
     return { success: false, error: ledgerError.message };
   }
 
-  if (settlement.billIds.length > 0) {
+  if (!isSystemIncome && settlement.billIds.length > 0) {
     await applyClientBillSettlement(supabase, {
       billIds: settlement.billIds,
       amount,
@@ -337,7 +404,7 @@ export const receiveClientPayment = protectedAction<FormData>({
       referenceId: payment.id,
       remark: ledgerRemark,
       entryDate: paymentDate,
-      entryCategory: "receipt",
+      entryCategory,
       bankSubMode: normalizedBankSubMode,
       createdBy: me.id,
     });

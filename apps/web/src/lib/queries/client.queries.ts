@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@punchless/types/database.types";
+import { sortPartiesWithSystemFirst } from "@/lib/utils/sort-system-parties";
 import {
   displayStatementLinesNewestFirst,
   getBalanceMeta,
@@ -195,6 +196,11 @@ function prepareStatementEntries(
       entry.entry_type === "credit" &&
       entry.reference_id
     ) {
+      if (entry.entry_category === "indirect_income") {
+        otherEntries.push(entry);
+        continue;
+      }
+
       const group = paymentGroups.get(entry.reference_id) ?? [];
       group.push(entry);
       paymentGroups.set(entry.reference_id, group);
@@ -326,10 +332,12 @@ export async function getClients(
   const clients = (data as ClientRow[]) ?? [];
   const balances = await getLedgerBalancesByClient(clients.map((c) => c.id));
 
-  return clients.map((client) => ({
+  const withDue = clients.map((client) => ({
     ...client,
     due_amount: balances[client.id] ?? 0,
   }));
+
+  return sortPartiesWithSystemFirst(withDue);
 }
 
 export async function getClientById(

@@ -13,6 +13,7 @@ import { useDataLockStore } from "@/lib/stores/data-lock.store";
 import { useDashboardExperienceStore } from "@/lib/stores/dashboard-experience.store";
 import { TooltipProvider } from "@punchless/ui/components/tooltip";
 import type { DashboardExperience, UiLanguage } from "@punchless/types";
+import type { SystemLedgerNavLink } from "@/lib/queries/system-party.queries";
 import { useUiLanguageStore } from "@/lib/stores/ui-language.store";
 
 interface DashboardShellProps {
@@ -22,6 +23,7 @@ interface DashboardShellProps {
   hasDataLockPin: boolean;
   dashboardExperience: DashboardExperience;
   uiLanguage: UiLanguage;
+  systemLedgerLinks?: SystemLedgerNavLink[];
   children: React.ReactNode;
 }
 
@@ -32,6 +34,7 @@ export function DashboardShell({
   hasDataLockPin,
   dashboardExperience,
   uiLanguage,
+  systemLedgerLinks = [],
   children,
 }: DashboardShellProps) {
   const setHasPin = React.useCallback(
@@ -85,6 +88,7 @@ export function DashboardShell({
           dashboardExperience={dashboardExperience}
           hasDataLockPin={hasDataLockPin}
           onSearchClick={openSearch}
+          systemLedgerLinks={systemLedgerLinks}
         />
 
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />

@@ -16,6 +16,7 @@ import { Button } from "@punchless/ui/components/button";
 
 import type { CompanyProfile } from "@/lib/queries/settings.queries";
 import type { StatementResult } from "@/lib/utils/statement";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
 
 type BreadcrumbItem = { label: string; href?: string };
 
@@ -72,6 +73,9 @@ export function StatementScreen({
     () => filterStatementLines(statement.lines, search),
     [statement.lines, search]
   );
+  const isSystemLedger =
+    tableLabels.layout === "system-income" ||
+    tableLabels.layout === "system-expense";
 
   function handleFilter(formData: FormData) {
     const start = String(formData.get("startDate") || "");
@@ -123,6 +127,16 @@ export function StatementScreen({
           />
         </div>
         <Button type="submit">Apply</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            const { start, end } = defaultStatementDateRange();
+            router.push(`${statementPath}?start=${start}&end=${end}`);
+          }}
+        >
+          Last 12 months
+        </Button>
       </form>
 
       <StatementToolbar
@@ -150,6 +164,7 @@ export function StatementScreen({
           lines={entityLines}
           startDate={startDate}
           endDate={endDate}
+          variant={isSystemLedger ? "system" : "party"}
         />
 
         <StatementTable

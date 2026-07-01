@@ -28,6 +28,11 @@ import {
 import { focusField, handleEnterToNextField } from "@/lib/utils/form-keyboard";
 import { formatCurrency } from "@/lib/utils/formatting";
 import type { SettlementType } from "@/lib/validations/settlement.schema";
+import {
+  isReservedPartyName,
+  isSystemIncomeClient,
+  SYSTEM_INCOME_CLIENT_NAME,
+} from "@/lib/constants/system-parties";
 
 type Props = {
   open: boolean;
@@ -92,6 +97,7 @@ export function CollectPaymentModal({
   const trimmedQuery = customerQuery.trim();
   const isNewCustomer = isNewEntityName(clientOptions, customerQuery);
   const selectedClient = clientOptions.find((c) => c.id === clientId);
+  const isIncomeEntry = selectedClient ? isSystemIncomeClient(selectedClient) : false;
 
   const { execute: execPayment, loading: paying } = useAction(receiveClientPayment, {
     successMessage: "Payment recorded.",
@@ -143,6 +149,16 @@ export function CollectPaymentModal({
 
     const name = trimmedQuery;
     if (!name) return null;
+
+    if (isReservedPartyName(name)) {
+      const systemClient = clientOptions.find((c) => c.name === SYSTEM_INCOME_CLIENT_NAME);
+      if (systemClient) {
+        selectCustomer(systemClient, {});
+        return systemClient.id;
+      }
+      toast.error(`Select ${SYSTEM_INCOME_CLIENT_NAME} from the list`);
+      return null;
+    }
 
     const exact = findEntityByQuery(clientOptions, name);
     if (exact) {
@@ -196,6 +212,14 @@ export function CollectPaymentModal({
 
     const formData = new FormData(form);
     const payAmount = Number(formData.get("amount") || 0);
+    const remark = String(formData.get("remark") || "").trim();
+
+    if (isIncomeEntry && !remark) {
+      toast.error("Enter what this income is for");
+      focusField("collectPaymentRemark");
+      return false;
+    }
+
     setPendingPayment(formData);
     setConfirmPayAmount(payAmount);
     setConfirmPayOpen(true);
@@ -238,7 +262,10 @@ export function CollectPaymentModal({
   }
 
   const showBillPanel =
-    settlementType === "against_bill" && Boolean(clientId) && !billLinkedFromSearch;
+    !isIncomeEntry &&
+    settlementType === "against_bill" &&
+    Boolean(clientId) &&
+    !billLinkedFromSearch;
 
   async function confirmPayment() {
     if (!pendingPayment) return;
@@ -370,7 +397,7 @@ export function CollectPaymentModal({
               ))
             : null}
 
-          {!billLinkedFromSearch ? (
+          {!billLinkedFromSearch && !isIncomeEntry ? (
             <SettlementTypeField
               idPrefix="collectPayment"
               value={settlementType}
@@ -392,13 +419,18 @@ export function CollectPaymentModal({
 
           <div>
             <label htmlFor="collectPaymentRemark" className="mb-1 block text-sm font-medium">
-              Remark <span className="font-normal text-muted-foreground">(optional)</span>
+              {isIncomeEntry ? "What was the income for?" : "Remark"}{" "}
+              {!isIncomeEntry ? (
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              ) : null}
             </label>
             <input
               id="collectPaymentRemark"
               name="remark"
               type="text"
               maxLength={500}
+              required={isIncomeEntry}
+              placeholder={isIncomeEntry ? "e.g. oil sold, scrap sale" : undefined}
               onKeyDown={(e) => void handleRemarkEnter(e)}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
             />
@@ -436,10 +468,12 @@ export function CollectPaymentModal({
       <ConfirmModal
         open={confirmPayOpen}
         onOpenChange={setConfirmPayOpen}
-        title="Confirm customer payment"
+        title={isIncomeEntry ? "Confirm income" : "Confirm customer payment"}
         description={
           selectedClient
-            ? `Record payment of ${formatCurrency(confirmPayAmount)} from ${selectedClient.name}?`
+            ? isIncomeEntry
+              ? `Record income of ${formatCurrency(confirmPayAmount)}?`
+              : `Record payment of ${formatCurrency(confirmPayAmount)} from ${selectedClient.name}?`
             : isNewCustomer
               ? `Record payment of ${formatCurrency(confirmPayAmount)} from new customer "${trimmedQuery}"? They will be added automatically.`
               : undefined

@@ -988,3 +988,221 @@ BEGIN
   RAISE NOTICE '  Customer BILAL — 10 sales bills (discounts, CN/DN, payments, 4 open)';
   RAISE NOTICE '  Supplier ZAID  — 10 purchase bills (discounts, payments, 4 open)';
 END $$;
+
+-- Ensure INCOME + EXPENSE system parties for every company (idempotent)
+DO $$
+DECLARE
+  v_company_id UUID;
+BEGIN
+  FOR v_company_id IN SELECT id FROM public.companies LOOP
+    PERFORM public.ensure_system_parties(v_company_id);
+  END LOOP;
+END $$;
+
+-- ============================================
+-- INCOME + EXPENSE demo entries (10 each)
+-- Idempotent: skips if first income remark already exists.
+-- ============================================
+
+DO $$
+DECLARE
+  v_company_id UUID;
+  v_owner_id UUID;
+  v_bank_hdfc UUID;
+  v_client_income UUID;
+  v_supplier_expense UUID;
+  v_cp_inc1 UUID := 'e3000001-0001-4001-8001-000000000001';
+  v_cp_inc2 UUID := 'e3000002-0001-4001-8001-000000000002';
+  v_cp_inc3 UUID := 'e3000003-0001-4001-8001-000000000003';
+  v_cp_inc4 UUID := 'e3000004-0001-4001-8001-000000000004';
+  v_cp_inc5 UUID := 'e3000005-0001-4001-8001-000000000005';
+  v_cp_inc6 UUID := 'e3000006-0001-4001-8001-000000000006';
+  v_cp_inc7 UUID := 'e3000007-0001-4001-8001-000000000007';
+  v_cp_inc8 UUID := 'e3000008-0001-4001-8001-000000000008';
+  v_cp_inc9 UUID := 'e3000009-0001-4001-8001-000000000009';
+  v_cp_inc10 UUID := 'e300000a-0001-4001-8001-00000000000a';
+  v_sp_exp1 UUID := 'e4000001-0001-4001-8001-000000000001';
+  v_sp_exp2 UUID := 'e4000002-0001-4001-8001-000000000002';
+  v_sp_exp3 UUID := 'e4000003-0001-4001-8001-000000000003';
+  v_sp_exp4 UUID := 'e4000004-0001-4001-8001-000000000004';
+  v_sp_exp5 UUID := 'e4000005-0001-4001-8001-000000000005';
+  v_sp_exp6 UUID := 'e4000006-0001-4001-8001-000000000006';
+  v_sp_exp7 UUID := 'e4000007-0001-4001-8001-000000000007';
+  v_sp_exp8 UUID := 'e4000008-0001-4001-8001-000000000008';
+  v_sp_exp9 UUID := 'e4000009-0001-4001-8001-000000000009';
+  v_sp_exp10 UUID := 'e400000a-0001-4001-8001-00000000000a';
+BEGIN
+  SELECT u.company_id, u.id
+  INTO v_company_id, v_owner_id
+  FROM public.users u
+  WHERE u.role = 'owner'
+  ORDER BY u.created_at
+  LIMIT 1;
+
+  IF v_company_id IS NULL THEN
+    RAISE NOTICE 'Income/expense seed: no company found. Skipping.';
+    RETURN;
+  END IF;
+
+  PERFORM public.ensure_system_parties(v_company_id);
+
+  SELECT id INTO v_client_income
+  FROM public.clients
+  WHERE company_id = v_company_id AND name = 'INCOME' AND is_deleted = false
+  LIMIT 1;
+
+  SELECT id INTO v_supplier_expense
+  FROM public.suppliers
+  WHERE company_id = v_company_id AND name = 'EXPENSE' AND is_deleted = false
+  LIMIT 1;
+
+  IF v_client_income IS NULL OR v_supplier_expense IS NULL THEN
+    RAISE NOTICE 'Income/expense seed: system parties missing. Skipping.';
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.client_payments
+    WHERE company_id = v_company_id AND id = v_cp_inc1
+  ) THEN
+    RAISE NOTICE 'Income/expense demo already exists for company %. Skipping.', v_company_id;
+    RETURN;
+  END IF;
+
+  SELECT id INTO v_bank_hdfc
+  FROM public.bank_accounts
+  WHERE company_id = v_company_id AND bank_name = 'HDFC Bank'
+  LIMIT 1;
+
+  RAISE NOTICE 'Income/expense seed: inserting 10 INCOME + 10 EXPENSE entries for company %', v_company_id;
+
+  -- INCOME — 10 receipts (6 cash, 4 bank)
+  INSERT INTO public.client_payments (
+    id, company_id, client_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES
+    (v_cp_inc1, v_company_id, v_client_income, 1500, 'cash', NULL, NULL,
+     '2026-01-08', 'INCOME - used oil sale', 'indirect_income', v_owner_id),
+    (v_cp_inc2, v_company_id, v_client_income, 3200, 'cash', NULL, NULL,
+     '2026-01-15', 'INCOME - scrap metal', 'indirect_income', v_owner_id),
+    (v_cp_inc3, v_company_id, v_client_income, 800, 'cash', NULL, NULL,
+     '2026-01-22', 'INCOME - old battery sale', 'indirect_income', v_owner_id),
+    (v_cp_inc4, v_company_id, v_client_income, 4500, 'bank', 'upi', v_bank_hdfc,
+     '2026-02-03', 'INCOME - coolant drums sold', 'indirect_income', v_owner_id),
+    (v_cp_inc5, v_company_id, v_client_income, 6000, 'bank', 'net_banking', v_bank_hdfc,
+     '2026-02-10', 'INCOME - workshop rent share', 'indirect_income', v_owner_id),
+    (v_cp_inc6, v_company_id, v_client_income, 1200, 'cash', NULL, NULL,
+     '2026-02-18', 'INCOME - tyre disposal', 'indirect_income', v_owner_id),
+    (v_cp_inc7, v_company_id, v_client_income, 950, 'cash', NULL, NULL,
+     '2026-03-05', 'INCOME - filter cores return', 'indirect_income', v_owner_id),
+    (v_cp_inc8, v_company_id, v_client_income, 2100, 'bank', 'upi', v_bank_hdfc,
+     '2026-03-12', 'INCOME - paint thinner sale', 'indirect_income', v_owner_id),
+    (v_cp_inc9, v_company_id, v_client_income, 3800, 'cash', NULL, NULL,
+     '2026-04-01', 'INCOME - waste iron', 'indirect_income', v_owner_id),
+    (v_cp_inc10, v_company_id, v_client_income, 500, 'cash', NULL, NULL,
+     '2026-06-15', 'INCOME - parking fee collected', 'indirect_income', v_owner_id);
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'client', v_client_income, 'credit', 1500, 'cash', NULL, NULL,
+     'payment', v_cp_inc1, 'INCOME - used oil sale', '2026-01-08', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 3200, 'cash', NULL, NULL,
+     'payment', v_cp_inc2, 'INCOME - scrap metal', '2026-01-15', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 800, 'cash', NULL, NULL,
+     'payment', v_cp_inc3, 'INCOME - old battery sale', '2026-01-22', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 4500, 'bank', 'upi', v_bank_hdfc,
+     'payment', v_cp_inc4, 'INCOME - coolant drums sold', '2026-02-03', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 6000, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_cp_inc5, 'INCOME - workshop rent share', '2026-02-10', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 1200, 'cash', NULL, NULL,
+     'payment', v_cp_inc6, 'INCOME - tyre disposal', '2026-02-18', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 950, 'cash', NULL, NULL,
+     'payment', v_cp_inc7, 'INCOME - filter cores return', '2026-03-05', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 2100, 'bank', 'upi', v_bank_hdfc,
+     'payment', v_cp_inc8, 'INCOME - paint thinner sale', '2026-03-12', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 3800, 'cash', NULL, NULL,
+     'payment', v_cp_inc9, 'INCOME - waste iron', '2026-04-01', 'indirect_income', v_owner_id),
+    (v_company_id, 'client', v_client_income, 'credit', 500, 'cash', NULL, NULL,
+     'payment', v_cp_inc10, 'INCOME - parking fee collected', '2026-06-15', 'indirect_income', v_owner_id);
+
+  IF v_bank_hdfc IS NOT NULL THEN
+    INSERT INTO public.ledger_entries (
+      company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+      reference_type, reference_id, remark, entry_date, entry_category, created_by
+    ) VALUES
+      (v_company_id, 'bank', v_bank_hdfc, 'credit', 4500, 'bank', 'upi', v_bank_hdfc,
+       'payment', v_cp_inc4, 'INCOME - coolant drums sold', '2026-02-03', 'indirect_income', v_owner_id),
+      (v_company_id, 'bank', v_bank_hdfc, 'credit', 6000, 'bank', 'net_banking', v_bank_hdfc,
+       'payment', v_cp_inc5, 'INCOME - workshop rent share', '2026-02-10', 'indirect_income', v_owner_id),
+      (v_company_id, 'bank', v_bank_hdfc, 'credit', 2100, 'bank', 'upi', v_bank_hdfc,
+       'payment', v_cp_inc8, 'INCOME - paint thinner sale', '2026-03-12', 'indirect_income', v_owner_id);
+  END IF;
+
+  -- EXPENSE — 10 payments (7 cash, 3 bank)
+  INSERT INTO public.supplier_payments (
+    id, company_id, supplier_id, amount, payment_mode, bank_sub_mode, bank_id,
+    payment_date, remark, entry_category, created_by
+  ) VALUES
+    (v_sp_exp1, v_company_id, v_supplier_expense, 2500, 'cash', NULL, NULL,
+     '2026-01-09', 'EXPENSE - AC repair', 'indirect_expense', v_owner_id),
+    (v_sp_exp2, v_company_id, v_supplier_expense, 450, 'cash', NULL, NULL,
+     '2026-01-16', 'EXPENSE - tea & snacks', 'indirect_expense', v_owner_id),
+    (v_sp_exp3, v_company_id, v_supplier_expense, 8200, 'bank', 'net_banking', v_bank_hdfc,
+     '2026-01-25', 'EXPENSE - electricity bill', 'indirect_expense', v_owner_id),
+    (v_sp_exp4, v_company_id, v_supplier_expense, 1500, 'cash', NULL, NULL,
+     '2026-02-04', 'EXPENSE - workshop cleaning', 'indirect_expense', v_owner_id),
+    (v_sp_exp5, v_company_id, v_supplier_expense, 900, 'cash', NULL, NULL,
+     '2026-02-12', 'EXPENSE - tool sharpening', 'indirect_expense', v_owner_id),
+    (v_sp_exp6, v_company_id, v_supplier_expense, 1200, 'bank', 'upi', v_bank_hdfc,
+     '2026-02-20', 'EXPENSE - internet bill', 'indirect_expense', v_owner_id),
+    (v_sp_exp7, v_company_id, v_supplier_expense, 3400, 'cash', NULL, NULL,
+     '2026-03-08', 'EXPENSE - floor paint', 'indirect_expense', v_owner_id),
+    (v_sp_exp8, v_company_id, v_supplier_expense, 1800, 'bank', 'net_banking', v_bank_hdfc,
+     '2026-03-18', 'EXPENSE - safety gloves bulk', 'indirect_expense', v_owner_id),
+    (v_sp_exp9, v_company_id, v_supplier_expense, 650, 'cash', NULL, NULL,
+     '2026-04-05', 'EXPENSE - water cooler service', 'indirect_expense', v_owner_id),
+    (v_sp_exp10, v_company_id, v_supplier_expense, 2200, 'cash', NULL, NULL,
+     '2026-06-16', 'EXPENSE - signage repair', 'indirect_expense', v_owner_id);
+
+  INSERT INTO public.ledger_entries (
+    company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+    reference_type, reference_id, remark, entry_date, entry_category, created_by
+  ) VALUES
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 2500, 'cash', NULL, NULL,
+     'payment', v_sp_exp1, 'EXPENSE - AC repair', '2026-01-09', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 450, 'cash', NULL, NULL,
+     'payment', v_sp_exp2, 'EXPENSE - tea & snacks', '2026-01-16', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 8200, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_exp3, 'EXPENSE - electricity bill', '2026-01-25', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 1500, 'cash', NULL, NULL,
+     'payment', v_sp_exp4, 'EXPENSE - workshop cleaning', '2026-02-04', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 900, 'cash', NULL, NULL,
+     'payment', v_sp_exp5, 'EXPENSE - tool sharpening', '2026-02-12', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 1200, 'bank', 'upi', v_bank_hdfc,
+     'payment', v_sp_exp6, 'EXPENSE - internet bill', '2026-02-20', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 3400, 'cash', NULL, NULL,
+     'payment', v_sp_exp7, 'EXPENSE - floor paint', '2026-03-08', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 1800, 'bank', 'net_banking', v_bank_hdfc,
+     'payment', v_sp_exp8, 'EXPENSE - safety gloves bulk', '2026-03-18', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 650, 'cash', NULL, NULL,
+     'payment', v_sp_exp9, 'EXPENSE - water cooler service', '2026-04-05', 'indirect_expense', v_owner_id),
+    (v_company_id, 'supplier', v_supplier_expense, 'debit', 2200, 'cash', NULL, NULL,
+     'payment', v_sp_exp10, 'EXPENSE - signage repair', '2026-06-16', 'indirect_expense', v_owner_id);
+
+  IF v_bank_hdfc IS NOT NULL THEN
+    INSERT INTO public.ledger_entries (
+      company_id, entity_type, entity_id, entry_type, amount, payment_mode, bank_sub_mode, bank_id,
+      reference_type, reference_id, remark, entry_date, entry_category, created_by
+    ) VALUES
+      (v_company_id, 'bank', v_bank_hdfc, 'debit', 8200, 'bank', 'net_banking', v_bank_hdfc,
+       'payment', v_sp_exp3, 'EXPENSE - electricity bill', '2026-01-25', 'indirect_expense', v_owner_id),
+      (v_company_id, 'bank', v_bank_hdfc, 'debit', 1200, 'bank', 'upi', v_bank_hdfc,
+       'payment', v_sp_exp6, 'EXPENSE - internet bill', '2026-02-20', 'indirect_expense', v_owner_id),
+      (v_company_id, 'bank', v_bank_hdfc, 'debit', 1800, 'bank', 'net_banking', v_bank_hdfc,
+       'payment', v_sp_exp8, 'EXPENSE - safety gloves bulk', '2026-03-18', 'indirect_expense', v_owner_id);
+  END IF;
+
+  RAISE NOTICE 'Income/expense seed complete — 10 INCOME + 10 EXPENSE entries';
+END $$;

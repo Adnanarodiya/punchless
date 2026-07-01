@@ -62,7 +62,7 @@
 | `scripts/import-full-data.mjs` | **Ops** | Import `full data.xlsx` — closing balance B/F, sales register, bank/cash (`pnpm db:import-full-data`) |
 | `scripts/import-shahin-data.mjs` | **Ops** | Import `shahin data.xlsx` — sales bills, purchase bills, cash receipts, bank book; bank receipts remark `Imported bank receipt` (no duplicate `bank_transactions` deposit row) (`pnpm db:import-shahin-data`) |
 | `apps/web/vercel.json` | **Deploy** | Vercel monorepo install/build commands (root dir = `apps/web`) |
-| `lib/utils/statement-date-range.ts` | **Pay UX** | Default employee statement window — last 6 months |
+| `lib/utils/statement-date-range.ts` | **Pay UX** | Default statement window for all ledgers — rolling 12 months through today |
 | `lib/utils/staff-statement-display.ts` | **Pay UX** | Plain-language staff statement labels (no Dr/Cr) |
 | `scripts/e2e-p0-audit.mts` | **P0/E2E** | Automated audit — fingerprint parser, salary math, HTTP smoke, P0-1–5 source checks (`pnpm e2e:p0`) |
 | `scripts/e2e-owner-test.mts` | **§10/E2E** | Owner usability gate — 6 blocks A–F via Supabase flows (`pnpm e2e:owner`) |
@@ -82,7 +82,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | File | Phase | Description |
 |------|-------|-------------|
 | `config.toml` | 2 | Supabase local config (project ID: `lwjnkyaihiclbfnukrvn`) |
-| `seed.sql` | 2/13.5 | **Statement + journal demo seed** — Rajesh/Patel clients, Auto Parts suppliers, banks, staff ledgers; **BILAL** (customer) + **ZAID** (supplier) with 10 sales + 10 purchase bills, discounts, CN/DN; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
+| `seed.sql` | 2/13.5 | **Statement + journal + income/expense demo seed** — Rajesh/Patel, BILAL/ZAID bills; **INCOME**/**EXPENSE** 10+10 indirect entries; idempotent; login `owner@demo.punchless` / `demo1234` on fresh reset |
 | `migrations/.gitkeep` | 2 | Placeholder |
 | `migrations/20260207112531_initial_schema.sql` | 2 | **Main schema**: companies, users, workshops, jobs, attendance_sessions, salary_advances + RLS + indexes + trigger |
 | `migrations/20260207154949_fix_signup_trigger_schema_qualified.sql` | 2 | Fix: schema-qualified `public.companies`/`public.users` in signup trigger |
@@ -108,6 +108,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `migrations/20260625180000_shahin_extras.sql` | Extras | `companies.data_lock_pin_hash` + `sticky_notes` table + RLS |
 | `migrations/20260625200000_push_tokens.sql` | 8 | `push_tokens` table — Expo push tokens per user/device + RLS (own tokens only) |
 | `migrations/20260701120000_journal_discount_credit_notes.sql` | **V3-B** | `discount_settlements`, `credit_notes`, `debit_notes`; purchase `credit_amount`; journal entry categories; ledger ref types include existing `bank_transaction`/`transfer`/HR types |
+| `migrations/20260702120000_system_income_expense_parties.sql` | **V3-B** | `clients`/`suppliers` `is_system`; `ensure_system_parties()`; auto INCOME + EXPENSE on signup + backfill |
 | `functions/.gitkeep` | 2 | Placeholder for Supabase Edge Functions |
 
 ---
@@ -155,10 +156,10 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `src/components/tooltip.tsx` | 4 | Radix tooltip primitive (TooltipProvider, Trigger, Content) |
 | `src/components/payment-mode-select.tsx` | 11B | Cash/Bank/Credit payment mode select |
 | `src/components/statement-letterhead.tsx` | 13.5 | Company gradient letterhead for printable statements |
-| `src/components/statement-entity-box.tsx` | 13.5 | Dashed "Statement To" entity box with date range |
-| `src/components/balance-badge.tsx` | 13.5 | Running balance with Due/Nil B/F/Advance labels |
+| `src/components/statement-entity-box.tsx` | 13.5/**UX** | Statement To box — party (right-aligned) + system (full-width compact bar) |
+| `src/components/balance-badge.tsx` | 13.5/**UX** | Running balance — optional label hide for INCOME/EXPENSE system ledgers |
 | `src/components/statement-toolbar.tsx` | 13.5 | Search + Print controls (screen only) |
-| `src/components/statement-table.tsx` | 13.5 | Ledger table — paginated rows (50/page) + period total; print shows all rows |
+| `src/components/statement-table.tsx` | 13.5/**UX** | Ledger table — party layout + `system-income` / `system-expense` layouts (particular first) |
 | `src/components/statement-format.ts` | 13.5 | Shared statement date/amount formatting helpers |
 
 ---
@@ -237,7 +238,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/dashboard-recent-tables.tsx` | 11A | Client component: recent attendance + jobs DataTables (stacked full-width) |
 | `dashboard/customers/page.tsx` | 11B/3/**UX** | Server component: customers + summary; Simple → `CustomerCommerceHub`; `?customer=` (legacy `?client=`) deep links |
 | `dashboard/customers/customer-manager.tsx` | 11B/3/**UX** | Customer CRUD, receive payment (₹5k+ confirm), invoice row action, soft delete/recover — all UI says “customer” |
-| `dashboard/customers/[id]/statement/page.tsx` | 11B | Server component: customer statement with date range |
+| `dashboard/customers/[id]/statement/page.tsx` | 11B/**UX** | Customer statement — default last 12 months (was FY-to-date) |
 | `dashboard/customers/[id]/statement/statement-manager.tsx` | 13.5 | Customer statement — edit/delete rows (payments + quick bills) with confirm + correction modal |
 | `components/client-statement-row-actions.tsx` | **UX** | Statement row Edit (confirm → modal) + Delete confirm for customer ledger entries |
 | `components/edit-client-statement-entry-modal.tsx` | **UX** | Correct payment or quick bill amount/date/mode from customer statement |
@@ -245,7 +246,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/customers/[id]/statement/print/print-actions.tsx` | 13.5 | Back + Print buttons for customer statement print route |
 | `dashboard/suppliers/page.tsx` | 12/3/**P0-3** | Suppliers page + `SupplierManager`; `?supplier=&open=pay` deep links |
 | `dashboard/suppliers/supplier-manager.tsx` | 12/3 | CRUD, Pay Now modal (₹5k+ confirm), statement link, `?supplier=` deep link, soft delete/recover |
-| `dashboard/suppliers/[id]/statement/page.tsx` | 12 | Server component: supplier statement with date range |
+| `dashboard/suppliers/[id]/statement/page.tsx` | 12/**UX** | Supplier statement — default last 12 months (was FY-to-date) |
 | `dashboard/suppliers/[id]/statement/statement-manager.tsx` | 13.5 | Supplier statement — edit/delete rows (payments + bills) with confirm + correction modal |
 | `components/supplier-statement-row-actions.tsx` | **UX** | Statement row Edit (confirm → modal) + Delete confirm for supplier ledger entries |
 | `components/edit-supplier-statement-entry-modal.tsx` | **UX** | Correct supplier payment amount/date/mode from statement; bills link to Purchases |
@@ -264,7 +265,12 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/actions/general-entry.actions.ts` | **V3-B** | `createGeneralEntry` — party payments + against-bill remark + client invoice credit reduction |
 | `lib/validations/general-entry.schema.ts` | **V3-B** | Zod schema — bank sub-mode, settlement type, bill required when against bill |
 | `pay-supplier-modal.tsx` | **UX** | Pay supplier — bill suffix search locks against-bill; hides settlement toggle; creates supplier on save only |
-| `collect-payment-modal.tsx` | **UX** | Collect payment — bill suffix search locks against-bill; shows bill total note; creates customer on save only |
+| `collect-payment-modal.tsx` | **UX** | Collect payment — bill suffix search; INCOME system client for other income (`INCOME - remark`); required particular remark |
+| `pay-supplier-modal.tsx` | **UX** | Pay supplier — EXPENSE system supplier for other expense (`EXPENSE - remark`); required particular remark |
+| `lib/constants/system-parties.ts` | **V3-B** | `INCOME`/`EXPENSE` names, remark formatters, reserved-name + system-party helpers |
+| `lib/queries/system-party.queries.ts` | **V3-B** | Header nav links to INCOME/EXPENSE statements |
+| `lib/utils/sort-system-parties.ts` | **V3-B** | Pin system parties first in customer/supplier lists |
+| `lib/utils/system-statement-display.ts` | **V3-B** | INCOME/EXPENSE statement layout — particular first, strip prefix, no Advance label |
 | `party-search-field.tsx` | **V3-B** | Party autocomplete — digit suffix bill search; empty dropdown when no match; bill total in selected note |
 | `against-bill-picker.tsx` | **V3-B** | Panel mode — right-side bill list with bill-number search, multi-select, selected total due |
 | `settlement-type-field.tsx` | **V3-B** | Direct vs Against bill toggle — Enter advances to bills or date |
@@ -295,7 +301,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `dashboard/banks/transactions/bank-transactions-manager.tsx` | 14 | Record deposits/withdrawals + history table |
 | `dashboard/banks/transfer/page.tsx` | 14 | Bank-to-bank transfer page |
 | `dashboard/banks/transfer/bank-transfer-manager.tsx` | 14 | Transfer form + history table |
-| `dashboard/banks/[id]/statement/page.tsx` | 14 | Bank statement with date range |
+| `dashboard/banks/[id]/statement/page.tsx` | 14/**UX** | Bank statement — default last 12 months |
 | `dashboard/banks/[id]/statement/statement-manager.tsx` | 14 | Deposit/withdraw ledger table + print |
 | `dashboard/transactions/page.tsx` | 14 | Income/expense transactions page |
 | `dashboard/transactions/transaction-manager.tsx` | 14 | Income/expense CRUD; cash/bank breakdown on cards; Rojmel explainer (not bank balance) |
@@ -410,7 +416,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 | `lib/stores/entry-date.store.ts` | **UX** | Zustand — shared entry date (sessionStorage); defaults to today |
 | `dashboard-header.tsx` | 11A/9 | Legacy top bar (replaced by `dashboard-nav-header.tsx`; unused) |
 | `map-picker.tsx` | 3 | **Leaflet map component**: click/drag to set location, radius slider with live circle preview, OSM tiles |
-| `statement-screen.tsx` | 13.5/9 | Shared client component — date filter, search, toolbar, contextual learn help, `#printMe` zone |
+| `statement-screen.tsx` | 13.5/9/**UX** | Shared statement UI — date filter + **Last 12 months** reset, search, toolbar, `#printMe` zone |
 | `statement-print-document.tsx` | 13.5 | Server-friendly printable statement document (letterhead + table) |
 
 #### Utils (`src/lib/utils/`)
@@ -474,7 +480,7 @@ All pre-V3 docs removed: `DOCS_INDEX.md`, `docs/01`–`docs/10`, `docs/12`, Shah
 
 | Change | Description |
 |--------|-------------|
-| `dialog.tsx` / `alert-dialog.tsx` | Lower border radius (`rounded-lg`), removed duplicate overlay in Modal |
+| `dialog.tsx` / `alert-dialog.tsx` | Lighter overlay (`foreground/15`); confirm dialogs stack above modals (`z-60`/`z-70`) |
 | `button.tsx` | `loading` prop — spinner + auto-disable |
 | `confirm-modal.tsx` | `loading` prop; Enter key confirms when open |
 | `collapsible-nav-group.tsx` | Controlled open state for accordion sidebar |

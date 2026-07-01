@@ -552,6 +552,7 @@ export type Database = {
           gst_number: string | null
           id: string
           is_deleted: boolean
+          is_system: boolean
           name: string
           opening_balance: number
           updated_at: string | null
@@ -566,6 +567,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_deleted?: boolean
+          is_system?: boolean
           name: string
           opening_balance?: number
           updated_at?: string | null
@@ -580,6 +582,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_deleted?: boolean
+          is_system?: boolean
           name?: string
           opening_balance?: number
           updated_at?: string | null
@@ -1883,6 +1886,7 @@ export type Database = {
           gst_number: string | null
           id: string
           is_deleted: boolean
+          is_system: boolean
           name: string
           opening_balance: number
           updated_at: string | null
@@ -1897,6 +1901,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_deleted?: boolean
+          is_system?: boolean
           name: string
           opening_balance?: number
           updated_at?: string | null
@@ -1911,6 +1916,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           is_deleted?: boolean
+          is_system?: boolean
           name?: string
           opening_balance?: number
           updated_at?: string | null

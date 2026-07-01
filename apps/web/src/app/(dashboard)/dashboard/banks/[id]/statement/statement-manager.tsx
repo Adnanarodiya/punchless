@@ -13,6 +13,7 @@ import type {
   BankWithBalance,
 } from "@/lib/queries/bank.queries";
 import { formatCurrency, formatDate } from "@/lib/utils/formatting";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
 
 interface Props {
   bank: BankWithBalance;
@@ -99,6 +100,18 @@ export function BankStatementManager({
           <input id="endDate" name="endDate" type="date" defaultValue={endDate} required className="h-10 rounded-lg border border-input bg-background px-3 text-sm" />
         </div>
         <Button type="submit">Apply</Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            const { start, end } = defaultStatementDateRange();
+            router.push(
+              `/dashboard/banks/${bank.id}/statement?start=${start}&end=${end}`
+            );
+          }}
+        >
+          Last 12 months
+        </Button>
       </form>
 
       <DataTable

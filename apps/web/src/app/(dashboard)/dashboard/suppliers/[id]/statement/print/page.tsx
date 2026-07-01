@@ -1,22 +1,19 @@
 import { notFound } from "next/navigation";
 
 import { StatementPrintDocument } from "@/components/statement-print-document";
+import { isSystemExpenseSupplier } from "@/lib/constants/system-parties";
 import {
   getSupplierById,
   getSupplierStatement,
 } from "@/lib/queries/supplier.queries";
 import { getCompanyProfile } from "@/lib/queries/settings.queries";
+import { defaultStatementDateRange } from "@/lib/utils/statement-date-range";
 import {
-  getCurrentFinancialYearStartYear,
-  getFinancialYearRangeToDate,
-} from "@/lib/utils/financial-year";
+  getSystemExpenseStatementLabels,
+  transformSystemExpenseStatement,
+} from "@/lib/utils/system-statement-display";
 
 import { PrintActions } from "./print-actions";
-
-function defaultDateRange() {
-  const range = getFinancialYearRangeToDate(getCurrentFinancialYearStartYear());
-  return { start: range.start, end: range.end };
-}
 
 export default async function SupplierStatementPrintPage({
   params,
@@ -27,7 +24,7 @@ export default async function SupplierStatementPrintPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const defaults = defaultDateRange();
+  const defaults = defaultStatementDateRange();
   const startDate = query.start || defaults.start;
   const endDate = query.end || defaults.end;
 
@@ -38,6 +35,11 @@ export default async function SupplierStatementPrintPage({
   ]);
 
   if (!supplier || !company) notFound();
+
+  const isSystemExpense = isSystemExpenseSupplier(supplier);
+  const displayStatement = isSystemExpense
+    ? transformSystemExpenseStatement(statement)
+    : statement;
 
   const entityLines = [
     { label: "Name", value: supplier.name },
@@ -62,14 +64,18 @@ export default async function SupplierStatementPrintPage({
         entityLines={entityLines}
         startDate={startDate}
         endDate={endDate}
-        statement={statement}
-        tableLabels={{
-          invoiceColumn: "Bill No.",
-          debitColumn: "Dr (Supplier bills)",
-          creditColumn: "Cr (Paid)",
-          showVehicleColumn: false,
-          dueBadgePrefix: "Payable",
-        }}
+        statement={displayStatement}
+        tableLabels={
+          isSystemExpense
+            ? getSystemExpenseStatementLabels()
+            : {
+                invoiceColumn: "Bill No.",
+                debitColumn: "Dr (Supplier bills)",
+                creditColumn: "Cr (Paid)",
+                showVehicleColumn: false,
+                dueBadgePrefix: "Payable",
+              }
+        }
       />
     </div>
   );
